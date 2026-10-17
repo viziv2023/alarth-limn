@@ -1,0 +1,1027 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <title>عصر الهيمنة - لعبة الاستراتيجية وبناء الإمبراطوريات</title>
+
+    <!-- خط الألعاب الاستراتيجية العربي Cairo -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+
+    <!-- مكتبة PeerJS للاتصال الشبكي المباشر P2P بين الهواتف دون الحاجة لخادم خارجي -->
+    <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+
+    <link rel="stylesheet" href="style.css" />
+</head>
+
+<body>
+
+    <!-- حاوية الإشعارات والاحتفالات العائمة داخل اللعبة -->
+    <div id="game-toast-container"></div>
+
+    <!-- شريط الجاهزية واتخاذ القرار العلوي المتزامن للغرف والهواتف -->
+    <div id="multiplayer-status-bar" style="display:none;">
+        <div class="mp-bar-info">
+            <span id="mp-room-code-label" class="mp-badge-room">غرفة: --</span>
+            <span id="mp-players-count" class="mp-badge-count">👥 1/10</span>
+            <span id="mp-status-details" class="mp-status-text">بانتظار تحديد قرارك...</span>
+        </div>
+        <div class="mp-bar-actions">
+            <button id="btn-mp-ready-year" class="btn btn-sm btn-primary">🌾 جاهز للسنة التالية</button>
+            <button id="btn-mp-ready-war" class="btn btn-sm btn-danger">⚔️ إعلان الحرب</button>
+            <button id="btn-mp-open-lobby" class="btn btn-sm btn-secondary" title="إدارة الغرفة">⚙️</button>
+        </div>
+    </div>
+
+    <!-- 1. القائمة الرئيسية (شاشة الترحيب الملكية المبهجة) -->
+    <div id="main-menu" class="screen active">
+        <div class="menu-box">
+            <div class="menu-crown-emblem">👑</div>
+            <div>
+                <span class="menu-badge-tactical">✨ GRAND STRATEGY &amp; MULTIPLAYER v4.6 ✨</span>
+            </div>
+            <h1 class="game-title">عصر الهيمنة</h1>
+            <p class="subtitle">ابنِ إمبراطوريتك، طوّر مدنك، وتنافس مع حتى 10 لاعبين في غرفة واحدة!</p>
+
+            <div class="menu-features-pills">
+                <span class="menu-feature-pill">🏰 72 منشأة عمرانية</span>
+                <span class="menu-feature-pill">⚖️ 16 قطاعاً حيوياً</span>
+                <span class="menu-feature-pill">🌐 غرف لعب لـ 10 لاعبين</span>
+                <span class="menu-feature-pill">📱 واجهة جوال لمسية 3D</span>
+            </div>
+
+            <div class="menu-buttons">
+                <button id="btn-menu-multiplayer" class="btn btn-primary" style="background:linear-gradient(180deg, #38bdf8 0%, #0284c7 100%) !important; border-color:#bae6fd !important;">🌐 الدخول إلى غرفة لعب (Multiplayer)</button>
+                <button id="btn-menu-new" class="btn btn-secondary">🚀 لعب فردي (عالم جديد محلي)</button>
+                <button id="btn-menu-load" class="btn btn-secondary">📂 استرجاع عالم محفوظ (JSON)</button>
+                <input type="file" id="file-input-menu" accept=".json" style="display:none;" />
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. الشاشة الرئيسية والتابات الثمانية -->
+    <div id="game-dashboard" class="screen">
+        <header class="top-bar">
+            <div class="top-bar-title">
+                <div class="top-bar-logo-icon">👑</div>
+                <div>
+                    <h2>مجلس الأمم والإمبراطوريات</h2>
+                    <span class="top-bar-sub">قيادة العالم، التجارة الدولية، وموازين القوى</span>
+                </div>
+                <div class="top-bar-badges-group">
+                    <span id="global-stats-count" class="badge">🌍 إجمالي الدول: 0</span>
+                    <span id="global-year-badge" class="badge badge-gold">⏳ السنة المالية: 1م</span>
+                </div>
+            </div>
+
+            <div class="top-bar-actions">
+                <button id="btn-global-next-year" class="btn btn-primary btn-advance-year">🌟 إنهاء السنة وتدوير العالم ➔</button>
+                <button id="btn-add-nation" class="btn btn-accent">🏰 + تأسيس دولة</button>
+                <button id="btn-open-rooms-modal" class="btn btn-secondary" title="إدارة الغرف والتعددية">🌐 الغرف</button>
+                <button id="btn-save-to-file" class="btn btn-secondary" title="حفظ تقدم اللعبة">💾 حفظ</button>
+                <button id="btn-load-from-file" class="btn btn-secondary" title="تحميل ملف حفظ">📁 تحميل</button>
+                <button id="btn-toggle-sound" class="btn btn-secondary btn-sm" title="تفعيل/كتم المؤثرات الصوتية">🔊</button>
+                <input type="file" id="file-input-dash" accept=".json" style="display:none;" />
+            </div>
+        </header>
+
+        <main class="dashboard-content">
+            <div class="dashboard-view-bar desktop-tabs-only">
+                <div class="view-switcher-tabs">
+                    <button id="btn-view-table" class="view-tab-btn active"><span class="tab-ico">🏰</span> بطاقات الأمم</button>
+                    <button id="btn-view-charts" class="view-tab-btn"><span class="tab-ico">📊</span> سباق المؤشرات</button>
+                    <button id="btn-view-chronicle" class="view-tab-btn"><span class="tab-ico">📜</span> مخطوطة التاريخ</button>
+                    <button id="btn-view-analytics" class="view-tab-btn"><span class="tab-ico">🔭</span> كشاف القوى</button>
+                    <button id="btn-view-worldbank" class="view-tab-btn"><span class="tab-ico">🏦</span> البنك الدولي</button>
+                    <button id="btn-view-trade" class="view-tab-btn"><span class="tab-ico">🚢</span> القوافل والتجارة</button>
+                    <button id="btn-view-exchange" class="view-tab-btn"><span class="tab-ico">💎</span> سوق السلع العالمي</button>
+                    <button id="btn-view-war" class="view-tab-btn btn-tab-war"><span class="tab-ico">⚔️</span> غرفة الحرب</button>
+                </div>
+            </div>
+
+            <div id="nations-table-container" class="nations-cards-wrapper">
+                <div id="nations-cards-grid" class="nations-cards-grid"></div>
+            </div>
+
+            <div id="nations-charts-container" class="charts-dashboard-container" style="display:none;">
+                <div class="charts-filter-bar">
+                    <button class="chart-filter-btn selected" data-chart="all">🌟 عرض جميع الرسوم (8)</button>
+                    <button class="chart-filter-btn" data-chart="budget">💰 الميزانية</button>
+                    <button class="chart-filter-btn" data-chart="population">👥 السكان</button>
+                    <button class="chart-filter-btn" data-chart="income">💎 الدخل</button>
+                    <button class="chart-filter-btn" data-chart="area">🏗️ المساحة</button>
+                    <button class="chart-filter-btn" data-chart="generalIndex">⭐ المؤشر العام</button>
+                    <button class="chart-filter-btn" data-chart="oilPrice">🛢️ سعر البرميل</button>
+                    <button class="chart-filter-btn" data-chart="militaryPower">⚔️ القوة المقدرة</button>
+                    <button class="chart-filter-btn" data-chart="currencyValue">🪙 قيمة العملة</button>
+                </div>
+                <div id="charts-grid" class="charts-grid-wrapper"></div>
+            </div>
+
+            <div id="nations-chronicle-container" class="chronicle-dashboard-container" style="display:none;">
+                <div id="chronicle-tables-wrapper"></div>
+            </div>
+
+            <div id="nations-analytics-container" class="analytics-dashboard-container" style="display:none;">
+                <div id="analytics-grid-wrapper"></div>
+            </div>
+
+            <div id="nations-worldbank-container" class="worldbank-dashboard-container" style="display:none;">
+                <div id="worldbank-content-wrapper"></div>
+            </div>
+
+            <div id="nations-trade-container" class="trade-dashboard-container" style="display:none;">
+                <div id="trade-content-wrapper"></div>
+            </div>
+
+            <div id="nations-exchange-container" class="exchange-dashboard-container" style="display:none;">
+                <div id="exchange-content-wrapper"></div>
+            </div>
+
+            <div id="nations-war-container" class="war-dashboard-container" style="display:none;">
+                <div id="war-content-wrapper"></div>
+            </div>
+        </main>
+
+        <!-- شريط التنقل السفلي المخصص لشاشات الهواتف الذكية (Mobile Bottom Navigation) -->
+        <nav class="mobile-bottom-nav">
+            <button class="mob-nav-btn active" data-target="table">
+                <span class="mob-nav-ico">🏰</span>
+                <span class="mob-nav-lbl">الأمم</span>
+            </button>
+            <button class="mob-nav-btn" data-target="charts">
+                <span class="mob-nav-ico">📊</span>
+                <span class="mob-nav-lbl">المؤشرات</span>
+            </button>
+            <button class="mob-nav-btn" data-target="chronicle">
+                <span class="mob-nav-ico">📜</span>
+                <span class="mob-nav-lbl">التاريخ</span>
+            </button>
+            <button class="mob-nav-btn" data-target="analytics">
+                <span class="mob-nav-ico">🔭</span>
+                <span class="mob-nav-lbl">التحليل</span>
+            </button>
+            <button class="mob-nav-btn" data-target="worldbank">
+                <span class="mob-nav-ico">🏦</span>
+                <span class="mob-nav-lbl">البنك</span>
+            </button>
+            <button class="mob-nav-btn" data-target="trade">
+                <span class="mob-nav-ico">🚢</span>
+                <span class="mob-nav-lbl">التجارة</span>
+            </button>
+            <button class="mob-nav-btn" data-target="exchange">
+                <span class="mob-nav-ico">💎</span>
+                <span class="mob-nav-lbl">البورصة</span>
+            </button>
+            <button class="mob-nav-btn mob-nav-war" data-target="war">
+                <span class="mob-nav-ico">⚔️</span>
+                <span class="mob-nav-lbl">الحرب</span>
+            </button>
+        </nav>
+    </div>
+
+    <!-- 3. صفحة إدارة الدولة المستقلة -->
+    <div id="country-detail-screen" class="screen">
+        <header class="top-bar">
+            <button id="btn-back-to-world" class="btn btn-secondary">🔙 رجوع</button>
+            <div class="nation-header-title">
+                <h2 id="detail-country-name">--</h2>
+                <span id="detail-country-stage" class="badge">--</span>
+                <span id="detail-year" class="badge badge-gold">⏳ 1م</span>
+                <span id="top-military-power-badge" class="badge badge-military">⚔️ 0</span>
+            </div>
+            <div class="top-bar-actions">
+                <button id="btn-open-capital" class="btn btn-accent">🏛️ العاصمة 3D</button>
+                <button id="btn-open-military-hq" class="btn btn-military">🎖️ الجيش</button>
+            </div>
+        </header>
+
+        <main class="country-profile-content">
+            <div class="side-column">
+                <div class="dossier-card theme-flag flag-dossier">
+                    <h3>🚩 الراية والسيادة الوطنية</h3>
+                    <div id="detail-flag-box" class="large-flag"></div>
+                </div>
+
+                <div class="dossier-card theme-development">
+                    <div class="card-header-flex">
+                        <h3>🌟 المؤشرات التنموية والعملة</h3>
+                        <span class="theme-tag tag-blue">الازدهار</span>
+                    </div>
+                    <div class="stats-list">
+                        <div class="stat-row">
+                            <span>⭐ المؤشر العام للدولة:</span>
+                            <strong id="detail-general-index" class="text-cyan">0 نقطة</strong>
+                        </div>
+                        <div class="stat-row">
+                            <span>🪙 قيمة العملة الوطنية:</span>
+                            <strong id="detail-currency-val" class="text-blue">0.00</strong>
+                        </div>
+                        <div class="stat-row">
+                            <span>💎 متوسط دخل الفرد:</span>
+                            <strong id="detail-per-capita">$0</strong>
+                        </div>
+                        <div class="stat-row">
+                            <span>🏗️ المساحة العمرانية:</span>
+                            <strong id="detail-area">0 نقطة</strong>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="dossier-card theme-demographics">
+                    <div class="card-header-flex">
+                        <h3>👥 السكان والقوى العاملة</h3>
+                        <span class="theme-tag tag-purple">المجتمع</span>
+                    </div>
+                    <div class="stats-list">
+                        <div class="stat-row">
+                            <span>👨‍👩‍👧‍👦 إجمالي السكان:</span>
+                            <strong id="detail-population" class="text-purple">0 نسمة</strong>
+                        </div>
+                        <div class="stat-row">
+                            <span>🛠️ العاملون بالقطاعات:</span>
+                            <strong id="detail-employed" class="text-green">0 فرد</strong>
+                        </div>
+                        <div class="stat-row">
+                            <span>⏳ الباحثون عن عمل:</span>
+                            <strong id="detail-unemployed">0 فرد</strong>
+                        </div>
+                        <div class="stat-row">
+                            <span>📉 معدل البطالة:</span>
+                            <strong id="detail-unemployment-rate" class="text-orange">0%</strong>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="main-column">
+                <div class="dossier-card theme-finance">
+                    <div class="card-header-flex">
+                        <h3>💰 الخزينة الملكية والبنك المركزي</h3>
+                        <span class="theme-tag tag-gold">الذهب والسيولة</span>
+                    </div>
+                    <div class="finance-grid">
+                        <div class="finance-card">
+                            <span class="f-title">👑 الميزانية الإجمالية</span>
+                            <span class="f-val text-gold" id="val-budget">$0</span>
+                            <span class="f-desc">تتحدث لحظياً مع البناء</span>
+                        </div>
+                        <div class="finance-card">
+                            <span class="f-title">💵 التحصيل المتاح للسنة</span>
+                            <span class="f-val text-emerald" id="val-revenue">$200</span>
+                            <span class="f-desc">السيولة الجاهزة للبناء والتسليح</span>
+                        </div>
+                        <div class="finance-card">
+                            <span class="f-title">🏦 خزينة البنك الوطني<span id="bank-status-lbl"></span></span>
+                            <span class="f-val text-emerald" id="val-bank">$0</span>
+                            <span class="f-desc">تودع فيها الفوائض السنوية</span>
+                        </div>
+                        <div class="finance-card">
+                            <span class="f-title">🌐 مدخرات البنك الدولي (5%)</span>
+                            <span class="f-val text-blue" id="val-worldbank">$0</span>
+                            <span class="f-desc" id="wb-subtext">معفي في السنة الأولى</span>
+                        </div>
+                        <div class="finance-card">
+                            <span class="f-title">🚢 عوائد الصادرات</span>
+                            <span class="f-val text-green" id="val-exports">$0</span>
+                            <span class="f-desc">تضاف مباشرة لخزينة البنك</span>
+                        </div>
+                        <div class="finance-card">
+                            <span class="f-title">📦 تكلفة الواردات</span>
+                            <span class="f-val text-orange" id="val-imports">$0</span>
+                            <span class="f-desc">تخصم من البنك أو تسجل كدين</span>
+                        </div>
+                    </div>
+
+                    <div class="finance-actions-bar">
+                        <button id="btn-action-withdraw-all" class="btn btn-secondary">💰 سحب كامل البنك</button>
+                        <button id="btn-action-withdraw-partial" class="btn btn-secondary">🪙 سحب جزء</button>
+                        <button id="btn-action-worldbank-emergency" class="btn btn-danger">🚨 سحب طوارئ</button>
+                        <button id="btn-action-donate" class="btn btn-primary" style="background:linear-gradient(180deg, #10b981 0%, #059669 100%) !important; border-color:#6ee7b7 !important;">🎁 إرسال منحة مالية</button>
+                    </div>
+                </div>
+
+                <div class="dossier-card theme-development" id="dossier-buildings">
+                    <div class="card-header-flex">
+                        <div>
+                            <h3>🏗️ تشييد المدن والمنشآت الوطنية (72 منشأة)</h3>
+                            <p class="sectors-sub-desc">كل منشأة تبنيها توسع مدينتك وتزيد عوائدك السنوية ومؤشرات شعبك!</p>
+                        </div>
+                        <span id="bldg-total-revenue-badge" class="badge badge-gold">💎 عوائد المنشآت: $0 / سنة</span>
+                    </div>
+
+                    <div class="bldg-stage-bar">
+                        <div class="bldg-stage-info">
+                            <span class="bldg-stage-title" id="bldg-stage-progress-text">🏆 اكتمال متطلبات المرحلة الأولى: 0 من أصل 12</span>
+                        </div>
+                        <button id="btn-upgrade-stage" class="btn btn-secondary" disabled>🔒 الترقية للعصر التالي</button>
+                    </div>
+
+                    <div class="bldg-tabs-nav">
+                        <button id="btn-tab-stage1" class="btn btn-sm btn-primary active">🏕️ المرحلة 1</button>
+                        <button id="btn-tab-stage2" class="btn btn-sm btn-secondary">🏘️ المرحلة 2</button>
+                        <button id="btn-tab-stage3" class="btn btn-sm btn-secondary">🏭 المرحلة 3</button>
+                        <button id="btn-tab-stage4" class="btn btn-sm btn-secondary">🏙️ المرحلة 4</button>
+                        <button id="btn-tab-stage5" class="btn btn-sm btn-secondary">🚀 المرحلة 5</button>
+                        <button id="btn-tab-clean-energy" class="btn btn-sm btn-secondary" style="border-color:#34d399; color:#6ee7b7;">🌱 طاقة نظيفة</button>
+                    </div>
+
+                    <div class="bldg-table-wrap">
+                        <table class="bldg-table">
+                            <thead>
+                                <tr>
+                                    <th>المنشأة والوصف</th>
+                                    <th style="text-align:center;">التكلفة</th>
+                                    <th style="text-align:center;">العائد السنوي</th>
+                                    <th style="text-align:center;">السكان</th>
+                                    <th style="text-align:center;">الكهرباء والماء</th>
+                                    <th style="text-align:center;">تغذي قطاع</th>
+                                    <th style="text-align:center;">سعة التحمل</th>
+                                    <th style="text-align:center;">الشرط المسبق</th>
+                                    <th style="text-align:center;">المملوك</th>
+                                    <th style="text-align:center;">أوامر التشييد</th>
+                                </tr>
+                            </thead>
+                            <tbody id="buildings-tbody"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="dossier-card theme-energy">
+                    <div class="card-header-flex">
+                        <div>
+                            <h3>⚡ إمبراطورية الطاقة والوقود (النفط والغاز)</h3>
+                            <p class="sectors-sub-desc">وقود المصانع والجيوش؛ الفائض يخفض الأسعار محلياً ويمنحك قوة تصديرية.</p>
+                        </div>
+                        <span class="badge badge-orange">🔥 مؤشر الطاقة: <strong id="val-energy-index">0</strong></span>
+                    </div>
+
+                    <div class="energy-sections-wrapper">
+                        <div class="energy-subpanel">
+                            <div class="subpanel-title">
+                                <span>🛢️ منظومة البترول والوقود</span>
+                                <span class="price-tag">سعر البرميل: <strong id="val-oil-price" class="text-gold">$50</strong></span>
+                            </div>
+                            <div class="energy-grid">
+                                <div class="e-stat-box"><span class="e-stat-label">آبار النفط:</span><strong id="val-oil-wells">0</strong></div>
+                                <div class="e-stat-box"><span class="e-stat-label">محطات الوقود:</span><strong id="val-fuel-stations">0</strong></div>
+                                <div class="e-stat-box"><span class="e-stat-label">الإنتاج المحلي:</span><strong id="val-oil-produced">0 برميل</strong></div>
+                                <div class="e-stat-box"><span class="e-stat-label">كمية الوقود:</span><strong id="val-fuel-amount">0 لتر</strong></div>
+                                <div class="e-stat-box"><span class="e-stat-label">بترول مستورد:</span><strong id="val-oil-imported">0 برميل</strong></div>
+                                <div class="e-stat-box"><span class="e-stat-label">المخزون:</span><strong id="val-oil-stock" class="text-gold">0 برميل</strong></div>
+                                <div class="e-stat-box highlight-box"><span class="e-stat-label">الصافي الحالي:<span id="oil-status-note"></span></span><strong id="val-net-oil" class="e-stat-val">0 برميل</strong></div>
+                            </div>
+                        </div>
+
+                        <div class="energy-subpanel">
+                            <div class="subpanel-title">
+                                <span>🔥 منظومة الغاز والأسطوانات</span>
+                                <span class="price-tag">سعر الغاز: <strong id="val-gas-price" class="text-orange">$15</strong></span>
+                            </div>
+                            <div class="energy-grid">
+                                <div class="e-stat-box"><span class="e-stat-label">آبار الغاز:</span><strong id="val-gas-wells">0</strong></div>
+                                <div class="e-stat-box"><span class="e-stat-label">محلات الغاز:</span><strong id="val-gas-shops">0</strong></div>
+                                <div class="e-stat-box"><span class="e-stat-label">الغاز الخام:</span><strong id="val-gas-raw">0 م³</strong></div>
+                                <div class="e-stat-box"><span class="e-stat-label">أسطوانات الغاز:</span><strong id="val-gas-cylinders">0 أسطوانة</strong></div>
+                                <div class="e-stat-box"><span class="e-stat-label">غاز مستورد:</span><strong id="val-gas-imported">0 م³</strong></div>
+                                <div class="e-stat-box"><span class="e-stat-label">المخزون:</span><strong id="val-gas-stock" class="text-gold">0 م³</strong></div>
+                                <div class="e-stat-box highlight-box"><span class="e-stat-label">الصافي الحالي:<span id="gas-status-note"></span></span><strong id="val-net-gas" class="e-stat-val">0 م³</strong></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="dossier-card theme-sectors">
+                    <div class="card-header-flex">
+                        <div>
+                            <h3>🎯 لوحة توازن القطاعات الحيوية الـ 16</h3>
+                            <p class="sectors-sub-desc">حافظ على المؤشرات باللون الأخضر لرفع سعادة السكان وقوة المؤشر العام!</p>
+                        </div>
+                        <span id="total-sectors-badge" class="badge">⭐ إجمالي نقاط التغطية: 0</span>
+                    </div>
+                    <div class="sectors-grid" id="sectors-grid"></div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- 4. شاشة وزارة الدفاع والجيش -->
+    <div id="military-screen" class="screen">
+        <header class="top-bar">
+            <button id="btn-back-from-military" class="btn btn-secondary">🔙 رجوع</button>
+            <div class="nation-header-title">
+                <h2 id="mil-country-name">🎖️ وزارة الدفاع والقيادة العامة</h2>
+            </div>
+            <div class="top-bar-actions">
+                <button id="btn-open-weapon-forge" class="btn btn-primary" style="background:linear-gradient(180deg, #a855f7 0%, #7e22ce 100%) !important; border-color:#e9d5ff !important;">🛠️ استوديو CAD</button>
+                <span class="badge badge-gold">💰 السيولة: <strong id="mil-disposable-funds">$0</strong></span>
+                <span class="badge badge-purple">💂 <strong id="mil-population-count">0 متاح للتجنيد</strong></span>
+            </div>
+        </header>
+
+        <main class="military-main-content">
+            <div class="military-logistics-bar">
+                <div class="logistics-card">
+                    <span class="l-lbl">⚔️ القوة الإجمالية</span>
+                    <span class="l-val text-gold" id="stat-mil-power">0</span>
+                </div>
+                <div class="logistics-card">
+                    <span class="l-lbl">💂 الأفراد المجندون</span>
+                    <span class="l-val text-purple" id="stat-mil-crew">0 فرد</span>
+                </div>
+                <div class="logistics-card">
+                    <span class="l-lbl">⛽ استهلاك الوقود</span>
+                    <span class="l-val text-orange" id="stat-mil-fuel">0 لتر</span>
+                </div>
+                <div class="logistics-card highlight-ammo">
+                    <span class="l-lbl">💣 رصيد الذخيرة</span>
+                    <span class="l-val text-emerald" id="stat-mil-ammo">0</span>
+                    <div class="ammo-sub-flex" style="display:flex; justify-content:space-between; font-size:0.78rem; color:#fde68a; margin-top:2px;">
+                        <span id="stat-ammo-demand">الطلب: 0</span>
+                        <span id="stat-ammo-prod">الإنتاج: 0</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="military-branches-tabs">
+                <button class="mil-tab-btn active" data-branch="ground">🛡️ القوات البرية</button>
+                <button class="mil-tab-btn" data-branch="naval">⚓ البحرية</button>
+                <button class="mil-tab-btn" data-branch="air">✈️ الجوية</button>
+                <button class="mil-tab-btn" data-branch="defense">🚀 دفاع صاروخي (ص ق)</button>
+            </div>
+
+            <div class="mil-table-wrap">
+                <table class="mil-table">
+                    <thead>
+                        <tr>
+                            <th>السلاح / المنشأة والمواصفات</th>
+                            <th>العدد بالترسانة</th>
+                            <th>السعر والتكلفة</th>
+                            <th>الطاقم البشري</th>
+                            <th>القوة المقدرة</th>
+                            <th>أوامر التجنيد والتسليح</th>
+                        </tr>
+                    </thead>
+                    <tbody id="military-units-tbody"></tbody>
+                </table>
+            </div>
+        </main>
+    </div>
+
+    <!-- 5. شاشة ساحة المعركة والمشاهدة الحية (Canvas) -->
+    <div id="battle-screen" class="screen">
+        <header class="battle-top-bar">
+            <div class="battle-nation-tag" style="flex-direction:row-reverse;">
+                <div id="battle-defender-flag" class="table-flag"></div>
+                <div>
+                    <span style="font-size:0.75rem; color:#fde68a;">🛡️ جيش الدفاع</span>
+                    <h3 id="battle-defender-name" style="color:#fb7185;">--</h3>
+                </div>
+            </div>
+
+            <div class="battle-center-vs">⚔️ مواجهة الميدان ⚔️</div>
+
+            <div class="battle-nation-tag">
+                <div id="battle-attacker-flag" class="table-flag"></div>
+                <div>
+                    <span style="font-size:0.75rem; color:#fde68a;">🔥 جيش الهجوم</span>
+                    <h3 id="battle-attacker-name" style="color:#34d399;">--</h3>
+                </div>
+            </div>
+        </header>
+
+        <div class="battle-canvas-wrapper">
+            <canvas id="battle-canvas"></canvas>
+        </div>
+    </div>
+
+    <!-- 6. شاشة رؤية العاصمة ثلاثية الأبعاد (Low-Poly 3D Canvas) -->
+    <div id="capital-screen" class="screen">
+        <header class="top-bar">
+            <button id="btn-back-from-capital" class="btn btn-secondary">🔙 رجوع</button>
+            <div class="nation-header-title">
+                <h2 id="cap-country-name">🏛️ العاصمة السيادية</h2>
+                <span id="cap-country-subtitle" class="badge">المخطط العمراني ثلاثي الأبعاد</span>
+            </div>
+            <div class="top-bar-actions" id="cap-top-stats">
+                <span class="badge badge-gold" id="cap-stat-budget">💰 الميزانية: $0</span>
+                <span class="badge" id="cap-stat-pop">👥 السكان: 0</span>
+                <span class="badge badge-military" id="cap-stat-buildings">🏗️ المنشآت: 0</span>
+            </div>
+        </header>
+
+        <div class="capital-canvas-wrapper" id="capital-canvas-wrapper">
+            <canvas id="capital-canvas"></canvas>
+            <div id="capital-tooltip" style="display:none; position:absolute; pointer-events:none; background:rgba(29,20,51,0.95); border:2px solid #fbbf24; border-radius:12px; padding:8px 14px; color:#fffbeb; font-size:0.84rem; font-weight:800; z-index:100; box-shadow:0 6px 18px rgba(0,0,0,0.6);"></div>
+
+            <div class="capital-floating-controls">
+                <button id="cap-zoom-in" class="btn btn-primary btn-sm" title="تكبير">+</button>
+                <button id="cap-zoom-reset" class="btn btn-secondary btn-sm" title="إعادة ضبط الكاميرا">⟲</button>
+                <button id="cap-zoom-out" class="btn btn-primary btn-sm" title="تصغير">-</button>
+            </div>
+
+            <div class="capital-watermark-legend">
+                <span>🟩 يابسة: 60%</span>
+                <span>🟦 مياه: 40%</span>
+                <span>🚩 الراية الوطنية</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- نافذة اللوبي والانضمام للغرف المتعددة (Multiplayer Lobby Modal) -->
+    <div id="modal-multiplayer-lobby" class="modal">
+        <div class="modal-content" style="max-width: 520px;">
+            <h2 style="color:#38bdf8; display:flex; align-items:center; gap:8px;">🌐 غرفة اللعب الجماعي (Multiplayer P2P)</h2>
+            <p style="font-size:0.86rem; color:#fde68a;">العب مع أصدقائك (حتى 10 لاعبين)؛ كل لاعب يقود دولته المستقلة بحرية تامة وتتزامن النتائج وقرارات الحرب فوراً.</p>
+
+            <div class="form-group" style="margin-top:10px;">
+                <label>اسمك كقائد / لاعب:</label>
+                <input type="text" id="mp-player-name-input" placeholder="اكتب اسمك أو لقبك..." value="قائد سيادي" />
+            </div>
+
+            <div style="background:#130c24; border:2px solid #3b82f6; border-radius:14px; padding:14px; margin:8px 0;">
+                <h4 style="color:#fde047; margin-bottom:8px;">1. إنشاء غرفة جديدة واستضافة أصدقائك:</h4>
+                <button type="button" id="btn-create-new-room" class="btn btn-primary" style="width:100%;">👑 إنشاء غرفة وتوليد الرمز ➔</button>
+            </div>
+
+            <div style="background:#130c24; border:2px solid #f59e0b; border-radius:14px; padding:14px; margin:8px 0;">
+                <h4 style="color:#fde047; margin-bottom:8px;">2. أو الانضمام إلى غرفة موجودة:</h4>
+                <div style="display:flex; gap:8px;">
+                    <input type="text" id="mp-room-code-input" placeholder="أدخل رمز الغرفة (مثال: HEG-4821)" style="flex:1;" />
+                    <button type="button" id="btn-join-existing-room" class="btn btn-accent" style="white-space:nowrap;">دخول الغرفة ➔</button>
+                </div>
+            </div>
+
+            <div class="modal-actions" style="margin-top:8px;">
+                <button type="button" id="btn-close-mp-lobby" class="btn btn-secondary">إغلاق</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 7. استوديو التصميم والتركيب الهندسي المطور للأسلحة (CAD Studio Workspace) -->
+    <div id="modal-weapon-forge" class="modal">
+        <div class="modal-content modal-cad-forge">
+            <div class="forge-header-bar">
+                <div style="display:flex; align-items:center; gap:10px;">
+                    <span style="font-size:1.8rem;">🛠️</span>
+                    <div>
+                        <h2 style="color:#fde047; margin:0; font-size:1.35rem;">استوديو التصميم والتركيب الهندسي للأسلحة (CAD Studio)</h2>
+                        <span style="font-size:0.82rem; color:#fde68a;">تفكيك وتطوير الأسلحة الـ 48، تجميع القطع المضلعة، وتسجيل براءات الاختراع</span>
+                    </div>
+                </div>
+                <div style="display:flex; gap:8px;">
+                    <button id="btn-new-scratch-weapon" class="btn btn-accent btn-sm">✨ طراز من الصفر</button>
+                    <button id="btn-close-weapon-forge" class="btn btn-secondary btn-sm">✕ إغلاق</button>
+                </div>
+            </div>
+
+            <div class="forge-nav-bar">
+                <button id="btn-forge-tab-catalog" class="btn btn-primary btn-sm">📋 ترسانة الأسلحة الـ 48</button>
+                <button id="btn-forge-tab-assemble" class="btn btn-secondary btn-sm">⚙️ ورشة التركيب (CAD Workbench)</button>
+                <button id="btn-forge-tab-export" class="btn btn-secondary btn-sm">🤝 براءات الاختراع والتصدير</button>
+            </div>
+
+            <div id="forge-tab-content-catalog" class="forge-tab-body">
+                <div id="forge-catalog-grid" class="forge-catalog-grid-layout"></div>
+            </div>
+
+            <div id="forge-tab-content-assemble" class="forge-tab-body" style="display:none;">
+                <div class="cad-workbench-layout">
+                    <div class="cad-viewport-column">
+                        <div class="cad-canvas-container">
+                            <canvas id="forge-assemble-canvas" width="540" height="340"></canvas>
+                        </div>
+
+                        <div class="cad-quick-actions-bar">
+                            <button type="button" id="btn-duplicate-part" class="btn btn-secondary btn-sm" title="نسخ القطعة المختارة">📋 نسخ</button>
+                            <button type="button" id="btn-mirror-part" class="btn btn-secondary btn-sm" title="انعكاس متناظر أفقياً">🪞 تناظر</button>
+                            <button type="button" id="btn-delete-selected-part" class="btn btn-danger btn-sm" title="حذف القطعة المختارة">🗑️ حذف</button>
+                        </div>
+
+                        <div class="cad-transform-panel">
+                            <span class="cad-panel-title">🎛️ أدوات التحويل الهندسي للقطعة:</span>
+                            <div class="cad-sliders-grid">
+                                <div>
+                                    <label>أفقي (X): <span id="val-part-x" class="text-gold">0</span></label>
+                                    <input type="range" id="slider-part-x" min="-150" max="150" value="0" />
+                                </div>
+                                <div>
+                                    <label>رأسي (Y): <span id="val-part-y" class="text-gold">0</span></label>
+                                    <input type="range" id="slider-part-y" min="-90" max="90" value="0" />
+                                </div>
+                                <div>
+                                    <label>العرض (Scale X): <span id="val-part-scale-x" class="text-emerald">1x</span></label>
+                                    <input type="range" id="slider-part-scale-x" min="0.3" max="2.0" step="0.05" value="1" />
+                                </div>
+                                <div>
+                                    <label>الارتفاع (Scale Y): <span id="val-part-scale-y" class="text-emerald">1x</span></label>
+                                    <input type="range" id="slider-part-scale-y" min="0.3" max="2.0" step="0.05" value="1" />
+                                </div>
+                                <div>
+                                    <label>الدوران: <span id="val-part-rot" class="text-purple">0°</span></label>
+                                    <input type="range" id="slider-part-rot" min="-180" max="180" value="0" />
+                                </div>
+                                <div>
+                                    <label>لون الطلاء:</label>
+                                    <input type="color" id="picker-part-color" value="#3b82f6" />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="cad-library-column">
+                        <div class="cad-library-tabs">
+                            <button type="button" class="forge-cat-tab-btn active" data-cat="ground">🛡️ برية</button>
+                            <button type="button" class="forge-cat-tab-btn" data-cat="air">✈️ جوية</button>
+                            <button type="button" class="forge-cat-tab-btn" data-cat="naval">⚓ بحرية</button>
+                            <button type="button" class="forge-cat-tab-btn" data-cat="defense">🚀 دفاع</button>
+                            <button type="button" class="forge-cat-tab-btn" data-cat="shapes">📐 أشكال</button>
+                        </div>
+
+                        <div class="forge-parts-category-group" data-cat="ground">
+                            <button type="button" class="btn btn-secondary btn-sm btn-add-part" data-part="tracks">+ جنزير</button>
+                            <button type="button" class="btn btn-secondary btn-sm btn-add-part" data-part="hull_tank">+ هيكل دبابة</button>
+                            <button type="button" class="btn btn-secondary btn-sm btn-add-part" data-part="turret_tank">+ برج قتالي</button>
+                            <button type="button" class="btn btn-secondary btn-sm btn-add-part" data-part="barrel_cannon">+ سبطانة مدفع</button>
+                            <button type="button" class="btn btn-secondary btn-sm btn-add-part" data-part="mlrs_pod">+ راجمة صواريخ</button>
+                            <button type="button" class="btn btn-secondary btn-sm btn-add-part" data-part="chassis_truck">+ شاسيه</button>
+                            <button type="button" class="btn btn-secondary btn-sm btn-add-part" data-part="wheel_armored">+ عجلة مصفحة</button>
+                            <button type="button" class="btn btn-secondary btn-sm btn-add-part" data-part="turret_aa">+ مدفع جوي</button>
+                            <button type="button" class="btn btn-secondary btn-sm btn-add-part" data-part="armored_cabin">+ كابينة</button>
+                        </div>
+
+                        <div class="forge-parts-category-group" data-cat="air" style="display:none;">
+                            <button type="button" class="btn btn-secondary btn-sm btn-add-part" data-part="hull_jet">+ جسم طائرة</button>
+                            <button type="button" class="btn btn-secondary btn-sm btn-add-part" data-part="wings_delta">+ أجنحة دلتا</button>
+                            <button type="button" class="btn btn-secondary btn-sm btn-add-part" data-part="wing_straight">+ جناح مستقيم</button>
+                            <button type="button" class="btn btn-secondary btn-sm btn-add-part" data-part="tail_fin">+ زعنفة ذيلية</button>
+                            <button type="button" class="btn btn-secondary btn-sm btn-add-part" data-part="cockpit">+ قمرة</button>
+                            <button type="button" class="btn btn-secondary btn-sm btn-add-part" data-part="jet_engine">+ محرك نفاث</button>
+                            <button type="button" class="btn btn-secondary btn-sm btn-add-part" data-part="propeller">+ مروحة دفع</button>
+                        </div>
+
+                        <div class="forge-parts-category-group" data-cat="naval" style="display:none;">
+                            <button type="button" class="btn btn-secondary btn-sm btn-add-part" data-part="hull_ship">+ بدن سفينة</button>
+                            <button type="button" class="btn btn-secondary btn-sm btn-add-part" data-part="deck_carrier">+ سطح حاملة</button>
+                            <button type="button" class="btn btn-secondary btn-sm btn-add-part" data-part="bridge_naval">+ برج بحري</button>
+                            <button type="button" class="btn btn-secondary btn-sm btn-add-part" data-part="turret_naval">+ مدفع بحري</button>
+                            <button type="button" class="btn btn-secondary btn-sm btn-add-part" data-part="sub_hull">+ بدن غواصة</button>
+                            <button type="button" class="btn btn-secondary btn-sm btn-add-part" data-part="sub_tower">+ برج غواصة</button>
+                        </div>
+
+                        <div class="forge-parts-category-group" data-cat="defense" style="display:none;">
+                            <button type="button" class="btn btn-secondary btn-sm btn-add-part" data-part="missile_heavy">+ صاروخ باليستي</button>
+                            <button type="button" class="btn btn-secondary btn-sm btn-add-part" data-part="missile_launcher_box">+ حاوية صواريخ</button>
+                            <button type="button" class="btn btn-secondary btn-sm btn-add-part" data-part="missile_silo">+ قاذف عمودي</button>
+                            <button type="button" class="btn btn-secondary btn-sm btn-add-part" data-part="radar_dish">+ طبق رادار</button>
+                            <button type="button" class="btn btn-secondary btn-sm btn-add-part" data-part="radar_dome">+ قبة رادار</button>
+                        </div>
+
+                        <div class="forge-parts-category-group" data-cat="shapes" style="display:none;">
+                            <button type="button" class="btn btn-secondary btn-sm btn-add-part" data-part="poly_rect">+ صفيحة درع</button>
+                            <button type="button" class="btn btn-secondary btn-sm btn-add-part" data-part="poly_trapezoid">+ شبه منحرف</button>
+                            <button type="button" class="btn btn-secondary btn-sm btn-add-part" data-part="poly_triangle">+ مثلث مشطوف</button>
+                            <button type="button" class="btn btn-secondary btn-sm btn-add-part" data-part="poly_circle">+ قرص أسطواني</button>
+                            <button type="button" class="btn btn-secondary btn-sm btn-add-part" data-part="poly_chevron">+ درع زاوية</button>
+                        </div>
+
+                        <div class="cad-layers-container">
+                            <span class="cad-panel-title">📚 طبقات المجسم:</span>
+                            <div id="asm-layers-list" class="cad-layers-scroll-list"></div>
+                        </div>
+                    </div>
+
+                    <div class="cad-specs-column">
+                        <div class="cad-specs-card">
+                            <div style="display:flex; justify-content:space-between; align-items:center;">
+                                <span class="cad-panel-title">📝 بطاقة السلاح:</span>
+                                <span id="asm-pricing-mode-badge" class="badge badge-gold" style="font-size:0.7rem;">⚙️ سلاح مبتكر</span>
+                            </div>
+
+                            <div class="form-group">
+                                <label>اسم الطراز:</label>
+                                <input type="text" id="asm-unit-name" value="سلاح قتالي سيادي" />
+                            </div>
+
+                            <div class="form-group">
+                                <label>الفرع العسكري:</label>
+                                <select id="asm-unit-branch">
+                                    <option value="ground">🛡️ قوات برية</option>
+                                    <option value="naval">⚓ قوات بحرية</option>
+                                    <option value="air">✈️ قوات جوية</option>
+                                    <option value="defense">🚀 دفاع صاروخي (ص ق)</option>
+                                </select>
+                            </div>
+
+                            <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+                                <div class="form-group">
+                                    <label>القوة:</label>
+                                    <input type="number" id="asm-unit-power" value="25" min="1" />
+                                </div>
+                                <div class="form-group">
+                                    <label>المدى:</label>
+                                    <input type="number" id="asm-unit-range" value="300" min="50" />
+                                </div>
+                                <div class="form-group">
+                                    <label>الطاقم:</label>
+                                    <input type="number" id="asm-unit-crew" value="2" min="0" />
+                                </div>
+                                <div class="form-group">
+                                    <label>الوقود:</label>
+                                    <input type="number" id="asm-unit-fuel" value="1" min="0" />
+                                </div>
+                                <div class="form-group">
+                                    <label>الذخيرة:</label>
+                                    <input type="number" id="asm-unit-ammo" value="3" min="0" />
+                                </div>
+                                <div class="form-group">
+                                    <label>السعر ($):</label>
+                                    <div style="display:flex; gap:4px;">
+                                        <input type="number" id="asm-unit-price" style="color:#34d399; font-weight:bold; width:100%;" min="10" />
+                                        <button type="button" id="btn-recalc-price" class="btn btn-secondary btn-sm" title="إعادة التقدير" style="padding:4px 8px;">🔄</button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="form-group" style="margin-top:4px;">
+                                <label>نطاق الاشتباك القتالي:</label>
+                                <div style="display:flex; gap:12px; margin-top:4px; flex-wrap:wrap;">
+                                    <label style="font-size:0.8rem; color:#fde68a; cursor:pointer;"><input type="checkbox" id="target-chk-ground" checked /> بري</label>
+                                    <label style="font-size:0.8rem; color:#fde68a; cursor:pointer;"><input type="checkbox" id="target-chk-naval" checked /> بحري</label>
+                                    <label style="font-size:0.8rem; color:#fde68a; cursor:pointer;"><input type="checkbox" id="target-chk-air" checked /> جوي</label>
+                                </div>
+                            </div>
+
+                            <div class="cad-price-box">
+                                <span style="font-size:0.82rem; color:#fde68a;">السعر المقترح: <strong id="asm-calc-price-badge" class="text-emerald">$0</strong></span>
+                                <button type="button" id="btn-save-assembled-unit" class="btn btn-primary" style="width:100%; margin-top:8px;">✨ اعتماد وتثبيت السلاح ➔</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="forge-tab-content-export" class="forge-tab-body" style="display:none;">
+                <div style="background:#1b1330; padding:14px; border-radius:14px; border:2px solid #f59e0b; margin-bottom:14px;">
+                    <h4 style="color:#fde047; margin-bottom:8px;">🤝 إبرام صفقة تصدير وبيع أسلحة سيادية لدولة أخرى:</h4>
+                    <div style="display:grid; grid-template-columns: 1.5fr 1.5fr 100px 150px; gap:10px; align-items:end;">
+                        <div class="form-group">
+                            <label>السلاح:</label>
+                            <select id="export-deal-unit-select"></select>
+                        </div>
+                        <div class="form-group">
+                            <label>المشتري:</label>
+                            <select id="export-deal-buyer-select"></select>
+                        </div>
+                        <div class="form-group">
+                            <label>الكمية:</label>
+                            <input type="number" id="export-deal-count" min="1" value="1" />
+                        </div>
+                        <div>
+                            <button id="btn-execute-export-deal" class="btn btn-primary" style="width:100%;">توقيع البيع ➔</button>
+                        </div>
+                    </div>
+                </div>
+
+                <h4 style="color:#fde68a; margin-bottom:8px;">📜 سجل براءات الاختراع والأسلحة المصنعة لدى الدولة:</h4>
+                <div class="bldg-table-wrap">
+                    <table class="bldg-table">
+                        <thead>
+                            <tr>
+                                <th>اسم السلاح السيادي</th>
+                                <th style="text-align:center;">القوة</th>
+                                <th style="text-align:center;">سعر الوحدة</th>
+                                <th style="text-align:center;">المستودعات</th>
+                                <th style="text-align:center;">الحالة وحقوق الإنتاج</th>
+                            </tr>
+                        </thead>
+                        <tbody id="forge-export-table-body"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 8. نافذة تقديم المساعدات المالية -->
+    <div id="modal-donate-aid" class="modal">
+        <div class="modal-content" style="max-width: 490px;">
+            <h2 style="color: #6ee7b7; display: flex; align-items: center; gap: 8px;">🎁 إرسال منحة ومساعدة مالية سيادية</h2>
+            <p style="font-size: 0.86rem; color: #fde68a;">ادعم حلفاءك مالياً لتقوية اقتصادهم وبناء تحالفات استراتيجية راسخة.</p>
+
+            <div class="form-group" style="margin-top: 8px;">
+                <label>الدولة المانحة (المصدر):</label>
+                <input type="text" id="donate-donor-name" readonly style="background:#120c21; color:#fbbf24; font-weight:bold;" />
+            </div>
+
+            <div class="form-group">
+                <label for="donate-recipient-select">اختر الدولة المستفيدة:</label>
+                <select id="donate-recipient-select" style="width: 100%;"></select>
+            </div>
+
+            <div class="form-group">
+                <label for="donate-amount-input">مبلغ المنحة المالية ($):</label>
+                <div style="display: flex; gap: 6px;">
+                    <input type="number" id="donate-amount-input" min="1" placeholder="أدخل المبلغ..." style="flex: 1;" />
+                    <button type="button" id="btn-donate-max" class="btn btn-secondary btn-sm" style="white-space: nowrap;">الكل</button>
+                </div>
+                <small style="color: #b8add2; margin-top: 4px; display: block;">السيولة المتاحة للمنح: <strong id="donate-available-funds" class="text-emerald">$0</strong></small>
+            </div>
+
+            <div style="display: flex; gap: 6px; margin: 6px 0; flex-wrap: wrap;">
+                <button type="button" class="btn btn-secondary btn-sm donate-quick-btn" data-val="100">+$100</button>
+                <button type="button" class="btn btn-secondary btn-sm donate-quick-btn" data-val="500">+$500</button>
+                <button type="button" class="btn btn-secondary btn-sm donate-quick-btn" data-val="1000">+$1,000</button>
+                <button type="button" class="btn btn-secondary btn-sm donate-quick-btn" data-val="5000">+$5,000</button>
+            </div>
+
+            <div class="modal-actions" style="margin-top: 12px;">
+                <button id="btn-confirm-donation" class="btn btn-primary">🎁 تأكيد وإرسال المنحة ➔</button>
+                <button id="btn-cancel-donation" class="btn btn-secondary">إلغاء</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 9. نافذة حشد المهاجم -->
+    <div id="modal-war-mobilize" class="modal">
+        <div class="modal-content modal-large">
+            <div class="modal-header-fixed">
+                <h2 id="war-modal-attacker-name" style="margin:0; font-size:1.3rem; color:#fde047;">⚔️ تجهيز الحملة العسكرية</h2>
+                <div class="form-group" style="margin:4px 0;">
+                    <label>حدد الدولة الهدف المراد غزوها:</label>
+                    <select id="war-target-defender-select"></select>
+                </div>
+            </div>
+
+            <div class="form-group form-group-units-scrollable">
+                <label style="margin-bottom:4px; font-weight:bold; color:#fde68a;">حدد عدد ونوع الوحدات العسكرية المشاركة بالهجوم:</label>
+                <div class="w-mobilize-scroll" id="war-mobilize-units-list"></div>
+            </div>
+
+            <div class="modal-actions">
+                <button id="btn-confirm-mobilize-attack" class="btn btn-primary" style="font-weight:900; padding:10px 24px; font-size:1rem;">📣 تثبيت الجيش وإرسال الإنذار ➔</button>
+                <button onclick="document.getElementById('modal-war-mobilize').classList.remove('active')" class="btn btn-secondary">إلغاء</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 10. نافذة قرار المدافع -->
+    <div id="modal-defender-decision" class="modal">
+        <div class="modal-content modal-large" style="border: 3px solid #fb7185;">
+            <div class="modal-header-fixed">
+                <h2 id="defender-decision-title" style="color:#fb7185; margin:0; font-size:1.3rem;">🚨 طبول الحرب تقرع — إنذار عاجل!</h2>
+                <p style="font-size:0.88rem; color:#fffbeb; margin:4px 0;">الدولة المستهدفة: <strong id="defender-country-name-label" class="text-gold">--</strong> | القوة المحتشدة ضدك: <span id="war-attacker-units-count-badge" class="badge badge-gold">0</span></p>
+
+                <div style="background:#1b1330; padding:10px 14px; border-radius:12px; border:1.5px solid #4a3b6e; display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                    <button id="btn-defender-all-out" class="btn btn-military btn-sm">🛡️ النفير العام (تعبئة كامل الجيش)</button>
+                    <span style="font-size:0.8rem; color:#fde68a;">أو اختر الوحدات المدافعة يدوياً:</span>
+                </div>
+            </div>
+
+            <div class="form-group form-group-units-scrollable">
+                <div class="w-mobilize-scroll" id="defender-mobilize-units-list"></div>
+            </div>
+
+            <div class="modal-actions">
+                <button id="btn-defender-confront" class="btn btn-danger" style="font-weight:900; padding:10px 24px; font-size:1rem;">⚔️ خوض المعركة والدفاع!</button>
+                <button onclick="document.getElementById('modal-defender-decision').classList.remove('active')" class="btn btn-secondary">إلغاء</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 11. نافذة مراجعة الجاهزية قبل إطلاق المعركة -->
+    <div id="modal-battle-review" class="modal">
+        <div class="modal-content modal-large">
+            <div class="modal-header-fixed">
+                <h2 style="text-align:center; color:#fde047; margin:0; font-size:1.35rem;">⚔️ مواجهة الجيوش — مراجعة الجاهزية الميدانية ⚔️</h2>
+            </div>
+
+            <div class="battle-review-grid">
+                <div class="review-column">
+                    <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px; border-bottom:1.5px solid #352659; padding-bottom:6px; flex-shrink:0;">
+                        <div id="review-defender-flag" class="table-flag"></div>
+                        <strong id="review-defender-name" style="color:#fb7185; font-size:0.95rem;">--</strong>
+                    </div>
+                    <div id="review-defender-forces-list"></div>
+                </div>
+
+                <div class="review-column">
+                    <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px; border-bottom:1.5px solid #352659; padding-bottom:6px; flex-shrink:0;">
+                        <div id="review-attacker-flag" class="table-flag"></div>
+                        <strong id="review-attacker-name" style="color:#34d399; font-size:0.95rem;">--</strong>
+                    </div>
+                    <div id="review-attacker-forces-list"></div>
+                </div>
+            </div>
+
+            <div class="modal-actions" style="justify-content:center;">
+                <button id="btn-start-battle-action" class="btn-battle-pulse">🔥 انطلاق المعركة الميدانية الآن! ➔</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 12. تقرير نتائج المعركة -->
+    <div id="modal-battle-report" class="modal">
+        <div class="modal-content" style="width:540px; text-align:center;">
+            <div style="font-size:2.6rem; margin-bottom:4px;">🏆</div>
+            <h2 id="battle-report-winner-title" style="color:#fde047;">--</h2>
+            <p style="color:#fde68a; font-size:0.88rem; margin-top:4px;">انتهت المعركة وتم تطبيق قرار الحسم السيادي وخصم الخسائر الميدانية.</p>
+
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin:14px 0; text-align:right;">
+                <div id="report-defender-loss-text" style="background:#150f26; padding:12px; border-radius:12px; font-size:0.86rem; border-top:4px solid #fb7185;"></div>
+                <div id="report-attacker-loss-text" style="background:#150f26; padding:12px; border-radius:12px; font-size:0.86rem; border-top:4px solid #34d399;"></div>
+            </div>
+
+            <div class="modal-actions" style="justify-content:center;">
+                <button id="btn-close-battle-report" class="btn btn-primary">🎖️ تأكيد والعودة لمجلس الأمم</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 13. تأسيس دولة جديدة -->
+    <div id="modal-create-country" class="modal">
+        <div class="modal-content">
+            <h2 style="color:#fde047; display:flex; align-items:center; gap:8px;">🏰 تأسيس إمبراطورية ودولة جديدة</h2>
+            <div class="form-group">
+                <label for="country-name-input">اسم الدولة السيادية:</label>
+                <input type="text" id="country-name-input" placeholder="أدخل اسم الدولة..." autocomplete="off" />
+            </div>
+            <div class="form-group">
+                <label>🎨 صمّم الراية الوطنية لدولتك (3 أسطر × 4 أعمدة):</label>
+                <div class="flag-designer-wrap">
+                    <div id="flag-grid" class="flag-grid"></div>
+                    <div class="color-palette" id="preset-palette">
+                        <span class="palette-btn selected" data-color="#c0392b" style="background:#c0392b;"></span>
+                        <span class="palette-btn" data-color="#e74c3c" style="background:#e74c3c;"></span>
+                        <span class="palette-btn" data-color="#2980b9" style="background:#2980b9;"></span>
+                        <span class="palette-btn" data-color="#0984e3" style="background:#0984e3;"></span>
+                        <span class="palette-btn" data-color="#27ae60" style="background:#27ae60;"></span>
+                        <span class="palette-btn" data-color="#00b894" style="background:#00b894;"></span>
+                        <span class="palette-btn" data-color="#f1c40f" style="background:#f1c40f;"></span>
+                        <span class="palette-btn" data-color="#e67e22" style="background:#e67e22;"></span>
+                        <span class="palette-btn" data-color="#8e44ad" style="background:#8e44ad;"></span>
+                        <span class="palette-btn" data-color="#ffffff" style="background:#ffffff;"></span>
+                        <span class="palette-btn" data-color="#7f8c8d" style="background:#7f8c8d;"></span>
+                        <span class="palette-btn" data-color="#111111" style="background:#111111;"></span>
+                    </div>
+                    <div class="custom-color-row">
+                        <label for="custom-color-input">لون ملكي مخصص:</label>
+                        <input type="color" id="custom-color-input" value="#00ff88" />
+                    </div>
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button id="btn-confirm-creation" class="btn btn-primary">🎉 إعلان تأسيس الدولة</button>
+                <button id="btn-cancel-creation" class="btn btn-secondary">إلغاء</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 14. نافذة تدوير السنة المالية بأسلوب الألعاب المبهج -->
+    <div id="modal-confirm-year" class="modal">
+        <div class="modal-content" style="max-width: 480px; text-align: center;">
+            <div style="font-size: 3rem; line-height: 1; margin-bottom: 4px;">⏳✨</div>
+            <h2 id="confirm-year-title" style="color: #fde047;">الانتقال إلى السنة المالية الجديدة</h2>
+            <p id="confirm-year-desc" style="color: #fef3c7; font-size: 0.92rem; line-height: 1.6;">
+                سيتم جني عوائد المنشآت، توزيع أرباح البنك الدولي، تحصيل عقود التجارة والدية، وتحديث بورصة الأسعار لكافة الدول!
+            </p>
+            <div class="modal-actions" style="justify-content: center; margin-top: 12px;">
+                <button id="btn-confirm-next-year-yes" class="btn btn-primary">🌟 نعم، ابدأ السنة الجديدة!</button>
+                <button id="btn-confirm-next-year-no" class="btn btn-secondary">تراجع</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- الملفات البرمجية المعتمدة ومحرك الغرف والشبكة الجديد -->
+    <script src="cleanEnergy.js"></script>
+    <script src="flagEditor.js"></script>
+    <script src="sectors.js"></script>
+    <script src="energy.js"></script>
+    <script src="militaryData.js"></script>
+    <script src="military.js"></script>
+    <script src="buildings.js"></script>
+    <script src="country.js"></script>
+    <script src="economy.js"></script>
+    <script src="indicators.js"></script>
+    <script src="world.js"></script>
+    <script src="network.js"></script>
+    <script src="weaponForge.js"></script>
+    <script src="militaryView.js"></script>
+    <script src="countryView.js"></script>
+    <script src="capitalView.js"></script>
+    <script src="charts.js"></script>
+    <script src="chronicle.js"></script>
+    <script src="analytics.js"></script>
+    <script src="worldBank.js"></script>
+    <script src="trade.js"></script>
+    <script src="exchange.js"></script>
+    <script src="war.js"></script>
+    <script src="battleCanvas.js"></script>
+    <script src="warView.js"></script>
+    <script src="storage.js"></script>
+    <script src="main.js"></script>
+</body>
+
+</html>
