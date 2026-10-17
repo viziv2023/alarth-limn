@@ -31,6 +31,7 @@
     --shadow-card: 0 10px 0 rgba(10, 6, 22, 0.55), 0 14px 28px rgba(0, 0, 0, 0.45);
     --shadow-inset: inset 0 2px 0 rgba(255, 255, 255, 0.14);
     --bottom-nav-height: 64px;
+    --header-height-mobile: 52px;
 }
 
 * {
@@ -92,6 +93,9 @@ body {
 .screen.active {
     display: flex;
     flex-direction: column;
+    height: 100vh;
+    height: 100dvh;
+    overflow: hidden;
     animation: screenFadeIn 0.28s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
@@ -411,6 +415,7 @@ body {
     box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
     gap: 10px;
     flex-wrap: wrap;
+    z-index: 100;
 }
 
 .top-bar-title,
@@ -508,10 +513,14 @@ body {
    ========================================================================== */
 
 .dashboard-content {
-    flex: 1;
+    flex: 1 1 0%;
+    min-height: 0;
     padding: 18px 24px;
-    overflow-y: auto;
+    overflow-y: auto !important;
     overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-y;
+    overscroll-behavior-y: contain;
 }
 
 .dashboard-view-bar {
@@ -896,6 +905,7 @@ body {
     grid-template-columns: 330px 1fr !important;
     gap: 18px;
     overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch;
 }
 
 .side-column {
@@ -1125,6 +1135,7 @@ body {
     border-radius: 16px;
     width: 100%;
     box-shadow: inset 0 4px 12px rgba(0, 0, 0, 0.5);
+    -webkit-overflow-scrolling: touch;
 }
 
 .bldg-table {
@@ -1517,6 +1528,7 @@ body {
     border: 2px solid var(--border-light);
     background: #160f29;
     box-shadow: var(--shadow-card);
+    -webkit-overflow-scrolling: touch;
 }
 
 .mil-table {
@@ -1582,6 +1594,7 @@ body {
     overflow-y: auto;
     overflow-x: hidden;
     padding: 4px 2px;
+    -webkit-overflow-scrolling: touch;
 }
 
 .forge-catalog-grid-layout {
@@ -1721,6 +1734,7 @@ body {
     max-height: 180px;
     overflow-y: auto;
     padding-right: 2px;
+    -webkit-overflow-scrolling: touch;
 }
 
 .cad-layers-container {
@@ -1740,6 +1754,7 @@ body {
     border: 1.5px solid #352659;
     border-radius: 10px;
     padding: 6px;
+    -webkit-overflow-scrolling: touch;
 }
 
 .cad-specs-column {
@@ -1988,6 +2003,7 @@ body {
     width: 100%;
     overflow-x: auto;
     overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
 }
 
 .chart-canvas {
@@ -2004,6 +2020,7 @@ body {
     box-shadow: var(--shadow-card);
     overflow-x: auto;
     border-radius: 18px;
+    -webkit-overflow-scrolling: touch;
 }
 
 .excel-history-table {
@@ -2138,6 +2155,7 @@ body {
     max-height: 320px;
     overflow-y: auto;
     overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
 }
 
 .exchange-grid-container .analytics-table,
@@ -2233,6 +2251,7 @@ body {
     padding: 14px;
     box-sizing: border-box;
     overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch;
 }
 
 .modal.active {
@@ -2387,6 +2406,7 @@ body {
     background: #120c21;
     border: 2px solid var(--border-light);
     border-radius: 12px;
+    -webkit-overflow-scrolling: touch;
 }
 
 .w-mobilize-table {
@@ -2444,6 +2464,7 @@ body {
     gap: 14px;
     max-height: 240px;
     overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
 }
 
 .review-column {
@@ -2455,12 +2476,14 @@ body {
     flex-direction: column;
     max-height: 230px;
     overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
 }
 
 #review-attacker-forces-list,
 #review-defender-forces-list {
     flex: 1;
     overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
 }
 
 .donate-quick-btn {
@@ -2552,18 +2575,19 @@ body {
    ========================================================================== */
 
 @media (max-width: 1024px) {
-    .desktop-tabs-only {
+    .desktop-tabs-only,
+    .dashboard-view-bar {
         display: none !important;
     }
     .mobile-bottom-nav {
         display: flex !important;
     }
     .dashboard-content {
-        padding-bottom: calc(var(--bottom-nav-height) + 20px) !important;
+        padding: 12px 14px calc(var(--bottom-nav-height) + 20px) 14px !important;
     }
     .country-profile-content {
         grid-template-columns: 1fr !important;
-        padding-bottom: 30px !important;
+        padding-bottom: calc(var(--bottom-nav-height) + 20px) !important;
     }
     .analytics-cards-grid,
     .exchange-grid-container {
@@ -2578,16 +2602,81 @@ body {
 }
 
 @media (max-width: 768px) {
+    /* 1. تقليص وتثبيت الشريط العلوي ليصبح سطر واحد رشيق محمي من الالتفاف */
     .top-bar {
-        padding: 8px 12px;
+        height: var(--header-height-mobile) !important;
+        min-height: var(--header-height-mobile) !important;
+        max-height: var(--header-height-mobile) !important;
+        padding: 0 10px !important;
+        flex-wrap: nowrap !important;
+        overflow: hidden !important;
+        gap: 6px !important;
+    }
+    .top-bar-title,
+    .nation-header-title {
+        flex: 1 1 auto !important;
+        min-width: 0 !important;
+        flex-wrap: nowrap !important;
+        gap: 6px !important;
+        overflow: hidden !important;
+    }
+    .top-bar-logo-icon {
+        font-size: 1.2rem !important;
+        padding: 4px 6px !important;
+        border-radius: 8px !important;
+        flex-shrink: 0 !important;
     }
     .top-bar-title h2,
     .nation-header-title h2 {
-        font-size: 1.15rem;
+        font-size: 0.94rem !important;
+        white-space: nowrap !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+        line-height: 1.2 !important;
     }
-    .top-bar-logo-icon {
-        font-size: 1.3rem;
-        padding: 4px 8px;
+    .top-bar-sub {
+        display: none !important;
+    }
+    /* إخفاء الشارات الطويلة التي تسبب تكدس الرأس */
+    .top-bar-badges-group {
+        display: none !important;
+    }
+    /* أزرار الرأس في سطر واحد مضغوط */
+    .top-bar-actions {
+        flex-wrap: nowrap !important;
+        gap: 5px !important;
+        flex-shrink: 0 !important;
+    }
+    .top-bar-actions .btn {
+        padding: 6px 9px !important;
+        font-size: 0.78rem !important;
+        border-radius: 9px !important;
+        white-space: nowrap !important;
+        gap: 4px !important;
+        box-shadow: 0 2px 0 rgba(0, 0, 0, 0.4) !important;
+    }
+    /* 2. تحرير مسار التمرير الانسيابي الكامل لحاوية المحتوى */
+    .dashboard-content {
+        flex: 1 1 0% !important;
+        min-height: 0 !important;
+        height: auto !important;
+        overflow-y: auto !important;
+        overflow-x: hidden !important;
+        -webkit-overflow-scrolling: touch !important;
+        overscroll-behavior-y: contain !important;
+        touch-action: pan-y !important;
+        padding: 10px 10px calc(var(--bottom-nav-height) + 16px) 10px !important;
+    }
+    .nations-cards-wrapper {
+        padding-bottom: 12px !important;
+    }
+    .nations-cards-grid {
+        grid-template-columns: 1fr !important;
+        gap: 14px !important;
+    }
+    .nation-sovereign-card {
+        padding: 14px 12px !important;
+        border-radius: 18px !important;
     }
     .finance-grid {
         grid-template-columns: repeat(2, 1fr);
@@ -2612,14 +2701,30 @@ body {
 }
 
 @media (max-width: 480px) {
+    .top-bar {
+        padding: 0 6px !important;
+        gap: 4px !important;
+    }
+    .top-bar-actions .btn {
+        padding: 5px 7px !important;
+        font-size: 0.74rem !important;
+    }
     .finance-grid {
         grid-template-columns: 1fr;
     }
     .sectors-grid {
         grid-template-columns: 1fr !important;
     }
-    .nations-cards-grid {
-        grid-template-columns: 1fr;
+    .nation-card-name {
+        font-size: 1.35rem;
+        margin-bottom: 8px;
+    }
+    .nation-card-stats-grid {
+        gap: 6px;
+        margin-bottom: 10px;
+    }
+    .nation-card-stat {
+        padding: 6px 8px;
     }
     .menu-box {
         padding: 24px 16px;
