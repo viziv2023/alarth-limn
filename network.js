@@ -1,28 +1,27 @@
 /**
  * ============================================================================
- * network.js - محرك الشبكة والغرف المتزامنة P2P (عصر الهيمنة - Pure ES6)
+ * network.js - محرك الشبكة والغرف المتزامنة P2P (عصر الهيمنة - v4.6 Pure ES6)
  * ============================================================================
  * 
- * المزايا البرمجية:
- * 1. توافق تام 100% مع معايير Pure ES6 لحل أخطاء التوافقية ومحرر الأكواد.
- * 2. دعم الغرف التعددية (حتى 10 لاعبين) برمز غرفة رقمي عبر شبكة PeerJS المباشرة.
- * 3. تعيين دولة مستقلة لكل لاعب وقفل بطاقات الدول الأخرى لمنع التجسس أو التعديل.
- * 4. شريط الجاهزية واتخاذ القرار: (جاهز للسنة التالية) أو (إعلان الحرب).
- * 5. إدارة تدوير السنة الجماعي أو الانتقال للمواجهة العسكرية فور اكتمال قرارات الـ 10 لاعبين.
+ * المزايا المحدثة:
+ * 1. التعرف الذكي التلقائي على رمز الغرفة (يقبل الأرقام فقط، أو الحروف الكبيرة أو الصغيرة).
+ * 2. الحفاظ على اتصال الغرفة نشطاً (Heartbeat Ping) لمنع انقطاع المضيف عند قفل شاشة الهاتف.
+ * 3. ميزة نسخ رمز الغرفة بنقرة واحدة لمشاركته في واتساب ومجموعات اللعب.
+ * 4. خصوصية تامة وحجب بطاقات الدول لغير مالكها، مع مزامنة قرارات الجاهزية والحرب.
  */
 
 window.NetworkEngine = (function() {
     let peer = null;
-    let connections = []; // للمضيف: قائمة الاتصالات بجميع اللاعبين
-    let hostConn = null; // للاعب المنضم: الاتصال بالمضيف
+    let connections = [];
+    let hostConn = null;
     let isHost = false;
     let roomId = null;
     let localPlayerId = null;
     let myCountryId = null;
     let myPlayerName = "قائد سيادي";
     let myReadiness = "WAITING"; // 'WAITING' | 'READY_YEAR' | 'READY_WAR'
+    let heartbeatInterval = null;
 
-    // حالة الغرفة المشتركة (تخزن في جهاز المضيف وتبث للجميع)
     let roomState = {
         roomId: null,
         hostId: null,
@@ -31,8 +30,29 @@ window.NetworkEngine = (function() {
         lastUpdate: Date.now()
     };
 
-    // بادئة تعريف الغرف
     const ROOM_PREFIX = "HEG-";
+
+    /**
+     * دالة تنظيف وتوحيد رمز الغرفة مهما كتبه اللاعب (أرقام فقط أو مع بادئة)
+     */
+    function normalizeRoomCode(input) {
+        if (!input) return "";
+        let clean = String(input).trim().toUpperCase().replace(/\s+/g, "");
+
+        // إذا أدخل المستخدم أرقاماً فقط (مثلاً: 4821)
+        if (/^\d+$/.test(clean)) {
+            return ROOM_PREFIX + clean;
+        }
+        // إذا كتب HEG بدون شرطة (مثلاً: HEG4821)
+        if (clean.indexOf("HEG") === 0 && clean.indexOf(ROOM_PREFIX) !== 0) {
+            return ROOM_PREFIX + clean.substring(3);
+        }
+        // إذا كان يحتوي على البادئة مسبقاً
+        if (clean.indexOf(ROOM_PREFIX) === 0) {
+            return clean;
+        }
+        return ROOM_PREFIX + clean;
+    }
 
     function generateRoomCode() {
         const rand = Math.floor(1000 + Math.random() * 9000);
@@ -54,7 +74,47 @@ window.NetworkEngine = (function() {
     }
 
     /**
-     * تأسيس غرفة جديدة ويكون هذا الجهاز هو المضيف (Host)
+     * نبضات اتصال مستمرة لمنع إغلاق الغرفة عند انتقال الهاتف لوضع السكون المؤقت
+     */
+    function startHeartbeat() {
+        stopHeartbeat();
+        heartbeatInterval = setInterval(function() {
+            if (peer && !peer.destroyed) {
+                if (peer.disconnected) {
+                    peer.reconnect();
+                }
+            }
+        }, 12000);
+    }
+
+    function stopHeartbeat() {
+        if (heartbeatInterval) {
+            clearInterval(heartbeatInterval);
+            heartbeatInterval = null;
+        }
+    }
+
+    /**
+     * نسخ رمز الغرفة للحافظة بلمسة واحدة
+     */
+    function copyRoomCode() {
+        if (!roomId) return;
+        const codeOnly = roomId.replace(ROOM_PREFIX, "");
+        const textToCopy = roomId;
+
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(textToCopy).then(function() {
+                if (window.showGameToast) window.showGameToast("تم نسخ رمز الغرفة: " + textToCopy, "📋");
+            }).catch(function() {
+                prompt("انسخ رمز الغرفة يدوياً:", textToCopy);
+            });
+        } else {
+            prompt("انسخ رمز الغرفة يدوياً:", textToCopy);
+        }
+    }
+
+    /**
+     * تأسيس غرفة جديدة بواسطة المضيف
      */
     function createRoom(desiredCode, playerName, callback) {
         initIdentity();
@@ -63,7 +123,7 @@ window.NetworkEngine = (function() {
             localStorage.setItem("hegemony_player_name", playerName);
         }
 
-        roomId = desiredCode ? (desiredCode.indexOf(ROOM_PREFIX) === 0 ? desiredCode : (ROOM_PREFIX + desiredCode)) : generateRoomCode();
+        roomId = desiredCode ? normalizeRoomCode(desiredCode) : generateRoomCode();
         isHost = true;
 
         if (peer) {
@@ -82,6 +142,7 @@ window.NetworkEngine = (function() {
         });
 
         peer.on("open", function(id) {
+            roomId = id;
             roomState.roomId = id;
             roomState.hostId = localPlayerId;
             roomState.players[localPlayerId] = {
@@ -91,28 +152,35 @@ window.NetworkEngine = (function() {
                 isConnected: true
             };
 
+            startHeartbeat();
             updateTopReadinessBar();
             if (callback) callback({ success: true, roomId: id, isHost: true });
-            if (window.showGameToast) window.showGameToast("تم إنشاء الغرفة بنجاح: " + id, "📡");
+            if (window.showGameToast) window.showGameToast("تم إنشاء الغرفة: " + id + " (انقر للنسخ)", "📡");
         });
 
         peer.on("connection", function(conn) {
             handleIncomingConnection(conn);
         });
 
+        peer.on("disconnected", function() {
+            if (peer && !peer.destroyed) {
+                peer.reconnect();
+            }
+        });
+
         peer.on("error", function(err) {
-            console.error("PeerJS Error:", err);
+            console.error("PeerJS Host Error:", err);
             if (err.type === "unavailable-id") {
                 createRoom(null, myPlayerName, callback);
             } else {
                 if (callback) callback({ success: false, error: err.type });
-                if (window.showGameToast) window.showGameToast("خطأ في الشبكة: " + err.type, "⚠️");
+                if (window.showGameToast) window.showGameToast("خطأ في الخادم: " + err.type, "⚠️");
             }
         });
     }
 
     /**
-     * الانضمام لغرفة قائمة بواسطة رمز الغرفة
+     * الانضمام لغرفة قائمة بواسطة الرمز (يقبل أرقاماً مجردة أو رمزاً كاملاً)
      */
     function joinRoom(inputCode, playerName, callback) {
         initIdentity();
@@ -121,9 +189,14 @@ window.NetworkEngine = (function() {
             localStorage.setItem("hegemony_player_name", playerName);
         }
 
-        const cleanInput = inputCode.trim();
-        const targetCode = cleanInput.indexOf(ROOM_PREFIX) === 0 ? cleanInput : (ROOM_PREFIX + cleanInput);
-        roomId = targetCode;
+        const normalizedCode = normalizeRoomCode(inputCode);
+        if (!normalizedCode || normalizedCode === ROOM_PREFIX) {
+            if (callback) callback({ success: false, error: "الرمز غير صحيح" });
+            if (window.showGameToast) window.showGameToast("يرجى كتابة رمز الغرفة!", "✍️");
+            return;
+        }
+
+        roomId = normalizedCode;
         isHost = false;
 
         if (peer) {
@@ -136,7 +209,8 @@ window.NetworkEngine = (function() {
             config: {
                 iceServers: [
                     { urls: "stun:stun.l.google.com:19302" },
-                    { urls: "stun:stun1.l.google.com:19302" }
+                    { urls: "stun:stun1.l.google.com:19302" },
+                    { urls: "stun:stun2.l.google.com:19302" }
                 ]
             }
         });
@@ -157,9 +231,10 @@ window.NetworkEngine = (function() {
                     playerName: myPlayerName
                 });
 
+                startHeartbeat();
                 updateTopReadinessBar();
                 if (callback) callback({ success: true, roomId: roomId, isHost: false });
-                if (window.showGameToast) window.showGameToast("تم الاتصال بالغرفة: " + roomId, "✅");
+                if (window.showGameToast) window.showGameToast("تم دخول الغرفة: " + roomId, "✅");
             });
 
             hostConn.on("data", function(data) {
@@ -173,14 +248,24 @@ window.NetworkEngine = (function() {
 
             hostConn.on("error", function(err) {
                 console.error("Host connection error:", err);
-                if (callback) callback({ success: false, error: "فشل الاتصال بالمضيف" });
+                if (callback) callback({ success: false, error: "تعذر الاتصال بالمضيف" });
             });
+        });
+
+        peer.on("disconnected", function() {
+            if (peer && !peer.destroyed) {
+                peer.reconnect();
+            }
         });
 
         peer.on("error", function(err) {
             console.error("PeerJS Join Error:", err);
+            let msg = "تعذر العثور على الغرفة (" + normalizedCode + ")! تأكد من أن منشئ الغرفة متصل حالياً.";
+            if (err.type === "peer-unavailable") {
+                msg = "الغرفة (" + normalizedCode + ") غير متوفرة! تأكد من صحة الأرقام ومن بقاء المضيف داخل اللعبة.";
+            }
             if (callback) callback({ success: false, error: err.type });
-            if (window.showGameToast) window.showGameToast("تعذر العثور على الغرفة أو الكود غير صحيح!", "❌");
+            if (window.showGameToast) window.showGameToast(msg, "❌");
         });
     }
 
@@ -191,7 +276,7 @@ window.NetworkEngine = (function() {
         const currentCount = Object.keys(roomState.players).length;
         if (currentCount >= 10) {
             conn.on("open", function() {
-                conn.send({ type: "ROOM_FULL", msg: "الغرفة مكتملة (الحد الأقصى 10 لاعبين)!" });
+                conn.send({ type: "ROOM_FULL", msg: "الغرفة مكتملة بالحد الأقصى (10 لاعبين)!" });
                 setTimeout(function() { conn.close(); }, 500);
             });
             return;
@@ -204,7 +289,6 @@ window.NetworkEngine = (function() {
         });
 
         conn.on("close", function() {
-            // معالجة السطر 212 المتوافقة مع Pure ES6 دون استخدام ?.
             const pId = (conn.metadata && conn.metadata.playerId) ? conn.metadata.playerId : null;
             if (pId && roomState.players[pId]) {
                 roomState.players[pId].isConnected = false;
@@ -218,7 +302,7 @@ window.NetworkEngine = (function() {
     }
 
     /**
-     * معالجة البيانات لدى المضيف (Authoritative Host)
+     * معالجة البيانات عند المضيف
      */
     function handleHostReceivedData(conn, data) {
         if (!data || !data.type) return;
@@ -258,7 +342,7 @@ window.NetworkEngine = (function() {
                             broadcastNotification("قام القائد " + roomState.players[pId].name + " بحجز قيادة دولة!", "👑");
                         }
                     } else {
-                        conn.send({ type: "CLAIM_REJECTED", msg: "هذه الدولة محجوزة للاعب آخر بالفعل!" });
+                        conn.send({ type: "CLAIM_REJECTED", msg: "هذه الدولة محجوزة لقائد آخر بالفعل!" });
                     }
                     break;
                 }
@@ -295,7 +379,7 @@ window.NetworkEngine = (function() {
     }
 
     /**
-     * معالجة البيانات لدى اللاعب المنضم (Client)
+     * معالجة البيانات عند اللاعب المنضم
      */
     function handleClientReceivedData(data) {
         if (!data || !data.type) return;
@@ -344,7 +428,7 @@ window.NetworkEngine = (function() {
                         updateTopReadinessBar();
                         if (window.renderNationsTable) window.renderNationsTable();
                         if (window.GameSFX) window.GameSFX.newYear();
-                        if (window.showGameToast) window.showGameToast("انطلقت السنة المالية " + window.currentWorld.year + "م للجميع!", "🌟");
+                        if (window.showGameToast) window.showGameToast("انطلقت السنة المالية " + window.currentWorld.year + "م لجميع اللاعبين!", "🌟");
                     }
                     break;
                 }
@@ -551,7 +635,12 @@ window.NetworkEngine = (function() {
         const btnNextYear = document.getElementById("btn-mp-ready-year");
         const btnWar = document.getElementById("btn-mp-ready-war");
 
-        if (roomCodeLabel) roomCodeLabel.textContent = "غرفة: " + roomId;
+        if (roomCodeLabel) {
+            roomCodeLabel.textContent = "غرفة: " + roomId;
+            roomCodeLabel.title = "اضغط لنسخ الرمز";
+            roomCodeLabel.style.cursor = "pointer";
+            roomCodeLabel.onclick = copyRoomCode;
+        }
 
         const playerKeys = Object.keys(roomState.players);
         const playersArr = [];
@@ -565,23 +654,23 @@ window.NetworkEngine = (function() {
             if (playersArr[j].readyState !== "WAITING") readyCount++;
         }
 
-        if (countLabel) countLabel.textContent = "👥 اللاعبون: " + playersArr.length + "/10";
-        if (statusDetails) statusDetails.textContent = "الجاهزية: " + readyCount + " من " + playersArr.length + " قادة أكدوا خيارهم";
+        if (countLabel) countLabel.textContent = "👥 " + playersArr.length + "/10";
+        if (statusDetails) statusDetails.textContent = "الجاهزية: " + readyCount + "/" + playersArr.length;
 
         if (btnNextYear && btnWar) {
             if (myReadiness === "READY_YEAR") {
                 btnNextYear.className = "btn btn-sm btn-primary active-decision";
-                btnNextYear.textContent = "✅ بانتظار البقية (سنة جديدة)";
+                btnNextYear.textContent = "✅ بانتظار البقية";
                 btnWar.className = "btn btn-sm btn-secondary";
                 btnWar.textContent = "⚔️ إعلان الحرب";
             } else if (myReadiness === "READY_WAR") {
                 btnNextYear.className = "btn btn-sm btn-secondary";
-                btnNextYear.textContent = "🌾 سنة مالية جديدة";
+                btnNextYear.textContent = "🌾 سنة جديدة";
                 btnWar.className = "btn btn-sm btn-danger active-decision";
-                btnWar.textContent = "🚨 أعلنت الحرب (بانتظار البقية)";
+                btnWar.textContent = "🚨 أعلنت الحرب";
             } else {
                 btnNextYear.className = "btn btn-sm btn-primary";
-                btnNextYear.textContent = "🌾 جاهز للسنة التالية";
+                btnNextYear.textContent = "🌾 سنة جديدة";
                 btnWar.className = "btn btn-sm btn-danger";
                 btnWar.textContent = "⚔️ إعلان الحرب";
             }
@@ -596,6 +685,7 @@ window.NetworkEngine = (function() {
         canControlCountry: canControlCountry,
         syncCountryChanges: syncCountryChanges,
         updateTopReadinessBar: updateTopReadinessBar,
+        copyRoomCode: copyRoomCode,
         getRoomId: function() { return roomId; },
         isHost: function() { return isHost; },
         getMyCountryId: function() { return myCountryId; },
