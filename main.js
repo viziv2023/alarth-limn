@@ -1,17 +1,20 @@
 /**
  * ============================================================================
- * main.js - محرك التشغيل الرئيسي والانتقال المباشر لمشهد العاصمة 3D (v5.0)
+ * main.js - محرك التشغيل الرئيسي والانتقال المباشر لمشهد العاصمة 3D (v5.1)
  * ============================================================================
  *
- * المزايا المحدثة:
- * 1. الانتقال الفوري والمباشر إلى مشهد العاصمة ثلاثي الأبعاد (`CapitalView.open`)
- *    فور إنشاء اللاعب لدولته أو الضغط على بطاقة أي دولة.
- * 2. فتح نافذة تأسيس الدولة تلقائياً عند بدء عالم جديد فارغ لعدم تشتيت اللاعب.
- * 3. زر مباشر في شاشة العالم للعودة الفورية إلى عاصمة اللاعب (`#btn-go-my-capital`).
+ * الإصلاحات والمزايا المحدثة (v5.1):
+ * 1. دعم تطبيق الجوال المستقل (PWA Service Worker + زر ملء الشاشة التلقائي لإخفاء شريط المتصفح).
+ * 2. محرر العلم الوطني التفاعلي المضمون (3×4 خلايا ملونة قابلة للرسم باللمس أو الماوس + قوالب سريعة).
+ * 3. ضبط السكان ليبدأوا من الصفر (0) بحيث يخرج السكان حصرياً من البيوت ومولدات السكان.
+ * 4. ضبط المؤشر العام للدولة (generalIndex) ليبدأ من (0) ويتغير ديناميكياً حسب حالة الدولة.
+ * 5. نظام عرض مضمون لسباق المؤشرات الـ 8 (السباق)، الكشاف، التاريخ، البورصة، والبنك الدولي
+ *    مع معالج تباين ذكي يمنع الخلفيات البيضاء ويزيل المساحات الفارغة ويظهر الأعلام بوضوح.
  */
 
 window.currentWorld = null;
 window.soundEnabled = true;
+window.activeChartFilter = "all";
 
 // صوتيات اللعبة المدمجة
 window.GameSFX = {
@@ -72,9 +75,271 @@ window.showGameToast = function(msg, icon) {
 };
 
 // =========================================================================
+// 0. نظام ملء الشاشة وتثبيت التطبيق على الجوال (PWA & Fullscreen Mode)
+// =========================================================================
+function registerPWAAndFullscreen() {
+    if ("serviceWorker" in navigator) {
+        navigator.serviceWorker.register("./sw.js").catch(function() {});
+    }
+
+    window.toggleGameFullscreen = function(forceEnter) {
+        const docEl = document.documentElement;
+        const isFull = document.fullscreenElement || document.webkitFullscreenElement;
+
+        if (!isFull || forceEnter === true) {
+            const req = docEl.requestFullscreen || docEl.webkitRequestFullscreen || docEl.msRequestFullscreen;
+            if (req) {
+                req.call(docEl).then(function() {
+                    if (screen.orientation && typeof screen.orientation.lock === "function") {
+                        screen.orientation.lock("landscape").catch(function() {});
+                    }
+                }).catch(function() {});
+            }
+        } else if (forceEnter !== true) {
+            const exit = document.exitFullscreen || document.webkitExitFullscreen || document.msExitFullscreen;
+            if (exit) exit.call(document).catch(function() {});
+        }
+    };
+
+    const btnFullDash = document.getElementById("btn-fullscreen-dash");
+    if (btnFullDash) {
+        btnFullDash.onclick = function() {
+            window.GameSFX.playClick();
+            window.toggleGameFullscreen();
+        };
+    }
+
+    const btnFullMenu = document.getElementById("btn-menu-fullscreen");
+    if (btnFullMenu) {
+        btnFullMenu.onclick = function() {
+            window.GameSFX.playClick();
+            window.toggleGameFullscreen();
+        };
+    }
+}
+
+// =========================================================================
+// 0.ب. محرر العلم الوطني التفاعلي المضمون (Fixes Black Flag Issue 100%)
+// =========================================================================
+let activeFlagBrushColor = "#c0392b";
+let currentFlagCellsState = [
+    "#c0392b", "#c0392b", "#c0392b", "#c0392b",
+    "#ffffff", "#f1c40f", "#f1c40f", "#ffffff",
+    "#27ae60", "#27ae60", "#27ae60", "#27ae60"
+];
+let isPaintingFlag = false;
+
+function normalizeFlagArray(flagInput) {
+    const defaultFlag = [
+        "#c0392b", "#c0392b", "#c0392b", "#c0392b",
+        "#ffffff", "#f1c40f", "#f1c40f", "#ffffff",
+        "#27ae60", "#27ae60", "#27ae60", "#27ae60"
+    ];
+    if (!Array.isArray(flagInput) || flagInput.length === 0) return [...defaultFlag];
+    const flat = Array.isArray(flagInput[0]) ? flagInput.flat() : flagInput;
+    const res = [];
+    for (let i = 0; i < 12; i++) {
+        res.push(flat[i] || defaultFlag[i]);
+    }
+    return res;
+}
+
+window.renderFlagGridToElement = function(container, flagInput, w, h) {
+    if (!container) return;
+    const colors = normalizeFlagArray(flagInput);
+    container.innerHTML = "";
+    container.style.display = "inline-grid";
+    container.style.gridTemplateColumns = "repeat(4, 1fr)";
+    container.style.gridTemplateRows = "repeat(3, 1fr)";
+    container.style.gap = "1px";
+    container.style.background = "#090612";
+    container.style.padding = "2px";
+    container.style.border = "1.5px solid #fbbf24";
+    container.style.borderRadius = "5px";
+    container.style.width = (w || 38) + "px";
+    container.style.height = (h || 24) + "px";
+    container.style.minWidth = (w || 38) + "px";
+    container.style.minHeight = (h || 24) + "px";
+    container.style.verticalAlign = "middle";
+
+    colors.forEach(function(col) {
+        const cell = document.createElement("div");
+        cell.style.backgroundColor = col;
+        cell.style.background = col;
+        cell.style.width = "100%";
+        cell.style.height = "100%";
+        cell.style.minWidth = "6px";
+        cell.style.minHeight = "5px";
+        container.appendChild(cell);
+    });
+};
+
+function ensureInteractiveFlagDesigner() {
+    const grid = document.getElementById("flag-grid");
+    if (!grid) return;
+
+    // إذا كانت الخلايا الحالية كلها سوداء أو فارغة، نعيد ضبطها لألوان زاهية
+    const allBlack = currentFlagCellsState.every(c => !c || c === "#000000" || c === "#111111" || c === "rgb(0, 0, 0)");
+    if (allBlack) {
+        currentFlagCellsState = [
+            "#c0392b", "#c0392b", "#c0392b", "#c0392b",
+            "#ffffff", "#f1c40f", "#f1c40f", "#ffffff",
+            "#27ae60", "#27ae60", "#27ae60", "#27ae60"
+        ];
+    }
+
+    grid.innerHTML = "";
+
+    function paintCell(cellEl, idx, color) {
+        currentFlagCellsState[idx] = color;
+        cellEl.style.backgroundColor = color;
+        cellEl.style.background = color;
+        cellEl.setAttribute("data-color", color);
+        if (window.FlagEditor) {
+            if (Array.isArray(window.FlagEditor.cells)) window.FlagEditor.cells[idx] = color;
+            if (Array.isArray(window.FlagEditor.currentFlag)) window.FlagEditor.currentFlag[idx] = color;
+        }
+    }
+
+    for (let i = 0; i < 12; i++) {
+        const cell = document.createElement("div");
+        cell.className = "flag-cell";
+        const col = currentFlagCellsState[i] || "#c0392b";
+        cell.style.backgroundColor = col;
+        cell.style.background = col;
+        cell.setAttribute("data-idx", String(i));
+        cell.setAttribute("data-color", col);
+
+        cell.addEventListener("mousedown", function(e) {
+            e.preventDefault();
+            isPaintingFlag = true;
+            if (window.GameSFX) window.GameSFX.playClick();
+            paintCell(cell, i, activeFlagBrushColor);
+        });
+
+        cell.addEventListener("mouseenter", function() {
+            if (isPaintingFlag) {
+                paintCell(cell, i, activeFlagBrushColor);
+            }
+        });
+
+        cell.addEventListener("click", function() {
+            paintCell(cell, i, activeFlagBrushColor);
+        });
+
+        cell.addEventListener("touchstart", function(e) {
+            e.preventDefault();
+            if (window.GameSFX) window.GameSFX.playClick();
+            paintCell(cell, i, activeFlagBrushColor);
+        }, { passive: false });
+
+        grid.appendChild(cell);
+    }
+
+    grid.addEventListener("touchmove", function(e) {
+        if (!e.touches || !e.touches[0]) return;
+        e.preventDefault();
+        const target = document.elementFromPoint(e.touches[0].clientX, e.touches[0].clientY);
+        if (target && target.classList.contains("flag-cell")) {
+            const idx = Number(target.getAttribute("data-idx"));
+            if (!isNaN(idx)) paintCell(target, idx, activeFlagBrushColor);
+        }
+    }, { passive: false });
+
+    window.addEventListener("mouseup", function() {
+        isPaintingFlag = false;
+    });
+
+    // ربط أزرار لوحة الألوان الجاهزة
+    const paletteBtns = document.querySelectorAll("#preset-palette .palette-btn");
+    paletteBtns.forEach(function(btn) {
+        const col = btn.getAttribute("data-color");
+        if (col) {
+            btn.style.backgroundColor = col;
+            btn.style.background = col;
+        }
+        btn.onclick = function(e) {
+            e.preventDefault();
+            if (window.GameSFX) window.GameSFX.playClick();
+            paletteBtns.forEach(b => b.classList.remove("selected"));
+            btn.classList.add("selected");
+            activeFlagBrushColor = col || "#c0392b";
+        };
+    });
+
+    // ربط منتقي اللون المخصص
+    const customInp = document.getElementById("custom-color-input");
+    if (customInp) {
+        customInp.oninput = function(e) {
+            activeFlagBrushColor = e.target.value;
+            paletteBtns.forEach(b => b.classList.remove("selected"));
+        };
+        customInp.onchange = function(e) {
+            activeFlagBrushColor = e.target.value;
+        };
+    }
+
+    // إضافة أزرار قوالب سريعة للرسم السريع إن لم تكن موجودة
+    const wrap = grid.closest(".flag-designer-wrap");
+    if (wrap && !document.getElementById("flag-quick-tools")) {
+        const toolsRow = document.createElement("div");
+        toolsRow.id = "flag-quick-tools";
+        toolsRow.style.cssText = "display:flex; gap:6px; flex-wrap:wrap; justify-content:center; margin-top:4px;";
+        toolsRow.innerHTML = `
+            <button type="button" id="btn-flag-random" class="btn btn-secondary btn-sm" style="font-size:0.72rem; padding:3px 9px;">🎲 علم عشوائي</button>
+            <button type="button" id="btn-flag-stripes" class="btn btn-secondary btn-sm" style="font-size:0.72rem; padding:3px 9px;">🏳️ 3 خطوط</button>
+            <button type="button" id="btn-flag-fill" class="btn btn-secondary btn-sm" style="font-size:0.72rem; padding:3px 9px;">🪣 تلوين الكل</button>
+        `;
+        wrap.appendChild(toolsRow);
+
+        const paletteColors = ["#c0392b", "#2980b9", "#27ae60", "#f1c40f", "#8e44ad", "#e67e22", "#00b894", "#ffffff", "#111111"];
+
+        document.getElementById("btn-flag-random").onclick = function() {
+            if (window.GameSFX) window.GameSFX.playClick();
+            const c1 = paletteColors[Math.floor(Math.random() * paletteColors.length)];
+            const c2 = paletteColors[Math.floor(Math.random() * paletteColors.length)];
+            const c3 = paletteColors[Math.floor(Math.random() * paletteColors.length)];
+            const emblem = "#f1c40f";
+            const pattern = [c1, c1, c1, c1, c2, emblem, emblem, c2, c3, c3, c3, c3];
+            const cells = grid.querySelectorAll(".flag-cell");
+            cells.forEach((el, idx) => paintCell(el, idx, pattern[idx]));
+        };
+
+        document.getElementById("btn-flag-stripes").onclick = function() {
+            if (window.GameSFX) window.GameSFX.playClick();
+            const c1 = activeFlagBrushColor || "#c0392b";
+            const pattern = [c1, c1, c1, c1, "#ffffff", "#ffffff", "#ffffff", "#ffffff", "#111111", "#111111", "#111111", "#111111"];
+            const cells = grid.querySelectorAll(".flag-cell");
+            cells.forEach((el, idx) => paintCell(el, idx, pattern[idx]));
+        };
+
+        document.getElementById("btn-flag-fill").onclick = function() {
+            if (window.GameSFX) window.GameSFX.playClick();
+            const cells = grid.querySelectorAll(".flag-cell");
+            cells.forEach((el, idx) => paintCell(el, idx, activeFlagBrushColor));
+        };
+    }
+
+    // توحيد واجهة FlagEditor لضمان التوافق مع كافة ملفات اللعبة الـ 30
+    window.FlagEditor = window.FlagEditor || {};
+    window.FlagEditor.getCurrentFlag = function() {
+        const domCells = document.querySelectorAll("#flag-grid .flag-cell, #flag-grid > div");
+        if (domCells.length === 12) {
+            return Array.from(domCells).map((el, idx) => el.getAttribute("data-color") || currentFlagCellsState[idx] || "#c0392b");
+        }
+        return [...currentFlagCellsState];
+    };
+    window.FlagEditor.renderFlag = function(container, flagArr, w, h) {
+        window.renderFlagGridToElement(container, flagArr, w || 38, h || 24);
+    };
+}
+
+// =========================================================================
 // 1. تهيئة اللعبة وبناء العالم الافتراضي (Initialization)
 // =========================================================================
 function initGame() {
+    registerPWAAndFullscreen();
+
     if (!window.currentWorld && window.World) {
         window.currentWorld = new window.World();
     }
@@ -85,10 +350,13 @@ function initGame() {
     setupCreationModalEvents();
     setupYearConfirmationEvents();
     setupTabSwitching();
+    setupChartsFilterEvents();
 
     if (window.FlagEditor && typeof window.FlagEditor.init === "function") {
-        window.FlagEditor.init();
+        try { window.FlagEditor.init(); } catch (e) {}
     }
+    ensureInteractiveFlagDesigner();
+
     if (window.CountryViewController && typeof window.CountryViewController.init === "function") {
         window.CountryViewController.init();
     }
@@ -112,10 +380,12 @@ function setupMainMenuEvents() {
     if (btnNew) {
         btnNew.onclick = function() {
             window.GameSFX.playClick();
+            if (window.innerWidth <= 950 && window.toggleGameFullscreen) {
+                window.toggleGameFullscreen(true);
+            }
             if (window.World) window.currentWorld = new window.World();
             showDashboardScreen();
             renderNationsTable();
-            // فتح نافذة تأسيس الدولة مباشرة ليبدأ اللاعب بتصميم دولته والدخول للعاصمة فوراً
             openCreateCountryModal();
         };
     }
@@ -214,7 +484,6 @@ function setupDashboardEvents() {
         };
     }
 
-    // أزرار شريط الجاهزية العلوي للشبكة
     const btnMpReadyYear = document.getElementById("btn-mp-ready-year");
     if (btnMpReadyYear) {
         btnMpReadyYear.onclick = function() {
@@ -336,11 +605,12 @@ function setupMultiplayerLobbyEvents() {
 }
 
 // =========================================================================
-// 5. نافذة تأسيس دولة جديدة والانتقال المباشر إلى مشهد العاصمة 3D
+// 5. نافذة تأسيس دولة جديدة (السكان = 0، المؤشر العام = 0، والعلم ملون بالكامل)
 // =========================================================================
 function openCreateCountryModal() {
     const modal = document.getElementById("modal-create-country");
     if (!modal) return;
+    ensureInteractiveFlagDesigner();
     const nameInp = document.getElementById("country-name-input");
     if (nameInp) {
         nameInp.value = "";
@@ -373,10 +643,9 @@ function setupCreationModalEvents() {
                 return;
             }
 
-            let flagColors = ["#c0392b", "#2980b9", "#27ae60", "#f1c40f", "#8e44ad", "#ffffff", "#c0392b", "#2980b9", "#27ae60", "#f1c40f", "#8e44ad", "#ffffff"];
-            if (window.FlagEditor && typeof window.FlagEditor.getCurrentFlag === "function") {
-                flagColors = window.FlagEditor.getCurrentFlag();
-            }
+            const flagColors = window.FlagEditor && typeof window.FlagEditor.getCurrentFlag === "function" ?
+                window.FlagEditor.getCurrentFlag() :
+                [...currentFlagCellsState];
 
             const uniqueId = "cnt_" + Date.now().toString(36) + "_" + Math.random().toString(36).substring(2, 6);
 
@@ -391,22 +660,38 @@ function setupCreationModalEvents() {
                     flag: flagColors,
                     stage: 1,
                     stageName: "النشأة والتأسيس",
-                    population: 10,
+                    population: 0,
                     employed: 0,
-                    unemployed: 10,
+                    unemployed: 0,
                     budget: 0,
                     disposableRevenue: 200,
                     bank: 0,
                     worldBankFund: 0,
-                    generalIndex: 100,
+                    generalIndex: 0,
                     currencyValue: 1.0,
-                    perCapitaIncome: 200,
-                    area: 10,
+                    perCapitaIncome: 0,
+                    area: 0,
                     buildings: window.BuildingsEngine ? window.BuildingsEngine.createDefaultBuildings() : {},
                     sectors: {},
                     energy: {},
                     military: { inventory: {}, totalPower: 0, totalCrew: 0, totalFuelConsumption: 0, netAmmoBalance: 0, ammoDemand: 0, ammoProduction: 0 }
                 };
+            }
+
+            // ضمان أن السكان يبدأون من الصفر (0) وأن المؤشر العام يبدأ من الصفر (0) ويتحدث حسب حالة الدولة
+            newCountry.flag = flagColors;
+            newCountry.population = 0;
+            newCountry.employed = 0;
+            newCountry.unemployed = 0;
+            newCountry.generalIndex = 0;
+
+            if (window.SectorsEngine && typeof window.SectorsEngine.recalculateCountrySectors === "function") {
+                window.SectorsEngine.recalculateCountrySectors(newCountry, window.currentWorld);
+            }
+            if (window.IndicatorsEngine && typeof window.IndicatorsEngine.refreshCountryIndicators === "function") {
+                window.IndicatorsEngine.refreshCountryIndicators(newCountry);
+            } else if (window.BuildingsEngine && typeof window.BuildingsEngine.refreshFallbackIndicators === "function") {
+                window.BuildingsEngine.refreshFallbackIndicators(newCountry);
             }
 
             if (window.NetworkEngine && window.NetworkEngine.getRoomId()) {
@@ -426,14 +711,14 @@ function setupCreationModalEvents() {
             window.currentViewingCountry = newCountry;
             window.isViewingAsSpectator = false;
 
-            // الانتقال الفوري والمباشر إلى مشهد العاصمة ثلاثي الأبعاد!
+            // الانتقال الفوري والمباشر إلى مشهد العاصمة ثلاثي الأبعاد
             if (window.CapitalView && typeof window.CapitalView.open === "function") {
                 window.CapitalView.open(newCountry);
             } else if (window.CountryViewController) {
                 window.CountryViewController.open(newCountry);
             }
 
-            window.showGameToast("🎉 مرحباً بك في عاصمة [" + nationName + "]! اضغط على أي أرض أو أيقونة للبناء", "🏛️");
+            window.showGameToast("🎉 مرحباً بك في عاصمة [" + nationName + "]! ابْنِ بيتاً 🏠 أولاً لخروج السكان والعمال", "🏛️");
         };
     }
 }
@@ -464,7 +749,6 @@ function setupYearConfirmationEvents() {
                 if (window.NetworkEngine) window.NetworkEngine.refreshAllGameViews();
                 else renderNationsTable();
 
-                // تحديث العاصمة فوراً إذا كان اللاعب داخل مشهد العاصمة
                 if (window.CapitalView && typeof window.CapitalView.refreshHUDAndMap === "function") {
                     window.CapitalView.refreshHUDAndMap();
                 }
@@ -476,7 +760,7 @@ function setupYearConfirmationEvents() {
 }
 
 // =========================================================================
-// 7. التبديل التفاعلي بين التابات الثمانية (Desktop & Mobile Tabs)
+// 7. التبديل التفاعلي بين التابات الثمانية + معالج التباين والسباق والأعلام
 // =========================================================================
 function setupTabSwitching() {
     const tabMap = [
@@ -511,14 +795,41 @@ function setupTabSwitching() {
             else mBtn.classList.remove("active");
         });
 
-        if (targetKey === "table") renderNationsTable();
-        else if (targetKey === "charts" && window.ChartsManager) window.ChartsManager.render(window.currentWorld);
-        else if (targetKey === "chronicle" && window.ChronicleManager) window.ChronicleManager.render(window.currentWorld);
-        else if (targetKey === "analytics" && window.AnalyticsManager) window.AnalyticsManager.render(window.currentWorld);
-        else if (targetKey === "worldbank" && window.WorldBankManager) window.WorldBankManager.render(window.currentWorld);
-        else if (targetKey === "trade" && window.TradeManager) window.TradeManager.render(window.currentWorld);
-        else if (targetKey === "exchange" && window.ExchangeManager) window.ExchangeManager.render(window.currentWorld);
-        else if (targetKey === "war" && window.WarView) window.WarView.render(window.currentWorld);
+        if (targetKey === "table") {
+            renderNationsTable();
+        } else if (targetKey === "charts") {
+            renderChartsAndRaceTab(window.currentWorld, window.activeChartFilter || "all");
+        } else if (targetKey === "chronicle") {
+            if (window.ChronicleManager && typeof window.ChronicleManager.render === "function") {
+                try { window.ChronicleManager.render(window.currentWorld); } catch (e) {}
+            }
+            enhanceAndSanitizeTabDOM("chronicle-tables-wrapper", "chronicle", window.currentWorld);
+        } else if (targetKey === "analytics") {
+            if (window.AnalyticsManager && typeof window.AnalyticsManager.render === "function") {
+                try { window.AnalyticsManager.render(window.currentWorld); } catch (e) {}
+            }
+            enhanceAndSanitizeTabDOM("analytics-grid-wrapper", "analytics", window.currentWorld);
+        } else if (targetKey === "worldbank") {
+            if (window.WorldBankManager && typeof window.WorldBankManager.render === "function") {
+                try { window.WorldBankManager.render(window.currentWorld); } catch (e) {}
+            }
+            enhanceAndSanitizeTabDOM("worldbank-content-wrapper", "worldbank", window.currentWorld);
+        } else if (targetKey === "trade") {
+            if (window.TradeManager && typeof window.TradeManager.render === "function") {
+                try { window.TradeManager.render(window.currentWorld); } catch (e) {}
+            }
+            enhanceAndSanitizeTabDOM("trade-content-wrapper", "trade", window.currentWorld);
+        } else if (targetKey === "exchange") {
+            if (window.ExchangeManager && typeof window.ExchangeManager.render === "function") {
+                try { window.ExchangeManager.render(window.currentWorld); } catch (e) {}
+            }
+            enhanceAndSanitizeTabDOM("exchange-content-wrapper", "exchange", window.currentWorld);
+        } else if (targetKey === "war") {
+            if (window.WarView && typeof window.WarView.render === "function") {
+                try { window.WarView.render(window.currentWorld); } catch (e) {}
+            }
+            enhanceAndSanitizeTabDOM("war-content-wrapper", "war", window.currentWorld);
+        }
     }
 
     tabMap.forEach(function(t) {
@@ -537,6 +848,374 @@ function setupTabSwitching() {
             activateTab(btn.dataset.target);
         };
     });
+}
+
+// =========================================================================
+// 7.أ. محرك سباق المؤشرات الـ 8 المضمون (Fixes Missing Race / Charts Tab)
+// =========================================================================
+const CHART_INDICATORS_META = [
+    { key: "budget", title: "💰 الميزانية والعائد السنوي", unit: "$", prefix: true, color: "#fbbf24", getVal: c => Number(c.budget || 0) },
+    { key: "population", title: "👥 إجمالي السكان", unit: " نسمة", prefix: false, color: "#c084fc", getVal: c => Number(c.population || 0) },
+    { key: "income", title: "💎 متوسط دخل الفرد", unit: "$", prefix: true, color: "#34d399", getVal: c => Number(c.perCapitaIncome || 0) },
+    { key: "area", title: "🏗️ المساحة العمرانية", unit: " نقطة", prefix: false, color: "#38bdf8", getVal: c => Number(c.area || 0) },
+    { key: "generalIndex", title: "⭐ المؤشر العام للدولة", unit: " نقطة", prefix: false, color: "#22d3ee", getVal: c => Number(c.generalIndex || 0) },
+    { key: "oilPrice", title: "🛢️ سعر برميل النفط", unit: "$", prefix: true, color: "#fb923c", getVal: c => Number(c.oilPrice || (c.energy && c.energy.oilPrice) || 50) },
+    { key: "militaryPower", title: "⚔️ القوة العسكرية المقدرة", unit: " قوة", prefix: false, color: "#a3e635", getVal: c => Number((c.military && c.military.totalPower) || c.militaryPower || 0) },
+    { key: "currencyValue", title: "🪙 قيمة العملة الوطنية", unit: "", prefix: false, color: "#60a5fa", getVal: c => Number(Number(c.currencyValue || 1).toFixed(2)) }
+];
+
+function setupChartsFilterEvents() {
+    const filterBtns = document.querySelectorAll(".charts-filter-bar .chart-filter-btn");
+    filterBtns.forEach(function(btn) {
+        btn.onclick = function() {
+            if (window.GameSFX) window.GameSFX.playClick();
+            filterBtns.forEach(b => b.classList.remove("selected"));
+            btn.classList.add("selected");
+            window.activeChartFilter = btn.getAttribute("data-chart") || "all";
+            renderChartsAndRaceTab(window.currentWorld, window.activeChartFilter);
+        };
+    });
+}
+
+function renderChartsAndRaceTab(world, filterKey) {
+    const grid = document.getElementById("charts-grid");
+    if (!grid) return;
+
+    const countries = (world && Array.isArray(world.countries)) ? world.countries : [];
+    if (countries.length === 0) {
+        grid.innerHTML = `<div class="nations-empty-card" style="padding:24px;">📊 أسس دولة واحدة على الأقل لبدء سباق المؤشرات الثمانية!</div>`;
+        return;
+    }
+
+    const activeIndicators = (!filterKey || filterKey === "all") ?
+        CHART_INDICATORS_META :
+        CHART_INDICATORS_META.filter(m => m.key === filterKey);
+
+    grid.innerHTML = "";
+
+    activeIndicators.forEach(function(ind) {
+        const sorted = [...countries].sort((a, b) => ind.getVal(b) - ind.getVal(a));
+        const maxVal = Math.max(1, ...sorted.map(c => Math.abs(ind.getVal(c))));
+
+        const card = document.createElement("div");
+        card.className = "race-indicator-card";
+        card.style.borderTopColor = ind.color;
+
+        const rowsHtml = sorted.map(function(c, idx) {
+            const val = ind.getVal(c);
+            const pct = Math.max(6, Math.min(100, Math.round((Math.abs(val) / maxVal) * 100)));
+            const formattedVal = ind.prefix ?
+                (val < 0 ? "-$" + Math.abs(val).toLocaleString() : "$" + val.toLocaleString()) :
+                (val.toLocaleString() + ind.unit);
+
+            return `
+                <div class="race-bar-row">
+                    <div class="race-bar-top">
+                        <div class="race-nation-info">
+                            <span class="race-rank-badge">#${idx + 1}</span>
+                            <div class="table-flag" data-flag-country="${c.id}"></div>
+                            <strong style="color:#fffbeb; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${c.name}</strong>
+                        </div>
+                        <strong style="color:${ind.color}; font-variant-numeric:tabular-nums;">${formattedVal}</strong>
+                    </div>
+                    <div class="race-bar-track">
+                        <div class="race-bar-fill" style="width:${pct}%; background:${ind.color};"></div>
+                    </div>
+                </div>
+            `;
+        }).join("");
+
+        card.innerHTML = `
+            <div class="race-card-header">
+                <span>${ind.title}</span>
+                <span class="badge" style="font-size:0.72rem; padding:2px 8px;">⏳ سنة ${(world && world.year) || 1}م</span>
+            </div>
+            <div class="race-bars-list">
+                ${rowsHtml}
+            </div>
+        `;
+
+        grid.appendChild(card);
+    });
+
+    populateAllFlagPlaceholders(grid, countries);
+}
+
+// =========================================================================
+// 7.ب. معالج التباين، إزالة المسافات الضخمة، وإظهار الأعلام في الكشاف والتاريخ والبنك والبورصة
+// =========================================================================
+function populateAllFlagPlaceholders(rootEl, countries) {
+    if (!rootEl || !Array.isArray(countries)) return;
+
+    // 1. العناصر المزودة بـ data-flag-country
+    rootEl.querySelectorAll("[data-flag-country]").forEach(function(el) {
+        const cId = el.getAttribute("data-flag-country");
+        const c = countries.find(item => String(item.id) === String(cId) || String(item.name) === String(cId));
+        if (c) window.renderFlagGridToElement(el, c.flag, 38, 24);
+    });
+
+    // 2. أي عنصر يحمل كلاس table-flag أو mini-flag أو flag داخل الجداول والبطاقات
+    rootEl.querySelectorAll(".table-flag, .mini-flag, .analytics-flag, .chronicle-flag").forEach(function(el) {
+        if (el.children.length === 0) {
+            const row = el.closest("tr, .analytics-card, .dossier-card, div");
+            const text = row ? row.textContent : "";
+            const matchedCountry = countries.find(c => c.name && text.includes(c.name)) || countries[0];
+            if (matchedCountry) {
+                window.renderFlagGridToElement(el, matchedCountry.flag, 38, 24);
+            }
+        } else {
+            el.style.display = "inline-grid";
+            el.style.gridTemplateColumns = "repeat(4, 8px)";
+            el.style.gridTemplateRows = "repeat(3, 6px)";
+            el.style.width = "38px";
+            el.style.height = "24px";
+            Array.from(el.children).forEach(function(child) {
+                child.style.width = "100%";
+                child.style.height = "100%";
+                child.style.minWidth = "6px";
+                child.style.minHeight = "5px";
+            });
+        }
+    });
+}
+
+function enhanceAndSanitizeTabDOM(wrapperId, tabKey, world) {
+    const wrapper = document.getElementById(wrapperId);
+    if (!wrapper) return;
+
+    const countries = (world && Array.isArray(world.countries)) ? world.countries : [];
+
+    // إذا كان التاب فارغاً (مثلاً في المعاينة أو قبل بناء محتوى خارجي)، نرسم لوحة متكاملة عالية التباين
+    if (wrapper.children.length === 0) {
+        renderBuiltInTabFallback(wrapper, tabKey, world, countries);
+    }
+
+    // فحص كافة العناصر الداخلية لمنع الخلفيات البيضاء والمسافات العمودية الضخمة وتراكب الأرقام
+    wrapper.querySelectorAll("*").forEach(function(el) {
+        const bg = (el.style && (el.style.backgroundColor || el.style.background)) ?
+            (el.style.backgroundColor || el.style.background).toLowerCase() : "";
+
+        if (bg.includes("#fff") || bg.includes("#fdf6e3") || bg.includes("#f8fafc") || bg.includes("#f1f5f9") || bg.includes("white") || bg.includes("rgb(255, 255, 255)") || bg.includes("rgb(253, 246, 227)")) {
+            const tag = el.tagName.toLowerCase();
+            if (tag === "span" || tag === "button") {
+                el.style.color = "#1e1b4b";
+            } else {
+                el.style.background = "linear-gradient(180deg, #281c44 0%, #19112e 100%)";
+                el.style.color = "#fffbeb";
+                el.style.borderColor = "#4a3b6e";
+            }
+        }
+
+        // تقليص المسافات العمودية والهامشية المبالغ فيها في البورصة والبنك والكشاف
+        if (el.style) {
+            if (parseInt(el.style.marginBottom, 10) > 16) el.style.marginBottom = "10px";
+            if (parseInt(el.style.marginTop, 10) > 16) el.style.marginTop = "10px";
+            if (parseInt(el.style.paddingTop, 10) > 18) el.style.paddingTop = "10px";
+            if (parseInt(el.style.paddingBottom, 10) > 18) el.style.paddingBottom = "10px";
+            if ( parseInt(el.style.gap, 10) > 16) el.style.gap = "10px";
+            if (el.style.minHeight && parseInt(el.style.minHeight, 10) > 220 && el.tagName.toLowerCase() !== "canvas") {
+                el.style.minHeight = "0px";
+            }
+        }
+    });
+
+    populateAllFlagPlaceholders(wrapper, countries);
+}
+
+function renderBuiltInTabFallback(wrapper, tabKey, world, countries) {
+    const yr = (world && world.year) || 1;
+
+    if (tabKey === "analytics") {
+        if (countries.length === 0) {
+            wrapper.innerHTML = `<div class="nations-empty-card">🔭 لا توجد دول حالياً لتحليلها في الكشاف.</div>`;
+            return;
+        }
+        const rows = countries.map((c, i) => {
+            const mil = Number((c.military && c.military.totalPower) || c.militaryPower || 0);
+            const unemp = Math.max(0, Number(c.population || 0) - Number(c.employed || 0));
+            return `
+                <tr>
+                    <td class="td-center">#${i + 1}</td>
+                    <td>
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            <div class="table-flag" data-flag-country="${c.id}"></div>
+                            <strong style="color:#fde047;">${c.name}</strong>
+                        </div>
+                    </td>
+                    <td class="td-center"><span class="badge" style="font-size:0.74rem; padding:2px 8px;">م${c.stage || 1}</span></td>
+                    <td class="td-center text-emerald">$${Number(c.disposableRevenue || 0).toLocaleString()}</td>
+                    <td class="td-center text-gold">$${Number(c.budget || 0).toLocaleString()}</td>
+                    <td class="td-center text-purple">${Number(c.population || 0).toLocaleString()} (👷${unemp})</td>
+                    <td class="td-center text-cyan">${Number(c.generalIndex || 0).toLocaleString()}</td>
+                    <td class="td-center text-green">${mil.toLocaleString()}</td>
+                    <td class="td-center text-blue">${Number(c.currencyValue || 1).toFixed(2)}</td>
+                </tr>
+            `;
+        }).join("");
+
+        wrapper.innerHTML = `
+            <div class="analytics-card">
+                <div class="card-header-flex">
+                    <h3>🔭 كشاف القوى والمقارنة الاستراتيجية الشاملة (سنة ${yr}م)</h3>
+                    <span class="badge badge-gold">🌍 الدول: ${countries.length}</span>
+                </div>
+                <div class="bldg-table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th class="td-center">الترتيب</th>
+                                <th>الدولة والراية</th>
+                                <th class="td-center">المرحلة</th>
+                                <th class="td-center">السيولة</th>
+                                <th class="td-center">العائد السنوي</th>
+                                <th class="td-center">السكان (العمال)</th>
+                                <th class="td-center">المؤشر العام</th>
+                                <th class="td-center">القوة العسكرية</th>
+                                <th class="td-center">قيمة العملة</th>
+                            </tr>
+                        </thead>
+                        <tbody>${rows}</tbody>
+                    </table>
+                </div>
+            </div>
+        `;
+    } else if (tabKey === "chronicle") {
+        const events = (world && Array.isArray(world.history)) ? world.history : [];
+        const eventsHtml = events.length > 0 ? events.map((ev, idx) => `
+            <tr>
+                <td class="td-center"><span class="badge badge-gold" style="font-size:0.72rem; padding:2px 8px;">سنة ${ev.year || yr}م</span></td>
+                <td><strong style="color:#fffbeb;">${ev.text || ev.description || "حدث تاريخي سيادي"}</strong></td>
+            </tr>
+        `).join("") : `<tr><td colspan="2" class="td-center" style="padding:18px; color:#fde68a;">📜 لم تسجل أحداث تاريخية كبرى بعد؛ ستدون التوسعات والترقيات والحروب هنا تباعاً.</td></tr>`;
+
+        const snapRows = countries.map(c => `
+            <tr>
+                <td>
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <div class="table-flag" data-flag-country="${c.id}"></div>
+                        <strong style="color:#fffbeb;">${c.name}</strong>
+                    </div>
+                </td>
+                <td class="td-center text-gold">$${Number(c.budget || 0).toLocaleString()}</td>
+                <td class="td-center text-purple">${Number(c.population || 0).toLocaleString()}</td>
+                <td class="td-center text-cyan">${Number(c.generalIndex || 0).toLocaleString()}</td>
+                <td class="td-center text-emerald">${Number(c.area || 0).toLocaleString()}</td>
+            </tr>
+        `).join("");
+
+        wrapper.innerHTML = `
+            <div class="chronicle-card">
+                <div class="card-header-flex">
+                    <h3>📜 مخطوطة التاريخ والأرشيف السيادي - السنة ${yr}م</h3>
+                </div>
+                ${countries.length > 0 ? `
+                <div class="bldg-table-wrap" style="margin-bottom:10px;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>الدولة</th>
+                                <th class="td-center">الميزانية</th>
+                                <th class="td-center">السكان</th>
+                                <th class="td-center">المؤشر العام</th>
+                                <th class="td-center">المساحة</th>
+                            </tr>
+                        </thead>
+                        <tbody>${snapRows}</tbody>
+                    </table>
+                </div>` : ""}
+                <div class="bldg-table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th class="td-center" style="width:110px;">السنة</th>
+                                <th>الوقائع والأحداث التاريخية المسجلة</th>
+                            </tr>
+                        </thead>
+                        <tbody>${eventsHtml}</tbody>
+                    </table>
+                </div>
+            </div>
+        `;
+    } else if (tabKey === "worldbank") {
+        const totalFund = countries.reduce((acc, c) => acc + Math.max(0, Number(c.worldBankFund || 0)), 0);
+        const rows = countries.map(c => `
+            <tr>
+                <td>
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <div class="table-flag" data-flag-country="${c.id}"></div>
+                        <strong>${c.name}</strong>
+                    </div>
+                </td>
+                <td class="td-center text-emerald">$${Number(c.bank || 0).toLocaleString()}</td>
+                <td class="td-center text-cyan">$${Math.max(0, Number(c.worldBankFund || 0)).toLocaleString()}</td>
+                <td class="td-center text-gold">$${Number(c.disposableRevenue || 0).toLocaleString()}</td>
+            </tr>
+        `).join("");
+
+        wrapper.innerHTML = `
+            <div class="wb-card">
+                <div class="card-header-flex">
+                    <h3>🏦 البنك الدولي والاحتياطي النقدي</h3>
+                    <span class="badge badge-gold">🌐 إجمالي الصندوق الدولي: $${totalFund.toLocaleString()}</span>
+                </div>
+                <div class="bldg-table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>الدولة</th>
+                                <th class="td-center">خزينة البنك الوطني</th>
+                                <th class="td-center">مدخرات البنك الدولي (5%)</th>
+                                <th class="td-center">السيولة المتاحة</th>
+                            </tr>
+                        </thead>
+                        <tbody>${rows || '<tr><td colspan="4" class="td-center">لا توجد دول مسجلة</td></tr>'}</tbody>
+                    </table>
+                </div>
+            </div>
+        `;
+    } else if (tabKey === "exchange") {
+        wrapper.innerHTML = `
+            <div class="exchange-grid-container">
+                <div class="exchange-card">
+                    <div class="card-header-flex">
+                        <h3>🛢️ بورصة الطاقة والوقود العالمية</h3>
+                        <span class="badge badge-orange">تحديث سنوي</span>
+                    </div>
+                    <div class="stat-row"><span>🛢️ سعر برميل النفط القياسي:</span><strong class="text-gold">$50</strong></div>
+                    <div class="stat-row"><span>🔥 سعر المتر المكعب من الغاز:</span><strong class="text-orange">$15</strong></div>
+                    <div class="stat-row"><span>⛽ سعر لتر الوقود المكرر:</span><strong class="text-emerald">$2</strong></div>
+                </div>
+                <div class="exchange-card">
+                    <div class="card-header-flex">
+                        <h3>🌾 بورصة السلع والموارد الاستراتيجية</h3>
+                        <span class="badge badge-gold">الأسعار الفورية</span>
+                    </div>
+                    <div class="stat-row"><span>🌾 المحاصيل الغذائية (نقطة):</span><strong class="text-green">$12</strong></div>
+                    <div class="stat-row"><span>🏭 المنتجات الصناعية (نقطة):</span><strong class="text-cyan">$25</strong></div>
+                    <div class="stat-row"><span>💣 صناديق الذخيرة القياسية:</span><strong class="text-red">$18</strong></div>
+                </div>
+            </div>
+        `;
+    } else if (tabKey === "trade") {
+        wrapper.innerHTML = `
+            <div class="wb-card">
+                <div class="card-header-flex">
+                    <h3>🚢 القوافل والتجارة الدولية</h3>
+                    <span class="badge">تلقائي عند فائض وعجز القطاعات</span>
+                </div>
+                <p style="font-size:0.84rem; color:#fde68a;">تباع فوائض القطاعات تلقائياً للدول التي تعاني من عجز في نفس القطاع مع نهاية كل سنة مالية وتودع أرباحها في البنك الوطني.</p>
+            </div>
+        `;
+    } else if (tabKey === "war") {
+        wrapper.innerHTML = `
+            <div class="wb-card">
+                <div class="card-header-flex">
+                    <h3>⚔️ غرفة العمليات العسكرية المشتركة</h3>
+                </div>
+                <p style="font-size:0.84rem; color:#fde68a;">جهز جيشك من داخل العاصمة (🎖️ الجيش) ثم أعلن التعبئة العسكرية لخوض المعارك الميدانية.</p>
+            </div>
+        `;
+    }
 }
 
 // =========================================================================
@@ -610,7 +1289,7 @@ function renderNationsTable() {
                 </div>
                 <div class="nation-card-stat">
                     <span class="stat-label">⭐ المؤشر:</span>
-                    <span class="stat-val text-cyan">${Number(c.generalIndex || 100).toLocaleString()}</span>
+                    <span class="stat-val text-cyan">${Number(c.generalIndex || 0).toLocaleString()}</span>
                 </div>
                 <div class="nation-card-stat">
                     <span class="stat-label">⚔️ القوة:</span>
@@ -636,19 +1315,7 @@ function renderNationsTable() {
 
         const flagBox = document.getElementById("nation-flag-grid-" + c.id);
         if (flagBox) {
-            if (window.FlagEditor && typeof window.FlagEditor.renderFlag === "function") {
-                window.FlagEditor.renderFlag(flagBox, c.flag, 26, 18);
-            } else if (Array.isArray(c.flag)) {
-                flagBox.style.gridTemplateColumns = "repeat(4, 1fr)";
-                flagBox.style.gridTemplateRows = "repeat(3, 1fr)";
-                c.flag.forEach(function(col) {
-                    const d = document.createElement("div");
-                    d.style.background = col || "#1e293b";
-                    d.style.width = "18px";
-                    d.style.height = "12px";
-                    flagBox.appendChild(d);
-                });
-            }
+            window.renderFlagGridToElement(flagBox, c.flag, 76, 48);
         }
     });
 }
@@ -710,5 +1377,5 @@ function handleFileUpload(file) {
 if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", initGame);
 } else {
-    CountryViewController && initGame();
+    initGame();
 }
