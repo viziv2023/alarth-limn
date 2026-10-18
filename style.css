@@ -1,6 +1,6 @@
 /* ==========================================================================
    عصر الهيمنة - ملف التنسيق الشامل المتكامل (style.css)
-   الإصدار v4.6 (النسخة المعمارية المجمعة الشاملة - سطح المكتب والجوال والغرف)
+   الإصدار v4.8 (النسخة المعمارية المحدثة - علاج التمدد وحفظ الرؤية الرشيقة)
    ========================================================================== */
 
 :root {
@@ -50,7 +50,8 @@ body {
     height: 100dvh;
     margin: 0;
     padding: 0;
-    overflow: hidden !important;
+    overflow-x: hidden !important;
+    overflow-y: hidden !important;
     background-color: var(--bg-main);
     background-image: radial-gradient(circle at 50% -10%, rgba(251, 191, 36, 0.22) 0%, transparent 50%), radial-gradient(circle at 15% 85%, rgba(249, 115, 22, 0.14) 0%, transparent 45%), radial-gradient(circle at 85% 80%, rgba(56, 189, 248, 0.14) 0%, transparent 45%), linear-gradient(180deg, #231942 0%, #161029 60%, #0f0a1c 100%);
     color: var(--text-pure);
@@ -62,8 +63,8 @@ body {
 /* أشرطة التمرير بطابع ذهبي مبهج */
 
 ::-webkit-scrollbar {
-    width: 9px;
-    height: 9px;
+    width: 8px;
+    height: 8px;
 }
 
 ::-webkit-scrollbar-track {
@@ -86,7 +87,8 @@ body {
     width: 100vw;
     height: 100vh;
     height: 100dvh;
-    overflow: hidden;
+    overflow-x: hidden;
+    overflow-y: hidden;
     position: relative;
 }
 
@@ -95,7 +97,8 @@ body {
     flex-direction: column;
     height: 100vh;
     height: 100dvh;
-    overflow: hidden;
+    overflow-x: hidden;
+    overflow-y: hidden;
     animation: screenFadeIn 0.28s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
@@ -515,16 +518,16 @@ body {
 .dashboard-content {
     flex: 1 1 0%;
     min-height: 0;
-    padding: 18px 24px;
+    padding: 16px 20px;
     overflow-y: auto !important;
-    overflow-x: hidden;
+    overflow-x: hidden !important;
     -webkit-overflow-scrolling: touch;
     touch-action: pan-y;
     overscroll-behavior-y: contain;
 }
 
 .dashboard-view-bar {
-    margin-bottom: 18px;
+    margin-bottom: 16px;
     background: linear-gradient(180deg, #271c42 0%, #1b1330 100%);
     padding: 10px 12px;
     border-radius: 18px;
@@ -656,13 +659,13 @@ body {
 
 .nations-cards-wrapper {
     width: 100%;
-    padding-bottom: 28px;
+    padding-bottom: 24px;
 }
 
 .nations-cards-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-    gap: 24px;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 18px;
     width: 100%;
 }
 
@@ -670,8 +673,8 @@ body {
     background: radial-gradient(circle at 50% 0%, rgba(251, 191, 36, 0.18) 0%, transparent 60%), linear-gradient(180deg, #332457 0%, #22173d 65%, #19102e 100%);
     border: 3px solid #f59e0b;
     box-shadow: 0 8px 0 #78350f, 0 16px 32px rgba(0, 0, 0, 0.55), inset 0 2px 0 rgba(255, 255, 255, 0.22);
-    border-radius: 22px;
-    padding: 20px 18px 16px 18px;
+    border-radius: 20px;
+    padding: 16px 14px 14px 14px;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -687,14 +690,14 @@ body {
     top: 0;
     left: 0;
     right: 0;
-    height: 6px;
+    height: 5px;
     background: linear-gradient(90deg, #fde047, #f97316, #38bdf8, #34d399, #fde047);
     opacity: 0.9;
 }
 
 .nation-sovereign-card:hover {
-    transform: translateY(-7px) scale(1.015);
-    box-shadow: 0 12px 0 #92400e, 0 22px 42px rgba(0, 0, 0, 0.7), 0 0 24px rgba(251, 191, 36, 0.35);
+    transform: translateY(-5px) scale(1.01);
+    box-shadow: 0 10px 0 #92400e, 0 20px 36px rgba(0, 0, 0, 0.7), 0 0 20px rgba(251, 191, 36, 0.35);
     border-color: #fde047;
 }
 
@@ -703,8 +706,8 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 10px;
-    font-size: 0.78rem;
+    margin-bottom: 8px;
+    font-size: 0.76rem;
     font-weight: 900;
 }
 
@@ -712,7 +715,7 @@ body {
     background: rgba(251, 191, 36, 0.18);
     border: 1.5px solid #fbbf24;
     color: #fde68a;
-    padding: 3px 10px;
+    padding: 3px 8px;
     border-radius: 999px;
     display: inline-flex;
     align-items: center;
@@ -723,7 +726,7 @@ body {
     background: rgba(56, 189, 248, 0.18);
     border: 1.5px solid #38bdf8;
     color: #bae6fd;
-    padding: 3px 10px;
+    padding: 3px 8px;
     border-radius: 999px;
 }
 
@@ -732,55 +735,55 @@ body {
     display: flex;
     justify-content: center;
     align-items: center;
-    margin-bottom: 12px;
+    margin-bottom: 10px;
     position: relative;
 }
 
 .nation-flag-box {
-    border: 3px solid #fde047;
-    box-shadow: 0 5px 0 #78350f, 0 8px 20px rgba(0, 0, 0, 0.6);
+    border: 2.5px solid #fde047;
+    box-shadow: 0 4px 0 #78350f, 0 6px 16px rgba(0, 0, 0, 0.6);
     background: #0f0a1c;
-    padding: 4px;
+    padding: 3px;
     display: inline-grid;
     gap: 2px;
-    border-radius: 10px;
+    border-radius: 8px;
     transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 .nation-sovereign-card:hover .nation-flag-box {
-    transform: scale(1.04);
-    box-shadow: 0 6px 0 #92400e, 0 0 18px rgba(253, 224, 71, 0.5);
+    transform: scale(1.03);
+    box-shadow: 0 5px 0 #92400e, 0 0 16px rgba(253, 224, 71, 0.5);
 }
 
 .nation-card-name {
-    font-size: 1.65rem;
+    font-size: 1.45rem;
     font-weight: 900;
     color: #fffbeb;
-    text-shadow: 0 3px 0 #78350f, 0 5px 10px rgba(0, 0, 0, 0.6);
-    margin-bottom: 14px;
+    text-shadow: 0 2px 0 #78350f, 0 4px 8px rgba(0, 0, 0, 0.6);
+    margin-bottom: 10px;
     text-align: center;
     letter-spacing: 0.3px;
     line-height: 1.25;
     background: linear-gradient(90deg, transparent, rgba(251, 191, 36, 0.16), transparent);
     width: 100%;
-    padding: 4px 8px;
-    border-radius: 8px;
+    padding: 3px 6px;
+    border-radius: 6px;
 }
 
 .nation-card-stats-grid {
     width: 100%;
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 10px;
+    gap: 8px;
     direction: rtl;
-    margin-bottom: 14px;
+    margin-bottom: 12px;
 }
 
 .nation-card-stat {
     background: rgba(15, 10, 28, 0.68);
     border: 1.5px solid rgba(148, 163, 184, 0.22);
-    border-radius: 12px;
-    padding: 8px 10px;
+    border-radius: 10px;
+    padding: 6px 8px;
     display: flex;
     flex-direction: column;
     align-items: flex-start;
@@ -791,16 +794,16 @@ body {
 .nation-card-stat .stat-label {
     color: #fde68a;
     font-weight: 800;
-    font-size: 0.8rem;
+    font-size: 0.76rem;
     display: flex;
     align-items: center;
-    gap: 5px;
+    gap: 4px;
 }
 
 .nation-card-stat .stat-val {
     color: #ffffff;
     font-weight: 900;
-    font-size: 1.1rem;
+    font-size: 1rem;
     font-variant-numeric: tabular-nums;
 }
 
@@ -810,10 +813,10 @@ body {
     border: 1.5px solid rgba(251, 191, 36, 0.45);
     color: #fef08a;
     font-weight: 900;
-    font-size: 0.88rem;
+    font-size: 0.84rem;
     text-align: center;
-    padding: 7px 12px;
-    border-radius: 12px;
+    padding: 6px 10px;
+    border-radius: 10px;
     transition: all 0.18s ease;
 }
 
@@ -827,11 +830,11 @@ body {
     grid-column: 1 / -1;
     background: linear-gradient(180deg, #2d204d 0%, #1c1333 100%);
     border: 3px dashed #f59e0b;
-    border-radius: 24px;
-    padding: 55px 24px;
+    border-radius: 20px;
+    padding: 45px 20px;
     text-align: center;
     color: #fef3c7;
-    font-size: 1.25rem;
+    font-size: 1.15rem;
     font-weight: 900;
     box-shadow: var(--shadow-card);
 }
@@ -845,12 +848,6 @@ body {
     border-radius: 6px;
     margin: 0 auto;
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
-}
-
-.nation-name {
-    font-weight: 900;
-    font-size: 1.1rem;
-    color: #fffbeb;
 }
 
 .text-gold {
@@ -895,38 +892,42 @@ body {
 
 
 /* ==========================================================================
-   6. شاشة إدارة الدولة المستقلة والمنشآت
+   6. شاشة إدارة الدولة المستقلة والمنشآت (معالجة التمدد)
    ========================================================================== */
 
 .country-profile-content {
     flex: 1;
-    padding: 18px 24px;
+    padding: 14px 18px;
     display: grid !important;
-    grid-template-columns: 330px 1fr !important;
-    gap: 18px;
+    grid-template-columns: 310px 1fr !important;
+    gap: 16px;
     overflow-y: auto !important;
+    overflow-x: hidden !important;
     -webkit-overflow-scrolling: touch;
 }
 
 .side-column {
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    gap: 14px;
 }
 
 .main-column {
     display: flex;
     flex-direction: column;
-    gap: 18px;
+    gap: 16px;
+    min-width: 0;
+    /* يمنع الأعمدة من كسر الحاوية أفقياً */
 }
 
 .dossier-card {
     background: linear-gradient(180deg, #2b1f47 0%, #1e1533 100%);
     border: 2.5px solid var(--border-light);
-    border-radius: 20px;
-    padding: 18px;
+    border-radius: 18px;
+    padding: 16px;
     box-shadow: var(--shadow-card), var(--shadow-inset);
     position: relative;
+    overflow: hidden;
 }
 
 .card-header-flex {
@@ -934,14 +935,14 @@ body {
     justify-content: space-between;
     align-items: center;
     border-bottom: 2px solid rgba(251, 191, 36, 0.25);
-    padding-bottom: 10px;
-    margin-bottom: 14px;
-    gap: 10px;
+    padding-bottom: 8px;
+    margin-bottom: 12px;
+    gap: 8px;
     flex-wrap: wrap;
 }
 
 .card-header-flex h3 {
-    font-size: 1.15rem;
+    font-size: 1.1rem;
     font-weight: 900;
     color: #fffbeb;
     text-shadow: 0 2px 0 rgba(0, 0, 0, 0.4);
@@ -949,15 +950,15 @@ body {
 }
 
 .sectors-sub-desc {
-    font-size: 0.82rem;
+    font-size: 0.78rem;
     color: var(--text-muted);
     margin-top: 2px;
 }
 
 .theme-tag {
-    font-size: 0.76rem;
+    font-size: 0.74rem;
     font-weight: 900;
-    padding: 3px 10px;
+    padding: 3px 9px;
     border-radius: 999px;
 }
 
@@ -1006,22 +1007,22 @@ body {
 
 .theme-flag {
     border-color: #fbbf24;
-    border-top: 5px solid #fde047;
+    border-top: 5px solid var(--fde047);
 }
 
 .flag-dossier {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
     background: radial-gradient(circle at center, #3b2863 0%, #1e1533 100%);
 }
 
 .large-flag {
     border: 3px solid #fde047;
-    box-shadow: 0 6px 0 #78350f, 0 10px 20px rgba(0, 0, 0, 0.5);
+    box-shadow: 0 5px 0 #78350f, 0 8px 18px rgba(0, 0, 0, 0.5);
     background: #0f0a1c;
-    padding: 4px;
+    padding: 3px;
     gap: 2px;
     border-radius: 10px;
 }
@@ -1029,7 +1030,7 @@ body {
 .stats-list {
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 8px;
 }
 
 .stat-row {
@@ -1039,31 +1040,31 @@ body {
     background: rgba(15, 10, 28, 0.55);
     border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 10px;
-    padding: 8px 12px;
-    font-size: 0.94rem;
+    padding: 7px 10px;
+    font-size: 0.88rem;
     color: var(--text-body);
 }
 
 .stat-row strong {
     font-weight: 900;
-    font-size: 1.02rem;
+    font-size: 0.96rem;
 }
 
 .finance-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 12px;
-    margin: 14px 0;
+    gap: 10px;
+    margin: 12px 0;
 }
 
 .finance-card {
     background: linear-gradient(180deg, #1b1330 0%, #120c21 100%);
     border: 2px solid #4a3b6e;
-    border-radius: 14px;
-    padding: 13px 14px;
+    border-radius: 12px;
+    padding: 10px 12px;
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 3px;
     box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.5);
     transition: transform 0.16s ease, border-color 0.16s ease;
 }
@@ -1074,27 +1075,27 @@ body {
 }
 
 .f-title {
-    font-size: 0.82rem;
+    font-size: 0.78rem;
     font-weight: 800;
     color: #fde68a;
 }
 
 .f-val {
-    font-size: 1.4rem;
+    font-size: 1.25rem;
     font-weight: 900;
     font-variant-numeric: tabular-nums;
 }
 
 .f-desc {
-    font-size: 0.74rem;
+    font-size: 0.72rem;
     color: var(--text-muted);
 }
 
 .finance-actions-bar {
     display: flex;
-    gap: 10px;
+    gap: 8px;
     flex-wrap: wrap;
-    margin-top: 10px;
+    margin-top: 8px;
 }
 
 .bldg-stage-bar {
@@ -1102,30 +1103,30 @@ body {
     align-items: center;
     justify-content: space-between;
     background: linear-gradient(90deg, #1b1330 0%, #2d1f4e 100%);
-    padding: 12px 18px;
-    border-radius: 14px;
+    padding: 10px 14px;
+    border-radius: 12px;
     border: 2px solid #f59e0b;
-    margin-bottom: 14px;
-    gap: 12px;
+    margin-bottom: 12px;
+    gap: 10px;
     flex-wrap: wrap;
 }
 
 .bldg-stage-title {
     font-weight: 900;
     color: #fde047;
-    font-size: 1rem;
+    font-size: 0.94rem;
 }
 
 .bldg-tabs-nav {
     display: flex;
-    gap: 8px;
-    margin-bottom: 14px;
+    gap: 6px;
+    margin-bottom: 12px;
     flex-wrap: wrap;
 }
 
 
 /* ==========================================================================
-   6.أ. جدول المنشآت والموارد السيادية
+   6.أ. جدول المنشآت والموارد السيادية (إلغاء التمدد 1100px وجعله رفيقاً للشاشة)
    ========================================================================== */
 
 .bldg-table-wrap {
@@ -1140,30 +1141,27 @@ body {
 
 .bldg-table {
     width: 100%;
-    min-width: 1100px;
+    min-width: 680px;
+    /* خفضنا الحد الأدنى ليناسب الشاشات دون تمدد مفرط */
     border-collapse: collapse;
-    font-size: 0.9rem;
+    font-size: 0.86rem;
     text-align: right;
 }
 
 .bldg-table th {
     background: linear-gradient(180deg, #352659 0%, #24193d 100%);
     color: #fde68a;
-    padding: 12px 14px;
+    padding: 10px 10px;
     border-bottom: 2px solid var(--border-gold);
     font-weight: 900;
     white-space: nowrap;
 }
 
 .bldg-table td {
-    padding: 12px 14px;
+    padding: 8px 10px;
     border-bottom: 1px solid #2b2046;
     vertical-align: middle;
     color: #f1f5f9;
-}
-
-.bldg-table tr {
-    transition: background 0.15s ease;
 }
 
 .bldg-table tbody tr:hover {
@@ -1178,41 +1176,41 @@ body {
 .td-bldg-name {
     display: flex;
     align-items: center;
-    gap: 12px;
-    min-width: 280px;
+    gap: 10px;
+    min-width: 200px;
     text-align: right;
 }
 
 .bldg-ico {
-    font-size: 1.65rem;
+    font-size: 1.45rem;
     background: linear-gradient(180deg, #3b2a63 0%, #23183c 100%);
     border: 2px solid #fbbf24;
     box-shadow: 0 3px 0 #78350f;
-    padding: 6px;
-    border-radius: 12px;
+    padding: 4px;
+    border-radius: 10px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    min-width: 46px;
-    height: 46px;
+    min-width: 40px;
+    height: 40px;
     flex-shrink: 0;
 }
 
 .td-bldg-name strong {
     display: block;
     color: #fffbeb;
-    font-size: 1rem;
+    font-size: 0.94rem;
     font-weight: 900;
-    margin-bottom: 2px;
+    margin-bottom: 1px;
 }
 
 .bldg-subdesc {
     display: block;
-    font-size: 0.8rem;
+    font-size: 0.74rem;
     color: var(--text-muted);
-    line-height: 1.45;
+    line-height: 1.35;
     white-space: normal;
-    max-width: 320px;
+    max-width: 250px;
 }
 
 .price-val {
@@ -1230,11 +1228,11 @@ body {
 .tag-util {
     display: inline-flex;
     align-items: center;
-    padding: 4px 9px;
+    padding: 3px 7px;
     border-radius: 999px;
-    font-size: 0.8rem;
+    font-size: 0.74rem;
     font-weight: 800;
-    margin: 1px 2px;
+    margin: 1px;
     white-space: nowrap;
 }
 
@@ -1252,9 +1250,9 @@ body {
 
 .tag-status {
     display: inline-block;
-    padding: 4px 10px;
+    padding: 3px 8px;
     border-radius: 999px;
-    font-size: 0.78rem;
+    font-size: 0.74rem;
     font-weight: 800;
     white-space: nowrap;
 }
@@ -1273,8 +1271,8 @@ body {
 
 .count-owned {
     display: inline-block;
-    min-width: 32px;
-    padding: 3px 9px;
+    min-width: 28px;
+    padding: 2px 7px;
     background: linear-gradient(180deg, #f59e0b 0%, #b45309 100%);
     color: #fffbeb;
     border: 1.5px solid #fde047;
@@ -1291,7 +1289,7 @@ body {
 .action-btn-group {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
+    gap: 5px;
     justify-content: center;
 }
 
@@ -1299,13 +1297,13 @@ body {
     background: linear-gradient(180deg, #34d399 0%, #059669 100%);
     color: #ffffff;
     border: 2px solid #a7f3d0;
-    padding: 6px 14px;
-    border-radius: 10px;
-    font-size: 0.84rem;
+    padding: 5px 12px;
+    border-radius: 9px;
+    font-size: 0.8rem;
     font-weight: 900;
     cursor: pointer;
     transition: all 0.15s cubic-bezier(0.34, 1.56, 0.64, 1);
-    box-shadow: 0 4px 0 #065f46, 0 4px 10px rgba(0, 0, 0, 0.35);
+    box-shadow: 0 3px 0 #065f46, 0 3px 8px rgba(0, 0, 0, 0.35);
 }
 
 .btn-buy-active:hover {
@@ -1313,17 +1311,13 @@ body {
     transform: translateY(-2px) scale(1.04);
 }
 
-.btn-buy-active:active {
-    transform: translateY(2px);
-}
-
 .btn-buy-disabled {
     background: #231a38;
     color: #64748b;
     border: 1.5px solid #382a56;
-    padding: 6px 14px;
-    border-radius: 10px;
-    font-size: 0.82rem;
+    padding: 5px 12px;
+    border-radius: 9px;
+    font-size: 0.78rem;
     font-weight: 700;
     cursor: not-allowed;
     opacity: 0.65;
@@ -1333,28 +1327,13 @@ body {
     background: linear-gradient(180deg, #fb7185 0%, #e11d48 100%);
     color: #ffffff;
     border: 2px solid #fecdd3;
-    padding: 6px 11px;
-    border-radius: 10px;
-    font-size: 0.82rem;
+    padding: 5px 10px;
+    border-radius: 9px;
+    font-size: 0.78rem;
     font-weight: 900;
     cursor: pointer;
     transition: all 0.15s ease;
-    box-shadow: 0 4px 0 #881337, 0 4px 8px rgba(0, 0, 0, 0.3);
-}
-
-.btn-demolish:hover {
-    background: linear-gradient(180deg, #fda4af 0%, #f43f5e 100%);
-    transform: translateY(-2px);
-}
-
-.btn-demolish:disabled {
-    background: #231a38;
-    color: #475569;
-    border: 1.5px solid #382a56;
-    cursor: not-allowed;
-    opacity: 0.4;
-    box-shadow: none;
-    transform: none;
+    box-shadow: 0 3px 0 #881337, 0 3px 6px rgba(0, 0, 0, 0.3);
 }
 
 .btn-pulse-upgrade {
@@ -1367,22 +1346,22 @@ body {
         box-shadow: 0 4px 0 #9a3412, 0 0 0 0 rgba(251, 191, 36, 0.7);
     }
     50% {
-        box-shadow: 0 4px 0 #9a3412, 0 0 22px 6px rgba(251, 191, 36, 0.9);
+        box-shadow: 0 4px 0 #9a3412, 0 0 20px 5px rgba(251, 191, 36, 0.9);
     }
 }
 
 .energy-sections-wrapper {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 14px;
-    margin-top: 10px;
+    gap: 12px;
+    margin-top: 8px;
 }
 
 .energy-subpanel {
     background: #160f29;
     border: 2px solid var(--border-light);
     border-radius: 14px;
-    padding: 14px;
+    padding: 12px;
 }
 
 .subpanel-title {
@@ -1392,25 +1371,25 @@ body {
     font-weight: 900;
     color: #fde68a;
     border-bottom: 1.5px solid var(--border-light);
-    padding-bottom: 8px;
-    margin-bottom: 10px;
+    padding-bottom: 6px;
+    margin-bottom: 8px;
 }
 
 .energy-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 8px;
+    gap: 6px;
 }
 
 .e-stat-box {
     background: #24193d;
     border: 1px solid #3d2c63;
-    border-radius: 10px;
-    padding: 7px 11px;
+    border-radius: 8px;
+    padding: 6px 9px;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    font-size: 0.86rem;
+    font-size: 0.82rem;
     font-weight: 800;
 }
 
@@ -1428,70 +1407,71 @@ body {
 .sectors-grid {
     display: grid !important;
     grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
-    gap: 14px !important;
-    margin-top: 12px;
+    gap: 10px !important;
+    margin-top: 10px;
 }
 
 .sector-gauge-card {
-    transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s ease, border-color 0.2s ease;
+    transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s ease;
     position: relative;
     overflow: hidden;
-    border-radius: 14px !important;
+    border-radius: 12px !important;
 }
 
 .sector-gauge-card:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.55);
+    transform: translateY(-3px);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.55);
 }
 
 
 /* ==========================================================================
-   7. قيادة القوات المسلحة والجيش ومجمع الأسلحة
+   7. قيادة القوات المسلحة والجيش
    ========================================================================== */
 
 .military-main-content {
     flex: 1;
-    padding: 18px 24px;
+    padding: 14px 20px;
     display: flex;
     flex-direction: column;
-    gap: 14px;
-    overflow: hidden;
+    gap: 12px;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
 }
 
 .military-logistics-bar {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
-    gap: 12px;
+    gap: 10px;
     flex-shrink: 0;
 }
 
 .logistics-card {
     background: linear-gradient(180deg, #2b1f47 0%, #1b1330 100%);
     border: 2px solid var(--border-light);
-    border-radius: 14px;
-    padding: 12px 16px;
+    border-radius: 12px;
+    padding: 10px 14px;
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 3px;
     box-shadow: var(--shadow-card);
 }
 
 .logistics-card .l-lbl {
-    font-size: 0.82rem;
+    font-size: 0.78rem;
     color: #fde68a;
     font-weight: 800;
 }
 
 .logistics-card .l-val {
-    font-size: 1.35rem;
+    font-size: 1.25rem;
     font-weight: 900;
 }
 
 .military-branches-tabs {
     display: flex;
-    gap: 10px;
+    gap: 8px;
     border-bottom: 2px solid var(--border-light);
-    padding-bottom: 10px;
+    padding-bottom: 8px;
     flex-shrink: 0;
     flex-wrap: wrap;
 }
@@ -1501,9 +1481,9 @@ body {
     color: #e2e8f0;
     border: 2px solid #523e82;
     box-shadow: 0 4px 0 #130c24;
-    padding: 9px 18px;
-    border-radius: 12px;
-    font-size: 0.92rem;
+    padding: 8px 16px;
+    border-radius: 11px;
+    font-size: 0.88rem;
     font-weight: 900;
     cursor: pointer;
     transition: all 0.15s ease;
@@ -1541,7 +1521,7 @@ body {
     position: sticky;
     top: 0;
     background: linear-gradient(180deg, #352659 0%, #24193d 100%);
-    padding: 12px 16px;
+    padding: 10px 14px;
     font-weight: 900;
     color: #fde68a;
     border-bottom: 2px solid var(--border-gold);
@@ -1549,7 +1529,7 @@ body {
 }
 
 .mil-table td {
-    padding: 12px 16px;
+    padding: 10px 14px;
     border-bottom: 1px solid #2b2046;
     font-weight: 800;
 }
@@ -1561,16 +1541,16 @@ body {
 
 .modal-cad-forge {
     width: 96vw !important;
-    max-width: 1420px !important;
+    max-width: 1380px !important;
     height: 94vh !important;
     max-height: 94vh !important;
     display: flex;
     flex-direction: column;
-    gap: 10px;
-    padding: 18px 24px;
+    gap: 8px;
+    padding: 16px 20px;
     background: linear-gradient(180deg, #24193d 0%, #140d24 100%);
     border: 3px solid #f59e0b;
-    border-radius: 24px;
+    border-radius: 20px;
     box-shadow: 0 25px 60px rgba(0, 0, 0, 0.9);
 }
 
@@ -1579,14 +1559,14 @@ body {
     justify-content: space-between;
     align-items: center;
     border-bottom: 2px solid var(--border-light);
-    padding-bottom: 10px;
+    padding-bottom: 8px;
 }
 
 .forge-nav-bar {
     display: flex;
-    gap: 10px;
+    gap: 8px;
     border-bottom: 1px solid #352659;
-    padding-bottom: 10px;
+    padding-bottom: 8px;
 }
 
 .forge-tab-body {
@@ -1599,14 +1579,14 @@ body {
 
 .forge-catalog-grid-layout {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-    gap: 14px;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 12px;
 }
 
 .cad-workbench-layout {
     display: grid;
-    grid-template-columns: 560px 1fr 340px;
-    gap: 16px;
+    grid-template-columns: 520px 1fr 320px;
+    gap: 14px;
     height: 100%;
     align-items: stretch;
 }
@@ -1614,18 +1594,18 @@ body {
 .cad-viewport-column {
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 8px;
 }
 
 .cad-canvas-container {
     background: #0c0817;
     border: 2px solid #f59e0b;
-    border-radius: 14px;
+    border-radius: 12px;
     overflow: hidden;
     display: flex;
     justify-content: center;
     align-items: center;
-    box-shadow: inset 0 0 24px rgba(0, 0, 0, 0.8);
+    box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.8);
 }
 
 #forge-assemble-canvas {
@@ -1636,22 +1616,22 @@ body {
 
 .cad-quick-actions-bar {
     display: flex;
-    gap: 8px;
+    gap: 6px;
     align-items: center;
 }
 
 .cad-transform-panel {
     background: #1d1433;
     border: 2px solid var(--border-light);
-    border-radius: 14px;
-    padding: 12px;
+    border-radius: 12px;
+    padding: 10px;
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 6px;
 }
 
 .cad-panel-title {
-    font-size: 0.88rem;
+    font-size: 0.84rem;
     font-weight: 900;
     color: var(--gold);
     display: block;
@@ -1660,8 +1640,8 @@ body {
 .cad-sliders-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 10px;
-    font-size: 0.82rem;
+    gap: 8px;
+    font-size: 0.78rem;
 }
 
 .cad-sliders-grid label {
@@ -1679,28 +1659,28 @@ body {
 
 .cad-sliders-grid input[type="color"] {
     width: 100%;
-    height: 30px;
+    height: 28px;
     border: 2px solid #fbbf24;
-    border-radius: 8px;
+    border-radius: 6px;
     cursor: pointer;
 }
 
 .cad-library-column {
     background: #1b1330;
     border: 2px solid var(--border-light);
-    border-radius: 14px;
-    padding: 12px;
+    border-radius: 12px;
+    padding: 10px;
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 10px;
     overflow: hidden;
 }
 
 .cad-library-tabs {
     display: flex;
-    gap: 6px;
+    gap: 5px;
     border-bottom: 1px solid #352659;
-    padding-bottom: 8px;
+    padding-bottom: 6px;
     flex-wrap: wrap;
 }
 
@@ -1708,9 +1688,9 @@ body {
     background: #2b1f47;
     color: #e2e8f0;
     border: 1.5px solid #4a3b6e;
-    padding: 6px 12px;
-    border-radius: 10px;
-    font-size: 0.82rem;
+    padding: 5px 10px;
+    border-radius: 8px;
+    font-size: 0.78rem;
     font-weight: 800;
     cursor: pointer;
     transition: all 0.15s ease;
@@ -1729,9 +1709,9 @@ body {
 
 .forge-parts-category-group {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
-    gap: 6px;
-    max-height: 180px;
+    grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+    gap: 5px;
+    max-height: 160px;
     overflow-y: auto;
     padding-right: 2px;
     -webkit-overflow-scrolling: touch;
@@ -1741,10 +1721,10 @@ body {
     flex: 1;
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 5px;
     overflow: hidden;
     border-top: 1px solid #352659;
-    padding-top: 8px;
+    padding-top: 6px;
 }
 
 .cad-layers-scroll-list {
@@ -1752,25 +1732,25 @@ body {
     overflow-y: auto;
     background: #110c20;
     border: 1.5px solid #352659;
-    border-radius: 10px;
-    padding: 6px;
+    border-radius: 8px;
+    padding: 5px;
     -webkit-overflow-scrolling: touch;
 }
 
 .cad-specs-column {
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 8px;
 }
 
 .cad-specs-card {
     background: #1d1433;
     border: 2px solid var(--border-light);
-    border-radius: 14px;
-    padding: 14px;
+    border-radius: 12px;
+    padding: 12px;
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 8px;
     height: 100%;
     justify-content: space-between;
 }
@@ -1778,19 +1758,20 @@ body {
 .cad-price-box {
     background: #120c21;
     border: 1.5px solid #4a3b6e;
-    border-radius: 10px;
-    padding: 10px 14px;
+    border-radius: 8px;
+    padding: 8px 12px;
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 3px;
 }
 
 
 /* ==========================================================================
-   8. محاكي المعركة ثلاثي الأبعاد
+   8. محاكي المعركة ورؤية العاصمة ثلاثية الأبعاد
    ========================================================================== */
 
-#battle-screen {
+#battle-screen,
+#capital-screen {
     background: #0c0817;
     width: 100vw;
     height: 100vh;
@@ -1799,11 +1780,11 @@ body {
 }
 
 .battle-top-bar {
-    height: 58px;
+    height: 54px;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 0 24px;
+    padding: 0 20px;
     background: linear-gradient(180deg, #2e214d 0%, #1a112e 100%);
     border-bottom: 3px solid var(--border-gold);
     flex-shrink: 0;
@@ -1812,16 +1793,16 @@ body {
 .battle-nation-tag {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
 }
 
 .battle-center-vs {
-    font-size: 1.2rem;
+    font-size: 1.1rem;
     font-weight: 900;
     color: #fde047;
     background: rgba(225, 29, 72, 0.25);
     border: 2px solid #fb7185;
-    padding: 4px 18px;
+    padding: 3px 16px;
     border-radius: 999px;
     text-shadow: 0 2px 4px rgba(0, 0, 0, 0.6);
 }
@@ -1831,7 +1812,7 @@ body {
     display: flex;
     justify-content: center;
     align-items: center;
-    padding: 10px;
+    padding: 8px;
     background: #090612;
     overflow: hidden;
 }
@@ -1840,7 +1821,7 @@ body {
     width: 100%;
     height: 100%;
     border: 3px solid var(--border-gold);
-    border-radius: 16px;
+    border-radius: 14px;
     background: #070d18;
     touch-action: none;
 }
@@ -1850,12 +1831,12 @@ body {
     background: linear-gradient(180deg, #fb7185 0%, #e11d48 100%) !important;
     color: #fff !important;
     font-weight: 900;
-    padding: 13px 32px !important;
-    font-size: 1.15rem !important;
+    padding: 12px 28px !important;
+    font-size: 1.1rem !important;
     border: 2px solid #fecdd3 !important;
     box-shadow: 0 6px 0 #881337 !important;
     cursor: pointer;
-    border-radius: 16px;
+    border-radius: 14px;
 }
 
 @keyframes battleStartPulse {
@@ -1864,8 +1845,8 @@ body {
         transform: scale(1);
     }
     50% {
-        box-shadow: 0 6px 0 #881337, 0 0 24px 6px rgba(225, 29, 72, 0.9);
-        transform: scale(1.03);
+        box-shadow: 0 6px 0 #881337, 0 0 22px 5px rgba(225, 29, 72, 0.9);
+        transform: scale(1.02);
     }
     100% {
         box-shadow: 0 6px 0 #881337, 0 0 0 0 rgba(225, 29, 72, 0.7);
@@ -1873,23 +1854,10 @@ body {
     }
 }
 
-
-/* ==========================================================================
-   8.ب. شاشة رؤية العاصمة ثلاثية الأبعاد (Low-Poly Capital Screen)
-   ========================================================================== */
-
-#capital-screen {
-    background: #0c0817;
-    width: 100vw;
-    height: 100vh;
-    height: 100dvh;
-    overflow: hidden;
-}
-
 .capital-canvas-wrapper {
     position: relative;
     width: 100%;
-    height: calc(100vh - 68px);
+    height: calc(100vh - 64px);
     background: #070d18;
     overflow: hidden;
     flex: 1;
@@ -1909,51 +1877,47 @@ body {
 
 .capital-floating-controls {
     position: absolute;
-    top: 16px;
-    left: 16px;
+    top: 14px;
+    left: 14px;
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 6px;
     z-index: 20;
-}
-
-.capital-floating-controls .btn {
-    min-width: 42px;
 }
 
 .capital-watermark-legend {
     position: absolute;
-    bottom: 16px;
-    right: 16px;
+    bottom: 14px;
+    right: 14px;
     background: rgba(29, 20, 51, 0.92);
     border: 2px solid var(--border-gold);
-    padding: 9px 18px;
+    padding: 7px 14px;
     border-radius: 999px;
-    font-size: 0.84rem;
+    font-size: 0.8rem;
     font-weight: 800;
     color: #fef3c7;
     display: flex;
-    gap: 16px;
+    gap: 12px;
     pointer-events: none;
     z-index: 20;
     backdrop-filter: blur(6px);
-    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.5);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5);
 }
 
 
 /* ==========================================================================
-   9. الرسوم البيانية والأرشيف الملكي ومخطوطة التاريخ
+   9. الرسوم البيانية والأرشيف والبورصة
    ========================================================================== */
 
 .charts-filter-bar {
     display: flex;
-    gap: 8px;
+    gap: 6px;
     flex-wrap: wrap;
     background: linear-gradient(180deg, #2b1f47 0%, #1d1433 100%);
-    padding: 12px 16px;
-    border-radius: 16px;
+    padding: 10px 14px;
+    border-radius: 14px;
     border: 2px solid var(--border-light);
-    margin-bottom: 14px;
+    margin-bottom: 12px;
     box-shadow: var(--shadow-card);
 }
 
@@ -1961,10 +1925,10 @@ body {
     background: #352757;
     border: 1.5px solid #523e82;
     color: #e2e8f0;
-    padding: 7px 16px;
+    padding: 6px 14px;
     border-radius: 999px;
     cursor: pointer;
-    font-size: 0.86rem;
+    font-size: 0.82rem;
     font-weight: 800;
     transition: all 0.18s ease;
 }
@@ -1983,130 +1947,11 @@ body {
     box-shadow: 0 3px 0 #78350f;
 }
 
-.charts-grid-wrapper {
-    display: flex;
-    flex-direction: column;
-    gap: 22px;
-    width: 100%;
-}
-
-.chart-card {
-    background: #fffdf7;
-    border: 3px solid #f59e0b;
-    border-radius: 18px;
-    box-shadow: var(--shadow-card);
-    overflow: hidden;
-    width: 100%;
-}
-
-.chart-scroll-wrap {
-    width: 100%;
-    overflow-x: auto;
-    overflow-y: hidden;
-    -webkit-overflow-scrolling: touch;
-}
-
-.chart-canvas {
-    display: block;
-    margin: 0 auto;
-}
-
-
-/* تحويل سجل التاريخ إلى مخطوطة ملكية دافئة */
-
-.excel-ledger-frame {
-    background: #fdf8ed;
-    border: 3px solid #d97706;
-    box-shadow: var(--shadow-card);
-    overflow-x: auto;
-    border-radius: 18px;
-    -webkit-overflow-scrolling: touch;
-}
-
-.excel-history-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-family: 'Cairo', 'Segoe UI', Tahoma, sans-serif;
-    font-size: 0.92rem;
-    color: #291d12;
-    direction: rtl;
-}
-
-.excel-history-table th,
-.excel-history-table td {
-    border: 1px solid #e6d5b8;
-    padding: 9px 14px;
-}
-
-.excel-history-table thead tr:first-child th {
-    background: linear-gradient(180deg, #fef3c7 0%, #fde68a 100%);
-    color: #78350f;
-    font-size: 1.08rem;
-    font-weight: 900;
-    text-align: center;
-    padding: 12px;
-}
-
-.excel-history-table .th-economic {
-    background: linear-gradient(180deg, #d1fae5 0%, #a7f3d0 100%) !important;
-    color: #065f46;
-}
-
-.excel-history-table .th-political {
-    background: linear-gradient(180deg, #dbeafe 0%, #bfdbfe 100%) !important;
-    color: #1e40af;
-}
-
-.sub-header-row th {
-    background: #f5ebd6;
-    font-size: 0.86rem;
-    color: #78350f;
-    font-weight: 800;
-    text-align: center;
-}
-
-.td-date {
-    text-align: center;
-    font-weight: 900;
-    color: #92400e;
-    background: #faf3e3;
-    white-space: nowrap;
-}
-
-.td-desc {
-    text-align: right;
-    line-height: 1.55;
-    font-weight: 600;
-}
-
-
-/* ==========================================================================
-   10. شبكة العرض الثنائية لبورصة الأسعار والتحليل
-   ========================================================================== */
-
-.analytics-overview-bar {
-    display: flex;
-    gap: 15px;
-    background: linear-gradient(180deg, #2b1f47 0%, #1d1433 100%);
-    padding: 14px 18px;
-    border-radius: 16px;
-    border: 2px solid var(--border-gold);
-    flex-wrap: wrap;
-    margin-bottom: 18px;
-    box-shadow: var(--shadow-card);
-}
-
-.ov-item {
-    font-size: 0.96rem;
-    color: #fef3c7;
-    font-weight: 800;
-}
-
 .analytics-cards-grid,
 .exchange-grid-container {
     display: grid !important;
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-    gap: 18px !important;
+    gap: 14px !important;
     align-items: start !important;
     width: 100% !important;
 }
@@ -2117,89 +1962,9 @@ body {
     margin: 0 !important;
     background: linear-gradient(180deg, #291d45 0%, #1b1330 100%);
     border: 2px solid var(--border-light);
-    border-radius: 18px;
+    border-radius: 16px;
     overflow: hidden;
     box-shadow: var(--shadow-card);
-    transition: transform 0.18s ease, border-color 0.18s ease;
-}
-
-.exchange-grid-container .analytics-card:hover,
-.analytics-cards-grid .analytics-card:hover {
-    transform: translateY(-3px);
-    border-color: var(--gold);
-}
-
-.exchange-grid-container .analytics-card-header,
-.analytics-cards-grid .analytics-card-header {
-    padding: 12px 16px;
-    background: linear-gradient(90deg, #352659 0%, #24193d 100%);
-    border-bottom: 2px solid rgba(251, 191, 36, 0.3);
-}
-
-.exchange-grid-container .analytics-card-header h3,
-.analytics-cards-grid .analytics-card-header h3 {
-    margin: 0 0 3px 0;
-    font-size: 1.08rem;
-    color: #fde047;
-    font-weight: 900;
-}
-
-.exchange-grid-container .analytics-card-sub,
-.analytics-cards-grid .analytics-card-sub {
-    font-size: 0.78rem;
-    color: var(--text-muted);
-}
-
-.exchange-grid-container .analytics-table-wrap,
-.analytics-cards-grid .analytics-table-wrap {
-    max-height: 320px;
-    overflow-y: auto;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-}
-
-.exchange-grid-container .analytics-table,
-.analytics-cards-grid .analytics-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 0.86rem;
-    text-align: right;
-}
-
-.exchange-grid-container .analytics-table th,
-.analytics-cards-grid .analytics-table th {
-    padding: 9px 12px !important;
-    font-size: 0.84rem !important;
-    white-space: nowrap;
-    background: #171029;
-    color: #fde68a;
-    position: sticky;
-    top: 0;
-    border-bottom: 1.5px solid var(--border-light);
-}
-
-.exchange-grid-container .analytics-table td,
-.analytics-cards-grid .analytics-table td {
-    padding: 8px 12px !important;
-    font-size: 0.86rem !important;
-    white-space: nowrap;
-    border-bottom: 1px solid #2b2046;
-    color: #f1f5f9;
-}
-
-.exchange-grid-container .analytics-table tbody tr:hover,
-.analytics-cards-grid .analytics-table tbody tr:hover {
-    background: rgba(251, 191, 36, 0.08);
-}
-
-.exchange-grid-container .analytics-card-footer,
-.analytics-cards-grid .analytics-card-footer {
-    padding: 9px 16px;
-    font-size: 0.85rem;
-    font-weight: 800;
-    background: #140e24;
-    border-top: 1.5px solid var(--border-light);
-    color: #7dd3fc;
 }
 
 .worldbank-dashboard-container table,
@@ -2210,7 +1975,7 @@ body {
     background: #1b1330 !important;
     color: #f1f5f9 !important;
     text-align: right;
-    border-radius: 14px;
+    border-radius: 12px;
     overflow: hidden;
 }
 
@@ -2220,8 +1985,9 @@ body {
     background: linear-gradient(180deg, #352659 0%, #24193d 100%) !important;
     color: #fde047 !important;
     border: 1px solid var(--border-light) !important;
-    padding: 11px 14px !important;
+    padding: 9px 12px !important;
     font-weight: 900 !important;
+    font-size: 0.86rem !important;
 }
 
 .worldbank-dashboard-container td,
@@ -2230,13 +1996,14 @@ body {
     background: #1f1636 !important;
     color: #f1f5f9 !important;
     border: 1px solid #2f2250 !important;
-    padding: 10px 14px !important;
+    padding: 8px 12px !important;
     font-weight: 700 !important;
+    font-size: 0.85rem !important;
 }
 
 
 /* ==========================================================================
-   11. النوافذ العائمة (Modals) ومحرر العلم وتثبيت الأزرار
+   10. النوافذ العائمة (Modals)
    ========================================================================== */
 
 .modal {
@@ -2248,7 +2015,7 @@ body {
     justify-content: center;
     align-items: center;
     z-index: 1000;
-    padding: 14px;
+    padding: 12px;
     box-sizing: border-box;
     overflow-y: auto !important;
     -webkit-overflow-scrolling: touch;
@@ -2273,107 +2040,40 @@ body {
 .modal-content {
     background: linear-gradient(180deg, #312352 0%, #1d1433 100%);
     border: 3px solid var(--border-gold);
-    border-radius: 24px;
-    padding: 22px 26px;
-    width: 530px;
+    border-radius: 20px;
+    padding: 20px 24px;
+    width: 520px;
     max-width: 96vw;
     max-height: 92vh !important;
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 10px;
     box-shadow: 0 10px 0 #78350f, 0 24px 60px rgba(0, 0, 0, 0.85), inset 0 2px 0 rgba(255, 255, 255, 0.2);
     position: relative;
-    overflow: hidden;
-}
-
-.flag-designer-wrap {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 12px;
-    background: rgba(15, 10, 28, 0.55);
-    padding: 14px;
-    border-radius: 16px;
-    border: 1.5px solid var(--border-light);
-}
-
-.color-palette {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    justify-content: center;
-    max-width: 340px;
-}
-
-.palette-btn {
-    width: 28px;
-    height: 28px;
-    border-radius: 8px;
-    cursor: pointer;
-    border: 2px solid rgba(255, 255, 255, 0.35);
-    display: inline-block;
-    transition: transform 0.14s cubic-bezier(0.34, 1.56, 0.64, 1), border-color 0.14s ease;
-    box-shadow: 0 3px 0 rgba(0, 0, 0, 0.4);
-}
-
-.palette-btn:hover {
-    transform: scale(1.15);
-}
-
-.palette-btn.selected {
-    border: 3px solid #fde047 !important;
-    transform: scale(1.18);
-    box-shadow: 0 0 12px rgba(253, 224, 71, 0.7);
-}
-
-.custom-color-row {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 0.85rem;
-    color: #fde68a;
-    font-weight: 700;
-    margin-top: 4px;
-}
-
-.modal-large {
-    width: 960px !important;
-    max-width: 96vw !important;
-    height: auto !important;
-    max-height: 92vh !important;
-    display: flex !important;
-    flex-direction: column !important;
-    padding: 18px 22px !important;
-}
-
-.modal-header-fixed {
-    flex-shrink: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
+    overflow-y: auto;
 }
 
 .form-group {
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 3px;
     flex-shrink: 0;
 }
 
 .form-group label {
-    font-size: 0.86rem;
+    font-size: 0.84rem;
     color: #fde68a;
     font-weight: 800;
 }
 
 .form-group input,
 .form-group select {
-    padding: 9px 12px;
+    padding: 8px 10px;
     background: #120c21;
     border: 2px solid var(--border-light);
     color: #fffbeb;
-    border-radius: 10px;
-    font-size: 0.92rem;
+    border-radius: 9px;
+    font-size: 0.88rem;
     font-weight: 700;
     outline: none;
     transition: border-color 0.15s ease;
@@ -2384,72 +2084,12 @@ body {
     border-color: var(--gold);
 }
 
-.form-group-units-scrollable {
-    flex: 1 1 auto;
-    min-height: 0;
-    display: flex;
-    flex-direction: column;
-}
-
-.w-mobilize-scroll,
-#war-mobilize-units-list,
-#defender-mobilize-units-list {
-    max-height: 210px !important;
-    min-height: 120px !important;
-    height: auto !important;
-    overflow-y: auto !important;
-    overflow-x: hidden !important;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    padding: 10px 14px;
-    background: #120c21;
-    border: 2px solid var(--border-light);
-    border-radius: 12px;
-    -webkit-overflow-scrolling: touch;
-}
-
-.w-mobilize-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 0.84rem;
-}
-
-.w-mobilize-table th {
-    background: #24193d;
-    color: #fde68a;
-    padding: 7px 10px;
-    font-weight: 800;
-    border-bottom: 1.5px solid var(--border-light);
-    position: sticky;
-    top: 0;
-    z-index: 2;
-}
-
-.w-mobilize-table td {
-    padding: 7px 10px;
-    border-bottom: 1px solid #2b2046;
-    color: #f1f5f9;
-}
-
-.w-unit-input,
-.w-def-unit-input {
-    width: 74px;
-    padding: 5px;
-    background: #090612;
-    border: 1.5px solid #fbbf24;
-    color: #fde047;
-    font-weight: 900;
-    border-radius: 8px;
-    text-align: center;
-}
-
 .modal-actions {
     display: flex;
-    gap: 10px;
+    gap: 8px;
     justify-content: flex-end;
     margin-top: 8px;
-    padding-top: 12px;
+    padding-top: 10px;
     border-top: 2px solid rgba(251, 191, 36, 0.25);
     flex-shrink: 0 !important;
     position: sticky !important;
@@ -2458,60 +2098,20 @@ body {
     z-index: 10 !important;
 }
 
-.battle-review-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 14px;
-    max-height: 240px;
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
-}
-
-.review-column {
-    background: #120c21;
-    border: 2px solid var(--border-light);
-    border-radius: 12px;
-    padding: 12px;
-    display: flex;
-    flex-direction: column;
-    max-height: 230px;
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
-}
-
-#review-attacker-forces-list,
-#review-defender-forces-list {
-    flex: 1;
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
-}
-
-.donate-quick-btn {
-    background: linear-gradient(180deg, #1e3a8a 0%, #172554 100%) !important;
-    border: 1.5px solid #38bdf8 !important;
-    color: #bae6fd !important;
-    font-weight: 800;
-}
-
-.donate-quick-btn:hover {
-    background: linear-gradient(180deg, #0284c7 0%, #1e40af 100%) !important;
-    color: #fff !important;
-}
-
 
 /* ==========================================================================
-   12. إضافات التفاعل والمرح (Game Toasts & Floating Text)
+   11. إضافات التفاعل (Game Toasts)
    ========================================================================== */
 
 #game-toast-container {
     position: fixed;
-    bottom: 24px;
+    bottom: 20px;
     left: 50%;
     transform: translateX(-50%);
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
     z-index: 3000;
     pointer-events: none;
     max-width: 90vw;
@@ -2521,21 +2121,21 @@ body {
     background: linear-gradient(180deg, #322456 0%, #1d1433 100%);
     border: 2.5px solid #fbbf24;
     color: #fffbeb;
-    padding: 10px 22px;
+    padding: 9px 20px;
     border-radius: 999px;
-    font-size: 0.95rem;
+    font-size: 0.9rem;
     font-weight: 900;
     box-shadow: 0 6px 0 #78350f, 0 12px 28px rgba(0, 0, 0, 0.65);
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
     animation: toastBounceIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 @keyframes toastBounceIn {
     from {
         opacity: 0;
-        transform: translateY(24px) scale(0.85);
+        transform: translateY(20px) scale(0.85);
     }
     to {
         opacity: 1;
@@ -2543,35 +2143,9 @@ body {
     }
 }
 
-.floating-reward-text {
-    position: fixed;
-    pointer-events: none;
-    font-size: 1.25rem;
-    font-weight: 900;
-    color: #fde047;
-    text-shadow: 0 2px 0 #78350f, 0 4px 10px rgba(0, 0, 0, 0.6);
-    z-index: 4000;
-    animation: floatUpReward 1.3s ease-out forwards;
-}
-
-@keyframes floatUpReward {
-    0% {
-        opacity: 1;
-        transform: translateY(0) scale(0.9);
-    }
-    40% {
-        opacity: 1;
-        transform: translateY(-28px) scale(1.1);
-    }
-    100% {
-        opacity: 0;
-        transform: translateY(-65px) scale(0.95);
-    }
-}
-
 
 /* ==========================================================================
-   13. التوافق التام مع شاشات الهواتف والأجهزة اللمسية (Mobile Responsive Queries)
+   12. التوافق التام ومنع التمدد على الشاشات المتوسطة والصغيرة (Mobile Responsive)
    ========================================================================== */
 
 @media (max-width: 1024px) {
@@ -2583,11 +2157,11 @@ body {
         display: flex !important;
     }
     .dashboard-content {
-        padding: 12px 14px calc(var(--bottom-nav-height) + 20px) 14px !important;
+        padding: 10px 12px calc(var(--bottom-nav-height) + 16px) 12px !important;
     }
     .country-profile-content {
         grid-template-columns: 1fr !important;
-        padding-bottom: calc(var(--bottom-nav-height) + 20px) !important;
+        padding-bottom: calc(var(--bottom-nav-height) + 16px) !important;
     }
     .analytics-cards-grid,
     .exchange-grid-container {
@@ -2602,81 +2176,52 @@ body {
 }
 
 @media (max-width: 768px) {
-    /* 1. تقليص وتثبيت الشريط العلوي ليصبح سطر واحد رشيق محمي من الالتفاف */
     .top-bar {
         height: var(--header-height-mobile) !important;
         min-height: var(--header-height-mobile) !important;
         max-height: var(--header-height-mobile) !important;
-        padding: 0 10px !important;
+        padding: 0 8px !important;
         flex-wrap: nowrap !important;
         overflow: hidden !important;
-        gap: 6px !important;
+        gap: 5px !important;
     }
     .top-bar-title,
     .nation-header-title {
         flex: 1 1 auto !important;
         min-width: 0 !important;
         flex-wrap: nowrap !important;
-        gap: 6px !important;
+        gap: 5px !important;
         overflow: hidden !important;
     }
     .top-bar-logo-icon {
-        font-size: 1.2rem !important;
-        padding: 4px 6px !important;
-        border-radius: 8px !important;
+        font-size: 1.1rem !important;
+        padding: 3px 5px !important;
+        border-radius: 6px !important;
         flex-shrink: 0 !important;
     }
     .top-bar-title h2,
     .nation-header-title h2 {
-        font-size: 0.94rem !important;
+        font-size: 0.9rem !important;
         white-space: nowrap !important;
         overflow: hidden !important;
         text-overflow: ellipsis !important;
         line-height: 1.2 !important;
     }
-    .top-bar-sub {
-        display: none !important;
-    }
-    /* إخفاء الشارات الطويلة التي تسبب تكدس الرأس */
+    .top-bar-sub,
     .top-bar-badges-group {
         display: none !important;
     }
-    /* أزرار الرأس في سطر واحد مضغوط */
     .top-bar-actions {
         flex-wrap: nowrap !important;
-        gap: 5px !important;
+        gap: 4px !important;
         flex-shrink: 0 !important;
     }
     .top-bar-actions .btn {
-        padding: 6px 9px !important;
-        font-size: 0.78rem !important;
-        border-radius: 9px !important;
+        padding: 5px 8px !important;
+        font-size: 0.74rem !important;
+        border-radius: 8px !important;
         white-space: nowrap !important;
-        gap: 4px !important;
-        box-shadow: 0 2px 0 rgba(0, 0, 0, 0.4) !important;
-    }
-    /* 2. تحرير مسار التمرير الانسيابي الكامل لحاوية المحتوى */
-    .dashboard-content {
-        flex: 1 1 0% !important;
-        min-height: 0 !important;
-        height: auto !important;
-        overflow-y: auto !important;
-        overflow-x: hidden !important;
-        -webkit-overflow-scrolling: touch !important;
-        overscroll-behavior-y: contain !important;
-        touch-action: pan-y !important;
-        padding: 10px 10px calc(var(--bottom-nav-height) + 16px) 10px !important;
-    }
-    .nations-cards-wrapper {
-        padding-bottom: 12px !important;
-    }
-    .nations-cards-grid {
-        grid-template-columns: 1fr !important;
-        gap: 14px !important;
-    }
-    .nation-sovereign-card {
-        padding: 14px 12px !important;
-        border-radius: 18px !important;
+        gap: 3px !important;
     }
     .finance-grid {
         grid-template-columns: repeat(2, 1fr);
@@ -2687,27 +2232,15 @@ body {
     .energy-sections-wrapper {
         grid-template-columns: 1fr;
     }
-    .battle-top-bar {
-        padding: 0 10px;
-        height: 50px;
-    }
-    .battle-center-vs {
-        font-size: 0.95rem;
-        padding: 3px 12px;
-    }
     #game-toast-container {
-        bottom: calc(var(--bottom-nav-height) + 12px);
+        bottom: calc(var(--bottom-nav-height) + 10px);
     }
 }
 
 @media (max-width: 480px) {
     .top-bar {
-        padding: 0 6px !important;
-        gap: 4px !important;
-    }
-    .top-bar-actions .btn {
-        padding: 5px 7px !important;
-        font-size: 0.74rem !important;
+        padding: 0 4px !important;
+        gap: 3px !important;
     }
     .finance-grid {
         grid-template-columns: 1fr;
@@ -2715,21 +2248,10 @@ body {
     .sectors-grid {
         grid-template-columns: 1fr !important;
     }
-    .nation-card-name {
-        font-size: 1.35rem;
-        margin-bottom: 8px;
-    }
-    .nation-card-stats-grid {
-        gap: 6px;
-        margin-bottom: 10px;
-    }
-    .nation-card-stat {
-        padding: 6px 8px;
-    }
     .menu-box {
-        padding: 24px 16px;
+        padding: 22px 14px;
     }
     .game-title {
-        font-size: 2.3rem;
+        font-size: 2.1rem;
     }
 }
