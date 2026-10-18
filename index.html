@@ -22,7 +22,7 @@
     <!-- حاوية الإشعارات والاحتفالات العائمة داخل اللعبة -->
     <div id="game-toast-container"></div>
 
-    <!-- شريط الجاهزية واتخاذ القرار العلوي المتزامن للغرف والهواتف -->
+    <!-- شريط الجاهزية واتخاذ القرار العلوي المتزامن للغرف والهواتف ومؤقت الـ 60 ثانية -->
     <div id="multiplayer-status-bar" style="display:none;">
         <div class="mp-bar-info">
             <span id="mp-room-code-label" class="mp-badge-room">غرفة: --</span>
@@ -41,15 +41,15 @@
         <div class="menu-box">
             <div class="menu-crown-emblem">👑</div>
             <div>
-                <span class="menu-badge-tactical">✨ GRAND STRATEGY &amp; MULTIPLAYER v4.6 ✨</span>
+                <span class="menu-badge-tactical">✨ GRAND STRATEGY &amp; MULTIPLAYER v4.8 ✨</span>
             </div>
             <h1 class="game-title">عصر الهيمنة</h1>
-            <p class="subtitle">ابنِ إمبراطوريتك، طوّر مدنك، وتنافس مع حتى 10 لاعبين في غرفة واحدة!</p>
+            <p class="subtitle">ابنِ إمبراطوريتك، طوّر مدنك، وتنافس مع حتى 10 لاعبين في غرفة واحدة محفوظة دائماً!</p>
 
             <div class="menu-features-pills">
                 <span class="menu-feature-pill">🏰 72 منشأة عمرانية</span>
                 <span class="menu-feature-pill">⚖️ 16 قطاعاً حيوياً</span>
-                <span class="menu-feature-pill">🌐 غرف لعب لـ 10 لاعبين</span>
+                <span class="menu-feature-pill">🌐 غرف لعب دائمة لـ 10 لاعبين</span>
                 <span class="menu-feature-pill">📱 واجهة جوال لمسية 3D</span>
             </div>
 
@@ -334,7 +334,7 @@
                             <thead>
                                 <tr>
                                     <th>المنشأة والوصف</th>
-                                    <th style="text-align:center;">التكلفة</th>
+                                    <th style="text-align:center;">التكلفة والسيولة</th>
                                     <th style="text-align:center;">العائد السنوي</th>
                                     <th style="text-align:center;">السكان</th>
                                     <th style="text-align:center;">الكهرباء والماء</th>
@@ -535,11 +535,20 @@
     <div id="modal-multiplayer-lobby" class="modal">
         <div class="modal-content" style="max-width: 520px;">
             <h2 style="color:#38bdf8; display:flex; align-items:center; gap:8px;">🌐 غرفة اللعب الجماعي (Multiplayer P2P)</h2>
-            <p style="font-size:0.86rem; color:#fde68a;">العب مع أصدقائك (حتى 10 لاعبين)؛ كل لاعب يقود دولته المستقلة بحرية تامة وتتزامن النتائج وقرارات الحرب فوراً.</p>
+            <p style="font-size:0.86rem; color:#fde68a;">العب مع أصدقائك (حتى 10 لاعبين)؛ كل لاعب يقود دولته المستقلة وتتزامن النتائج وقرارات الحرب فوراً ويحفظ تقدم الروم دائماً.</p>
 
             <div class="form-group" style="margin-top:10px;">
                 <label>اسمك كقائد / لاعب:</label>
                 <input type="text" id="mp-player-name-input" placeholder="اكتب اسمك أو لقبك..." value="قائد سيادي" />
+            </div>
+
+            <!-- صندوق استئناف الغرفة المحفوظة السابقة -->
+            <div id="mp-saved-room-box" style="display:none; background:#1b1330; border:2px solid #34d399; border-radius:14px; padding:12px; margin:8px 0;">
+                <h4 style="color:#34d399; margin-bottom:6px;">🔄 عثرنا على غرفة سابقة محفوظة لجهازك:</h4>
+                <p id="mp-saved-room-desc" style="font-size:0.8rem; color:#e2e8f0; margin-bottom:8px;">رمز الغرفة المحفوظة: --</p>
+                <button type="button" id="btn-resume-saved-room" class="btn btn-primary" style="width:100%; background:linear-gradient(180deg, #34d399 0%, #059669 100%) !important; border-color:#a7f3d0 !important;">
+                    🌟 استئناف الغرفة المحفوظة ومتابعة التقدم ➔
+                </button>
             </div>
 
             <div style="background:#130c24; border:2px solid #3b82f6; border-radius:14px; padding:14px; margin:8px 0;">
