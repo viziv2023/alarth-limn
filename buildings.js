@@ -1,6 +1,7 @@
 /**
  * Buildings Engine - عصر الهيمنة
  * محرك الموارد والمنشآت الوطنية وتتبع المراحل الخمس ومنظومة الطاقة النظيفة
+ * (محدث لدعم الواجهة البصرية المعتمدة على الرموز والتفاعل المباشر من العاصمة)
  */
 
 class BuildingsEngine {
@@ -10,6 +11,17 @@ class BuildingsEngine {
     3: "النهضة الحضرية والصناعية",
     4: "السيادة والمدن الذكية",
     5: "الهيمنة العالمية والمشاريع العملاقة"
+  };
+
+  static VISUAL_CATEGORIES = {
+    all: { id: "all", name: "الكل", icon: "🌟" },
+    recommended: { id: "recommended", name: "مقترح لك", icon: "💡" },
+    housing: { id: "housing", name: "السكن", icon: "🏠" },
+    food_water: { id: "food_water", name: "الغذاء والماء", icon: "🌾" },
+    commerce: { id: "commerce", name: "التجارة والترفيه", icon: "🏪" },
+    industry_energy: { id: "industry_energy", name: "الصناعة والطاقة", icon: "🏭" },
+    transport: { id: "transport", name: "النقل والملاحة", icon: "🚢" },
+    civic_security: { id: "civic_security", name: "الخدمات والأمن", icon: "🛡️" }
   };
 
   static RESOURCES_LIST = [
@@ -1646,6 +1658,111 @@ class BuildingsEngine {
     return this.RESOURCES_LIST.find(r => r.id === id) || null;
   }
 
+  // تصنيف بصري للمنشآت لتبسيط الواجهة للصغار والمراهقين
+  static getVisualCategory(resourceId) {
+    if (["house", "house_large", "palace", "apartments", "hotel", "residential_towers", "skyscrapers"].includes(resourceId)) {
+      return "housing";
+    }
+    if (["water_well", "farm", "poultry_farm", "bird", "livestock_farm", "animal", "production_farm", "poultry_complex", "livestock_complex", "water_pump", "water_desalination"].includes(resourceId)) {
+      return "food_water";
+    }
+    if (["shop", "shop_large", "showroom", "markets", "mall", "park", "theme_park", "resort"].includes(resourceId)) {
+      return "commerce";
+    }
+    if (["handicrafts", "workshop", "power_generator", "factory", "oil_well", "fuel_station", "gas_station_shop", "factory_large", "power_plant", "gas_well", "industrial_authority", "oil_field", "solar_farm", "wind_station", "nuclear_reactor"].includes(resourceId)) {
+      return "industry_energy";
+    }
+    if (["boat", "marina", "ship", "cargo_carrier", "regional_airport", "plane_50", "plane_100", "train_station", "train_cart_20", "train_cart_40", "seaport", "cargo_ship_large", "intl_airport", "plane_200", "plane_400", "train_station_large", "train_cart_100", "train_cart_200"].includes(resourceId)) {
+      return "transport";
+    }
+    return "civic_security";
+  }
+
+  // الحصول على الوحدات الفرعية التابعة لمبنى أم (مثل الطيور داخل مزرعة الدواجن أو الطائرات داخل المطار)
+  static getChildUnitsForParent(parentId) {
+    const map = {
+      poultry_farm: ["bird"],
+      poultry_complex: ["bird"],
+      livestock_farm: ["animal"],
+      livestock_complex: ["animal"],
+      marina: ["ship"],
+      seaport: ["cargo_ship_large"],
+      regional_airport: ["plane_50", "plane_100"],
+      intl_airport: ["plane_200", "plane_400"],
+      train_station: ["train_cart_20", "train_cart_40"],
+      train_station_large: ["train_cart_100", "train_cart_200"]
+    };
+    const ids = map[parentId] || [];
+    return ids.map(id => this.getResource(id)).filter(Boolean);
+  }
+
+  // الحصول على رموز الشروط المسبقة بشكل بصري بدلاً من النصوص الطويلة
+  static getPrerequisiteVisuals(res, country) {
+    if (!res || !res.prerequisites || res.prerequisites.length === 0) return [];
+    const b = (country && country.buildings) ? country.buildings : {};
+    return res.prerequisites.map(pId => {
+      const pRes = this.getResource(pId);
+      const owned = Number(b[pId] || 0) > 0;
+      return {
+        id: pId,
+        name: pRes ? pRes.name : pId,
+        icon: pRes ? pRes.icon : "🏗️",
+        owned: owned
+      };
+    });
+  }
+
+  // مستشار البناء الذكي للصغار والمراهقين (يقترح أهم المنشآت المطلوبة الآن)
+  static getSmartRecommendations(country) {
+    if (!country) return [];
+    const b = country.buildings || {};
+    const stage = Number(country.stage) || 1;
+    const recs = [];
+
+    // 1. إذا لم يكن هناك عمال متاحون، اقترح السكن فوراً
+    const unemployed = Math.max(0, Number(country.population || 0) - Number(country.employed || 0));
+    if (unemployed < 2) {
+      if (stage >= 4 && this.checkPrerequisites(country, "residential_towers").satisfied) recs.push("residential_towers");
+      else if (stage >= 3 && this.checkPrerequisites(country, "apartments").satisfied) recs.push("apartments");
+      else if (stage >= 2 && this.checkPrerequisites(country, "house_large").satisfied) recs.push("house_large");
+      else recs.push("house");
+    }
+
+    // 2. إذا كان هناك عجز في الماء أو الكهرباء
+    const waterVal = Number(country.sectors?.water || 0);
+    const elecVal = Number(country.sectors?.electricity || 0);
+    if (waterVal < 0) {
+      if (stage >= 4 && this.checkPrerequisites(country, "water_desalination").satisfied) recs.push("water_desalination");
+      else if (stage >= 2 && this.checkPrerequisites(country, "water_pump").satisfied) recs.push("water_pump");
+      else recs.push("water_well");
+    }
+    if (elecVal < 0) {
+      if (this.checkPrerequisites(country, "wind_station").satisfied) recs.push("wind_station");
+      else if (this.checkPrerequisites(country, "solar_farm").satisfied) recs.push("solar_farm");
+      else if (stage >= 4 && this.checkPrerequisites(country, "power_plant").satisfied) recs.push("power_plant");
+      else if (stage >= 2 && this.checkPrerequisites(country, "power_generator").satisfied) recs.push("power_generator");
+    }
+
+    // 3. المنشآت غير المبنية في المرحلة الحالية والتي تتحقق شروطها
+    const stageItems = this.RESOURCES_LIST.filter(r => Number(r.stage) === stage);
+    stageItems.forEach(res => {
+      if (Number(b[res.id] || 0) === 0 && this.checkPrerequisites(country, res.id).satisfied) {
+        if (!recs.includes(res.id)) recs.push(res.id);
+      }
+    });
+
+    // إذا اكتملت جميع المتطلبات المتاحة، اقترح المنشآت ذات العائد الأعلى في المرحلة
+    if (recs.length === 0) {
+      stageItems
+        .filter(r => r.revenue > 0 && this.checkPrerequisites(country, r.id).satisfied)
+        .sort((a, bItem) => bItem.revenue - a.revenue)
+        .slice(0, 4)
+        .forEach(r => recs.push(r.id));
+    }
+
+    return recs.slice(0, 6);
+  }
+
   static getTotalHousingCapacity(country) {
     if (!country || !country.buildings) return 0;
     const b = country.buildings;
@@ -1874,7 +1991,7 @@ class BuildingsEngine {
     if (!res) return { success: false, msg: "المورد غير معرف!" };
 
     if (Number(country.disposableRevenue || 0) < res.price) {
-      return { success: false, msg: `التحصيل المتاح ($${country.disposableRevenue}) لا يكفي لشراء ${res.name} بقيمة $${res.price}!` };
+      return { success: false, msg: `💵 السيولة المتاحة ($${country.disposableRevenue}) لا تكفي لشراء ${res.icon} ${res.name} ($${res.price})!` };
     }
 
     const prereq = this.checkPrerequisites(country, resourceId);
@@ -1882,10 +1999,12 @@ class BuildingsEngine {
       return { success: false, msg: prereq.reason };
     }
 
+    const unemployed = Math.max(0, Number(country.population || 0) - Number(country.employed || 0));
+    country.unemployed = unemployed;
+
     if (res.populationType === "workforce") {
-      const availableWorkforce = Number(country.unemployed || 0);
-      if (availableWorkforce < res.populationValue) {
-        return { success: false, msg: `لا توجد قوى عاملة شاغرة لتشغيل ${res.name}! يتطلب ${res.populationValue} عامل. وفر سكناً للمواطنين أولاً.` };
+      if (unemployed < res.populationValue) {
+        return { success: false, msg: `👷 لا يوجد عمال متاحون لتشغيل ${res.icon} ${res.name}! يتطلب ${res.populationValue} عامل (ابْنِ بيوتاً 🏠 أولاً).` };
       }
     }
 
@@ -1898,13 +2017,14 @@ class BuildingsEngine {
     country.budget = country.sectorRevenues;
 
     if (res.populationType === "add") {
-      country.population += res.populationValue;
+      country.population = Number(country.population || 0) + res.populationValue;
     } else if (res.populationType === "workforce") {
-      country.employed += res.populationValue;
+      country.employed = Number(country.employed || 0) + res.populationValue;
     }
+    country.unemployed = Math.max(0, Number(country.population || 0) - Number(country.employed || 0));
 
     if (res.id !== "bird" && res.id !== "animal") {
-      country.area += 1;
+      country.area = Number(country.area || 0) + 1;
     }
 
     if (res.sectorEffects) {
@@ -1922,7 +2042,7 @@ class BuildingsEngine {
       window.IndicatorsEngine.refreshCountryIndicators(country);
     }
 
-    return { success: true, msg: `تم بناء وتشييد [${res.name}] بنجاح!` };
+    return { success: true, msg: `تم تشييد ${res.icon} [${res.name}] بنجاح!` };
   }
 
   static demolishResource(country, resourceId) {
@@ -1974,7 +2094,7 @@ class BuildingsEngine {
     if (res.id === "regional_airport") {
       const cap = this.getRegionalAirportCapacity(country);
       if (cap.current > (cap.max - 20)) {
-        return { success: false, msg: `لا يمكن إزالة المطار الإقليمي! لديك ${cap.current} طائرة بينما السعة بعد الإزالة ستصبح ${cap.max - 20}.` };
+        return { satisfied: false, success: false, msg: `لا يمكن إزالة المطار الإقليمي! لديك ${cap.current} طائرة بينما السعة بعد الإزالة ستصبح ${cap.max - 20}.` };
       }
     }
 
@@ -2010,6 +2130,7 @@ class BuildingsEngine {
     } else if (res.populationType === "workforce") {
       country.employed = Math.max(0, country.employed - res.populationValue);
     }
+    country.unemployed = Math.max(0, Number(country.population || 0) - Number(country.employed || 0));
 
     if (res.id !== "bird" && res.id !== "animal") {
       country.area = Math.max(0, country.area - 1);
@@ -2030,7 +2151,7 @@ class BuildingsEngine {
       window.IndicatorsEngine.refreshCountryIndicators(country);
     }
 
-    return { success: true, msg: `تمت إزالة [${res.name}] واسترداد قيمتها ($${res.price}) بنجاح!` };
+    return { success: true, msg: `تمت إزالة ${res.icon} [${res.name}] واسترداد $${res.price}!` };
   }
 
   static calculateTotalRevenue(country) {
@@ -2044,7 +2165,6 @@ class BuildingsEngine {
   }
 
   static checkStageCompletion(country, stageNumber) {
-    // دعم تبويب الطاقة النظيفة المستقل
     if (stageNumber === "clean_energy") {
       const stageItems = this.RESOURCES_LIST.filter(r => r.stage === "clean_energy" || r.category === "clean_energy");
       if (!country || !country.buildings) {
@@ -2106,7 +2226,7 @@ class BuildingsEngine {
     if (!check.isComplete) {
       return {
         success: false,
-        msg: `لا يمكن الانتقال للمرحلة (${targetStage})! يجب توفر وحدة واحدة على الأقل من كل عنصر من عناصر المرحلة (${currentStage}) بالكامل. المتبقي: ${check.missing.join("، ")}`
+        msg: `لا يمكن الانتقال للمرحلة (${targetStage}) بعد! تبقى بناء: ${check.missing.slice(0, 5).join("، ")}${check.missing.length > 5 ? "..." : ""}`
       };
     }
 
@@ -2123,7 +2243,7 @@ class BuildingsEngine {
 
     return {
       success: true,
-      msg: `تهانينا! تمت ترقية دولة ${country.name} رسمياً إلى المرحلة ${targetStage}: ${country.stageName}!`
+      msg: `🎉 تهانينا! ارتقت دولة ${country.name} إلى المرحلة ${targetStage}: ${country.stageName}!`
     };
   }
 
