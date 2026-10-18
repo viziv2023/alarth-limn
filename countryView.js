@@ -1,17 +1,19 @@
 /**
  * ============================================================================
- * countryView.js - واجهة تفاصيل وإدارة الدولة المستقلة (عصر الهيمنة - Pure ES6)
+ * countryView.js - واجهة تفاصيل وإدارة الدولة المستقلة (عصر الهيمنة - v4.8 Pure ES6)
  * ============================================================================
  * 
- * المزايا المحدثة:
- * 1. توافق تام بنسبة 100% مع معايير Pure ES6 القياسية وحل كافة أخطاء بناء الجملة (Syntax Errors).
- * 2. حماية سرية وخصوصية بطاقات الدول: منع أي لاعب في الغرفة من فتح أو إدارة بطاقة لاعب آخر.
- * 3. مزامنة فورية لكافة عمليات البناء والهدم والترقية وسحب الأموال عبر الشبكة (P2P).
- * 4. عدادات وأمبيرات القطاعات الـ 16 التنازلية مهيأة بالكامل للمس على الهواتف.
+ * المزايا المعمارية المحدثة:
+ * 1. جدار الخصوصية السيادية: إتاحة استعراض دول الحلفاء والمنافسين بنمط "المشاهدة الدبلوماسية 👁️"
+ *    مع حجب أزرار الشراء والمشتريات الخاصة، وإتاحة التجول في العاصمة 3D والتابات المشتركة.
+ * 2. إظهار السيولة الحالية والمتبقية لحظياً قبل وبعد الشراء لكل منشأة بدقة متناهية.
+ * 3. الحفاظ التام بنسبة 100% على كافة رموز الخدمات (⚡، 💧، 👷، 🏠) وعدادات القطاعات الـ 16.
+ * 4. متوافق كلياً مع Pure ES6 وخالٍ من أخطاء بناء الجملة (Syntax Errors).
  */
 
 window.currentViewingCountry = null;
 window.currentBuildingTab = 1;
+window.isViewingAsSpectator = false;
 
 // دالة مساعدة للوصول لكائن الدولة سواء تم تمرير كائن أو ID أو اسم
 function resolveCountryObject(target) {
@@ -75,7 +77,7 @@ class CountryViewController {
             };
         }
 
-        // زر رؤية العاصمة ثلاثية الأبعاد Low-Poly
+        // زر رؤية العاصمة ثلاثية الأبعاد Low-Poly (متاح دائماً للمالك وللمشاهد)
         const btnCapital = document.getElementById("btn-open-capital");
         if (btnCapital) {
             btnCapital.onclick = function() {
@@ -184,6 +186,7 @@ class CountryViewController {
         const btnWithdrawAll = document.getElementById("btn-action-withdraw-all");
         if (btnWithdrawAll) {
             btnWithdrawAll.onclick = function() {
+                if (window.isViewingAsSpectator) return;
                 const c = window.currentViewingCountry;
                 if (!c) return;
                 const bankVal = Number(c.bank !== undefined ? c.bank : (c.bankBalance || 0));
@@ -198,7 +201,7 @@ class CountryViewController {
 
                 CountryViewController.render(c);
                 if (window.NetworkEngine) window.NetworkEngine.syncCountryChanges(c);
-                if (window.showGameToast) window.showGameToast("تم سحب $" + bankVal.toLocaleString() + " بالكامل!", "💰");
+                if (window.showGameToast) window.showGameToast("تم سحب $" + bankVal.toLocaleString() + " بالكامل! السيولة المتاحة: $" + Number(c.disposableRevenue).toLocaleString(), "💰");
             };
         }
 
@@ -206,6 +209,7 @@ class CountryViewController {
         const btnWithdrawPart = document.getElementById("btn-action-withdraw-partial");
         if (btnWithdrawPart) {
             btnWithdrawPart.onclick = function() {
+                if (window.isViewingAsSpectator) return;
                 const c = window.currentViewingCountry;
                 if (!c) return;
                 const bankVal = Number(c.bank !== undefined ? c.bank : (c.bankBalance || 0));
@@ -230,6 +234,7 @@ class CountryViewController {
 
                 CountryViewController.render(c);
                 if (window.NetworkEngine) window.NetworkEngine.syncCountryChanges(c);
+                if (window.showGameToast) window.showGameToast("تم سحب $" + amount.toLocaleString() + " | السيولة الحالية: $" + Number(c.disposableRevenue).toLocaleString(), "💵");
             };
         }
 
@@ -237,6 +242,7 @@ class CountryViewController {
         const btnEmergency = document.getElementById("btn-action-worldbank-emergency");
         if (btnEmergency) {
             btnEmergency.onclick = function() {
+                if (window.isViewingAsSpectator) return;
                 const c = window.currentViewingCountry;
                 if (!c) return;
 
@@ -281,7 +287,7 @@ class CountryViewController {
             };
         }
 
-        // فتح نافذة تقديم التبرع
+        // فتح نافذة تقديم التبرع (متاح للجميع لتقديم الدعم الدبلوماسي)
         const btnDonate = document.getElementById("btn-action-donate");
         if (btnDonate) {
             btnDonate.onclick = function() {
@@ -304,10 +310,11 @@ class CountryViewController {
         const btnMax = document.getElementById("btn-donate-max");
         if (btnMax) {
             btnMax.onclick = function() {
-                const c = window.currentViewingCountry;
-                if (!c) return;
+                const myId = window.NetworkEngine ? window.NetworkEngine.getMyCountryId() : null;
+                const sender = myId ? resolveCountryObject(myId) : window.currentViewingCountry;
+                if (!sender) return;
                 const input = document.getElementById("donate-amount-input");
-                if (input) input.value = Math.max(0, Number(c.disposableRevenue || 0));
+                if (input) input.value = Math.max(0, Number(sender.disposableRevenue || 0));
             };
         }
 
@@ -326,7 +333,8 @@ class CountryViewController {
         const btnConfirm = document.getElementById("btn-confirm-donation");
         if (btnConfirm) {
             btnConfirm.onclick = function() {
-                const sender = window.currentViewingCountry;
+                const myId = window.NetworkEngine ? window.NetworkEngine.getMyCountryId() : null;
+                const sender = myId ? resolveCountryObject(myId) : window.currentViewingCountry;
                 if (!sender) return;
 
                 const select = document.getElementById("donate-recipient-select");
@@ -349,34 +357,49 @@ class CountryViewController {
                     return;
                 }
 
-                const res = window.EconomyEngine.sendDonation(sender, recipient, amount);
-                alert(res.msg);
+                if (Number(sender.disposableRevenue || 0) < amount) {
+                    alert("السيولة المتاحة في خزينتك غير كافية لتقديم هذا المبلغ!");
+                    return;
+                }
+
+                const res = window.EconomyEngine ? window.EconomyEngine.sendDonation(sender, recipient, amount) : {
+                    success: true,
+                    msg: "تم تقديم المساعدة المالية بنجاح!"
+                };
 
                 if (res.success) {
+                    if (!window.EconomyEngine) {
+                        sender.disposableRevenue = Number(sender.disposableRevenue || 0) - amount;
+                        recipient.disposableRevenue = Number(recipient.disposableRevenue || 0) + amount;
+                    }
                     modal.classList.remove("active");
-                    CountryViewController.render(sender);
+                    CountryViewController.render(window.currentViewingCountry);
                     if (window.NetworkEngine) {
                         window.NetworkEngine.syncCountryChanges(sender);
                         window.NetworkEngine.syncCountryChanges(recipient);
                     }
                     if (window.renderNationsTable) window.renderNationsTable();
+                    if (window.showGameToast) window.showGameToast("تم إرسال منحة مالية قدرها $" + amount.toLocaleString() + " إلى " + recipient.name, "🎁");
+                } else {
+                    alert(res.msg);
                 }
             };
         }
     }
 
     static openDonationModal() {
-        const c = window.currentViewingCountry;
-        if (!c) return;
+        const myId = window.NetworkEngine ? window.NetworkEngine.getMyCountryId() : null;
+        const sender = myId ? resolveCountryObject(myId) : window.currentViewingCountry;
+        if (!sender) return;
 
         const modal = document.getElementById("modal-donate-aid");
         if (!modal) return;
 
         const donorName = document.getElementById("donate-donor-name");
-        if (donorName) donorName.value = c.name;
+        if (donorName) donorName.value = sender.name;
 
         const availFunds = document.getElementById("donate-available-funds");
-        if (availFunds) availFunds.textContent = "$" + Number(c.disposableRevenue || 0).toLocaleString();
+        if (availFunds) availFunds.textContent = "$" + Number(sender.disposableRevenue || 0).toLocaleString();
 
         const input = document.getElementById("donate-amount-input");
         if (input) input.value = "";
@@ -384,8 +407,9 @@ class CountryViewController {
         const select = document.getElementById("donate-recipient-select");
         if (select && window.currentWorld && Array.isArray(window.currentWorld.countries)) {
             select.innerHTML = "";
+            const targetViewing = window.currentViewingCountry;
             const otherCountries = window.currentWorld.countries.filter(function(other) {
-                return other.id !== c.id && other.name !== c.name;
+                return other.id !== sender.id;
             });
 
             if (otherCountries.length === 0) {
@@ -395,6 +419,9 @@ class CountryViewController {
                     const opt = document.createElement("option");
                     opt.value = other.id || other.name;
                     opt.textContent = other.name + " (التحصيل الحالي: $" + Number(other.disposableRevenue || 0).toLocaleString() + ")";
+                    if (targetViewing && targetViewing.id === other.id) {
+                        opt.selected = true;
+                    }
                     select.appendChild(opt);
                 });
             }
@@ -407,11 +434,12 @@ class CountryViewController {
         const btnUpgrade = document.getElementById("btn-upgrade-stage");
         if (btnUpgrade) {
             btnUpgrade.onclick = function() {
+                if (window.isViewingAsSpectator) return;
                 const c = window.currentViewingCountry;
                 if (!c) return;
                 const currentStage = Number(c.stage) || 1;
                 const targetStage = currentStage + 1;
-                const res = BuildingsEngine.upgradeToStage(c, targetStage, window.currentWorld);
+                const res = window.BuildingsEngine.upgradeToStage(c, targetStage, window.currentWorld);
                 alert(res.msg);
                 if (res.success) {
                     CountryViewController.render(c);
@@ -421,21 +449,16 @@ class CountryViewController {
         }
     }
 
+    // =========================================================================
+    // فتح بطاقة الدولة: دعم نمط المشاهدة ونمط المالك دون حجب
+    // =========================================================================
     static open(target) {
         const country = resolveCountryObject(target);
         if (!country) return;
 
-        if (window.NetworkEngine && typeof window.NetworkEngine.canControlCountry === "function") {
-            const hasAccess = window.NetworkEngine.canControlCountry(country.id);
-            if (!hasAccess) {
-                if (window.showGameToast) {
-                    window.showGameToast("🔒 دولة \"" + country.name + "\" خاصة بقائد آخر! لا يمكنك الاطلاع على بطاقتها الخاصة أو إدارتها.", "🛡️");
-                } else {
-                    alert("🔒 دولة \"" + country.name + "\" خاصة بقائد آخر! لا يمكنك الاطلاع على بطاقتها الخاصة أو إدارتها.");
-                }
-                return;
-            }
-        }
+        // التحقق من الملكية: هل أنا المالك أم ضيف مشاهد؟
+        const isOwner = window.NetworkEngine ? window.NetworkEngine.canControlCountry(country.id) : true;
+        window.isViewingAsSpectator = !isOwner;
 
         window.currentViewingCountry = country;
 
@@ -445,6 +468,10 @@ class CountryViewController {
         }
         const screen = document.getElementById("country-detail-screen");
         if (screen) screen.classList.add("active");
+
+        if (window.isViewingAsSpectator && window.showGameToast) {
+            window.showGameToast("👁️ استعراض دولة [" + country.name + "] بنمط المشاهدة الدبلوماسية", "🌐");
+        }
 
         this.render(country);
     }
@@ -456,11 +483,18 @@ class CountryViewController {
     static render(country) {
         if (!country) return;
 
+        const isOwner = !window.isViewingAsSpectator;
+
         const nameEl = document.getElementById("detail-country-name");
-        if (nameEl) nameEl.textContent = country.name || "--";
+        if (nameEl) {
+            nameEl.textContent = country.name || "--";
+        }
 
         const stageEl = document.getElementById("detail-country-stage");
-        if (stageEl) stageEl.textContent = country.stageName || ("المرحلة " + (country.stage || 1));
+        if (stageEl) {
+            stageEl.innerHTML = (country.stageName || ("المرحلة " + (country.stage || 1))) +
+                (isOwner ? "" : ' <span class="badge badge-purple" style="font-size:0.75rem; margin-right:4px;">👁️ وضع المشاهدة</span>');
+        }
 
         const yearEl = document.getElementById("detail-year");
         const currentYear = (window.currentWorld && window.currentWorld.year) ? window.currentWorld.year : (country.year || 1);
@@ -471,6 +505,17 @@ class CountryViewController {
             (country.militaryPower || 0);
         const topMil = document.getElementById("top-military-power-badge");
         if (topMil) topMil.textContent = "القوة: " + Number(milPower).toLocaleString();
+
+        // إتاحة أو تعطيل أزرار الصرف بناءً على صفة المشاهد
+        const withdrawAllBtn = document.getElementById("btn-action-withdraw-all");
+        const withdrawPartBtn = document.getElementById("btn-action-withdraw-partial");
+        const emergencyBtn = document.getElementById("btn-action-worldbank-emergency");
+        const milHqBtn = document.getElementById("btn-open-military-hq");
+
+        if (withdrawAllBtn) withdrawAllBtn.style.display = isOwner ? "inline-flex" : "none";
+        if (withdrawPartBtn) withdrawPartBtn.style.display = isOwner ? "inline-flex" : "none";
+        if (emergencyBtn) emergencyBtn.style.display = isOwner ? "inline-flex" : "none";
+        if (milHqBtn) milHqBtn.style.display = isOwner ? "inline-flex" : "none";
 
         const flagBox = document.getElementById("detail-flag-box");
         if (flagBox) {
@@ -542,7 +587,7 @@ class CountryViewController {
         const revEl = document.getElementById("val-revenue");
         if (revEl) revEl.textContent = "$" + Number(country.disposableRevenue || 0).toLocaleString();
 
-        const currentBankVal = Number(c => c !== undefined ? c : 0)(country.bank !== undefined ? country.bank : (country.bankBalance || 0));
+        const currentBankVal = Number(country.bank !== undefined ? country.bank : (country.bankBalance || 0));
         const bankEl = document.getElementById("val-bank");
         if (bankEl) bankEl.textContent = "$" + currentBankVal.toLocaleString();
 
@@ -558,7 +603,7 @@ class CountryViewController {
 
         const totRevBadge = document.getElementById("bldg-total-revenue-badge");
         if (totRevBadge) {
-            const totRev = BuildingsEngine.calculateTotalRevenue(country);
+            const totRev = window.BuildingsEngine ? window.BuildingsEngine.calculateTotalRevenue(country) : 0;
             totRevBadge.textContent = "عوائد المنشآت: $" + totRev.toLocaleString() + " / سنة";
         }
 
@@ -567,23 +612,57 @@ class CountryViewController {
         this.renderSectorsGrid(country);
     }
 
+    // =========================================================================
+    // جدول المنشآت: جدار الخصوصية للمشاهد + إظهار السيولة المتبقية للمالك
+    // =========================================================================
     static renderBuildingsTable(country, selectedTab) {
         if (selectedTab === undefined) selectedTab = 1;
         const tbody = document.getElementById("buildings-tbody");
         const btnUpgrade = document.getElementById("btn-upgrade-stage");
         const progTxt = document.getElementById("bldg-stage-progress-text");
+        const bldgTabsNav = document.querySelector(".bldg-tabs-nav");
         if (!tbody || !country) return;
 
         tbody.innerHTML = "";
 
+        const isOwner = !window.isViewingAsSpectator;
+
+        // حالة الزائر المشاهد (جدار الخصوصية السيادية)
+        if (!isOwner) {
+            if (bldgTabsNav) bldgTabsNav.style.display = "none";
+            if (btnUpgrade) btnUpgrade.style.display = "none";
+            if (progTxt) progTxt.textContent = "🛡️ المخطط العمراني والتجاري محفوظ لسيادة دولة [" + country.name + "]";
+
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="10" style="text-align:center; padding:35px 20px; background:rgba(15, 10, 28, 0.65);">
+                        <div style="font-size:2.8rem; margin-bottom:10px;">🏛️</div>
+                        <h3 style="color:#fde047; margin-bottom:8px;">تفاصيل المشتريات والمنشآت خاصة بقيادة الدولة</h3>
+                        <p style="color:#cbd5e1; font-size:0.9rem; max-width:600px; margin:0 auto 16px auto; line-height:1.6;">
+                            حفاظاً على سرية وخصوصية الاستراتيجية الوطنية، لا تظهر جداول الشراء الداخلية للزوار. يمكنك التجول في <strong>العاصمة ثلاثية الأبعاد (3D)</strong> للاطلاع على تطور مباني ومعالم الدولة الحية.
+                        </p>
+                        <button type="button" class="btn btn-accent" onclick="if(window.CapitalView) window.CapitalView.open(window.currentViewingCountry);" style="padding:10px 24px; font-weight:900;">
+                            🏛️ الدخول واستعراض العاصمة 3D مباشرة ➔
+                        </button>
+                    </td>
+                </tr>
+            `;
+            return;
+        }
+
+        // حالة المالك (الوصول الكامل مع حاسبة السيولة المتبقية)
+        if (bldgTabsNav) bldgTabsNav.style.display = "flex";
+
+        const currentDisposable = Number(country.disposableRevenue || 0);
+
         if (selectedTab === "clean_energy") {
-            if (progTxt) progTxt.textContent = "🌱 منظومة الطاقة النظيفة المستقلة (شمسية، رياح، مفاعلات نووية)";
+            if (progTxt) progTxt.textContent = "🌱 منظومة الطاقة النظيفة المستقلة | السيولة الحالية: $" + currentDisposable.toLocaleString();
             if (btnUpgrade) btnUpgrade.style.display = "none";
         } else {
             if (btnUpgrade) btnUpgrade.style.display = "inline-block";
-            const comp = BuildingsEngine.checkStageCompletion(country, selectedTab);
+            const comp = window.BuildingsEngine ? window.BuildingsEngine.checkStageCompletion(country, selectedTab) : { ownedTypes: 0, totalTypes: 12, isComplete: false };
             if (progTxt) {
-                progTxt.textContent = "اكتمال متطلبات المرحلة " + selectedTab + ": " + comp.ownedTypes + " من أصل " + comp.totalTypes;
+                progTxt.textContent = "المرحلة " + selectedTab + ": (" + comp.ownedTypes + " / " + comp.totalTypes + ") | السيولة الحرة: $" + currentDisposable.toLocaleString();
             }
 
             const countryStage = Number(country.stage) || 1;
@@ -600,12 +679,12 @@ class CountryViewController {
             }
         }
 
-        const resources = BuildingsEngine.RESOURCES_LIST.filter(function(res) {
+        const resources = window.BuildingsEngine ? window.BuildingsEngine.RESOURCES_LIST.filter(function(res) {
             if (selectedTab === "clean_energy") {
                 return res.stage === "clean_energy" || res.category === "clean_energy";
             }
             return Number(res.stage) === Number(selectedTab);
-        });
+        }) : [];
 
         if (resources.length === 0) {
             tbody.innerHTML = '<tr><td colspan="10" style="text-align:center; padding:20px; color:#a0aec0;">لا توجد منشآت لعرضها في هذا القسم.</td></tr>';
@@ -614,8 +693,9 @@ class CountryViewController {
 
         resources.forEach(function(res) {
             const ownedCount = Number((country.buildings && country.buildings[res.id]) ? country.buildings[res.id] : 0);
-            const prereq = BuildingsEngine.checkPrerequisites(country, res.id);
-            const canAfford = Number(country.disposableRevenue || 0) >= res.price;
+            const prereq = window.BuildingsEngine ? window.BuildingsEngine.checkPrerequisites(country, res.id) : { satisfied: true };
+            const canAfford = currentDisposable >= res.price;
+            const remainingAfterPurchase = currentDisposable - res.price;
 
             let elecBonus = 0;
             if (res.sectorEffects && res.sectorEffects.electricity > 0) {
@@ -623,6 +703,14 @@ class CountryViewController {
             }
             const elecText = res.electricityNeed ? String(res.electricityNeed) : (elecBonus > 0 ? "+" + elecBonus : "0");
             const popText = res.populationType === "workforce" ? ("👷 " + res.populationValue) : (res.populationType === "add" ? ("🏠 +" + res.populationValue) : "-");
+
+            // مؤشر السيولة المتبقية الحية
+            let remainingTextHtml = "";
+            if (canAfford) {
+                remainingTextHtml = '<span style="display:block; font-size:0.72rem; color:#34d399; font-weight:800; margin-top:2px;">يتبقى: $' + remainingAfterPurchase.toLocaleString() + '</span>';
+            } else {
+                remainingTextHtml = '<span style="display:block; font-size:0.72rem; color:#fb7185; font-weight:800; margin-top:2px;">عجز: -$' + Math.abs(remainingAfterPurchase).toLocaleString() + '</span>';
+            }
 
             const tr = document.createElement("tr");
             tr.innerHTML = `
@@ -635,7 +723,10 @@ class CountryViewController {
             </div>
           </div>
         </td>
-        <td class="td-center"><span class="price-val">$${res.price.toLocaleString()}</span></td>
+        <td class="td-center">
+            <span class="price-val">$${res.price.toLocaleString()}</span>
+            ${remainingTextHtml}
+        </td>
         <td class="td-center"><span class="${res.revenue >= 0 ? 'rev-val' : 'price-val'}">${res.revenue >= 0 ? '+$' + res.revenue : '-$' + Math.abs(res.revenue)}</span></td>
         <td class="td-center">${popText}</td>
         <td class="td-center">
@@ -656,7 +747,8 @@ class CountryViewController {
           <div class="action-btn-group">
             <button class="${prereq.satisfied && canAfford ? 'btn-buy-active' : 'btn-buy-disabled'}" 
                     onclick="handleBuyResource('${res.id}')" 
-                    ${!prereq.satisfied || !canAfford ? 'disabled' : ''}>
+                    ${!prereq.satisfied || !canAfford ? 'disabled' : ''}
+                    title="${canAfford ? 'شراء وتشييد' : 'السيولة المتاحة غير كافية'}">
               شراء
             </button>
             <button class="btn-demolish" 
@@ -876,7 +968,7 @@ class CountryViewController {
     }
 }
 
-// جسر التوافق لكافة الاستدعاءات
+// جسر التوافق لكافة الاستدعاءات الخارجية
 window.openCountry = function(target) { return CountryViewController.open(target); };
 window.viewCountry = function(target) { return CountryViewController.open(target); };
 window.showCountry = function(target) { return CountryViewController.open(target); };
@@ -888,26 +980,45 @@ CountryViewController.renderCountry = function(target) { return CountryViewContr
 
 window.CountryView = CountryViewController;
 
+// أوامر الشراء والهدم مع التحديث اللحظي للسيولة الحرة
 window.handleBuyResource = function(resourceId) {
-    if (!window.currentViewingCountry) return;
-    const res = BuildingsEngine.purchaseResource(window.currentViewingCountry, resourceId);
+    if (window.isViewingAsSpectator) {
+        alert("🔒 لا يمكنك التشييد أو الشراء في دولة خاصة بقائد آخر!");
+        return;
+    }
+    const c = window.currentViewingCountry;
+    if (!c) return;
+
+    const res = window.BuildingsEngine ? window.BuildingsEngine.purchaseResource(c, resourceId) : { success: false, msg: "محرك البناء غير متاح" };
     if (!res.success) {
         alert(res.msg);
     } else {
-        CountryViewController.render(window.currentViewingCountry);
-        if (window.NetworkEngine) window.NetworkEngine.syncCountryChanges(window.currentViewingCountry);
+        CountryViewController.render(c);
+        if (window.NetworkEngine) window.NetworkEngine.syncCountryChanges(c);
+        if (window.showGameToast) {
+            window.showGameToast("تم تشييد المنشأة بنجاح! الرصيد المتبقي: $" + Number(c.disposableRevenue).toLocaleString(), "🏗️");
+        }
     }
 };
 
 window.handleDemolishResource = function(resourceId) {
-    if (!window.currentViewingCountry) return;
+    if (window.isViewingAsSpectator) {
+        alert("🔒 لا يمكنك إزالة منشآت دولة خاصة بقائد آخر!");
+        return;
+    }
+    const c = window.currentViewingCountry;
+    if (!c) return;
+
     if (!confirm("هل أنت متأكد من رغبتك في إزالة هذه المنشأة؟")) return;
-    const res = BuildingsEngine.demolishResource(window.currentViewingCountry, resourceId);
+    const res = window.BuildingsEngine ? window.BuildingsEngine.demolishResource(c, resourceId) : { success: false, msg: "محرك البناء غير متاح" };
     if (!res.success) {
         alert(res.msg);
     } else {
-        CountryViewController.render(window.currentViewingCountry);
-        if (window.NetworkEngine) window.NetworkEngine.syncCountryChanges(window.currentViewingCountry);
+        CountryViewController.render(c);
+        if (window.NetworkEngine) window.NetworkEngine.syncCountryChanges(c);
+        if (window.showGameToast) {
+            window.showGameToast("تمت الإزالة بنجاح! الرصيد الحالي: $" + Number(c.disposableRevenue).toLocaleString(), "🔨");
+        }
     }
 };
 
