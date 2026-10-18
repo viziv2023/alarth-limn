@@ -1763,6 +1763,23 @@ class BuildingsEngine {
     return recs.slice(0, 6);
   }
 
+  static refreshFallbackIndicators(country) {
+    if (!country) return;
+    let sectorSum = 0;
+    if (country.sectors) {
+      Object.values(country.sectors).forEach(v => {
+        sectorSum += Number(v || 0);
+      });
+    }
+    const rev = Number(country.budget || 0);
+    const area = Number(country.area || 0);
+    const pop = Number(country.population || 0);
+    const mil = Number(country.military?.totalPower || country.militaryPower || 0);
+    country.generalIndex = Math.round((rev * 0.5) + sectorSum + (area * 2) + (pop * 0.5) + (mil * 0.2));
+    country.perCapitaIncome = pop > 0 ? Math.max(0, Math.round((rev * 10 + Number(country.disposableRevenue || 0)) / pop)) : 0;
+    country.currencyValue = Number(Math.max(0.1, 1.0 + (country.generalIndex / 500)).toFixed(2));
+  }
+
   static getTotalHousingCapacity(country) {
     if (!country || !country.buildings) return 0;
     const b = country.buildings;
@@ -2040,6 +2057,8 @@ class BuildingsEngine {
 
     if (window.IndicatorsEngine && typeof window.IndicatorsEngine.refreshCountryIndicators === "function") {
       window.IndicatorsEngine.refreshCountryIndicators(country);
+    } else {
+      this.refreshFallbackIndicators(country);
     }
 
     return { success: true, msg: `تم تشييد ${res.icon} [${res.name}] بنجاح!` };
@@ -2149,6 +2168,8 @@ class BuildingsEngine {
 
     if (window.IndicatorsEngine && typeof window.IndicatorsEngine.refreshCountryIndicators === "function") {
       window.IndicatorsEngine.refreshCountryIndicators(country);
+    } else {
+      this.refreshFallbackIndicators(country);
     }
 
     return { success: true, msg: `تمت إزالة ${res.icon} [${res.name}] واسترداد $${res.price}!` };
