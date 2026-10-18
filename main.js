@@ -1,17 +1,15 @@
 /**
  * ============================================================================
- * main.js - محرك التشغيل الرئيسي، إدارة الواجهات، والربط الشبكي الشامل (v4.8)
+ * main.js - محرك التشغيل الرئيسي والانتقال المباشر لمشهد العاصمة 3D (v5.0)
  * ============================================================================
- * 
+ *
  * المزايا المحدثة:
- * 1. دعم كامل لتأسيس الدول المستقلة وبثها لحظياً عبر الشبكة لكافة اللاعبين.
- * 2. الكشف التلقائي عن الغرف المحفوظة مسبقاً وإتاحة استئناف اللعب بنفس الرمز.
- * 3. التحديث اللحظي للتابات الثمانية والشريط السفلي للهواتف الذكية.
- * 4. إدارة سليمة للانتقال بين السنوات المالية بالجاهزية الفردية أو الجماعية.
- * 5. متوافق 100% مع Pure ES6 وخالٍ تماماً من أخطاء بناء الجملة.
+ * 1. الانتقال الفوري والمباشر إلى مشهد العاصمة ثلاثي الأبعاد (`CapitalView.open`)
+ *    فور إنشاء اللاعب لدولته أو الضغط على بطاقة أي دولة.
+ * 2. فتح نافذة تأسيس الدولة تلقائياً عند بدء عالم جديد فارغ لعدم تشتيت اللاعب.
+ * 3. زر مباشر في شاشة العالم للعودة الفورية إلى عاصمة اللاعب (`#btn-go-my-capital`).
  */
 
-// كائن العالم العام
 window.currentWorld = null;
 window.soundEnabled = true;
 
@@ -117,7 +115,8 @@ function setupMainMenuEvents() {
             if (window.World) window.currentWorld = new window.World();
             showDashboardScreen();
             renderNationsTable();
-            window.showGameToast("انطلق العالم السيادي الجديد!", "🚀");
+            // فتح نافذة تأسيس الدولة مباشرة ليبدأ اللاعب بتصميم دولته والدخول للعاصمة فوراً
+            openCreateCountryModal();
         };
     }
 
@@ -137,6 +136,26 @@ function setupMainMenuEvents() {
 // 3. أحداث لوحة القيادة والشريط العلوي (Dashboard & HUD Events)
 // =========================================================================
 function setupDashboardEvents() {
+    const btnGoMyCap = document.getElementById("btn-go-my-capital");
+    if (btnGoMyCap) {
+        btnGoMyCap.onclick = function() {
+            window.GameSFX.playClick();
+            const countries = (window.currentWorld && window.currentWorld.countries) ? window.currentWorld.countries : [];
+            if (countries.length === 0) {
+                openCreateCountryModal();
+                return;
+            }
+            const myId = (window.NetworkEngine && typeof window.NetworkEngine.getMyCountryId === "function") ?
+                window.NetworkEngine.getMyCountryId() : null;
+            const targetCountry = (myId && countries.find(c => String(c.id) === String(myId))) ||
+                window.currentViewingCountry ||
+                countries[0];
+            if (targetCountry && window.CapitalView) {
+                window.CapitalView.open(targetCountry);
+            }
+        };
+    }
+
     const btnNextYear = document.getElementById("btn-global-next-year");
     if (btnNextYear) {
         btnNextYear.onclick = function() {
@@ -221,16 +240,23 @@ function setupDashboardEvents() {
 // =========================================================================
 // 4. إدارة نافذة الغرف المتعددة والحفظ الدائم (Multiplayer Lobby)
 // =========================================================================
+function getSafeLocalStorage(key) {
+    try {
+        return localStorage.getItem(key);
+    } catch (e) {
+        return null;
+    }
+}
+
 function openMultiplayerLobbyModal() {
     const modal = document.getElementById("modal-multiplayer-lobby");
     if (!modal) return;
 
-    // فحص ما إذا كانت هناك غرفة محفوظة مسبقاً لهذا الجهاز
-    const lastRoomId = localStorage.getItem("hegemony_last_active_room");
+    const lastRoomId = getSafeLocalStorage("hegemony_last_active_room");
     const savedBox = document.getElementById("mp-saved-room-box");
     const savedDesc = document.getElementById("mp-saved-room-desc");
 
-    if (lastRoomId && localStorage.getItem("hegemony_room_save_" + lastRoomId) && savedBox && savedDesc) {
+    if (lastRoomId && getSafeLocalStorage("hegemony_room_save_" + lastRoomId) && savedBox && savedDesc) {
         savedBox.style.display = "block";
         savedDesc.textContent = "رمز الغرفة المحفوظة: " + lastRoomId + " (يمكنك استئنافها ومتابعة اللعب)";
 
@@ -239,12 +265,14 @@ function openMultiplayerLobbyModal() {
             btnResume.onclick = function() {
                 const nameInp = document.getElementById("mp-player-name-input");
                 const pName = (nameInp && nameInp.value) ? nameInp.value.trim() : "قائد سيادي";
-                window.NetworkEngine.createRoom(lastRoomId, pName, function(res) {
-                    if (res.success) {
-                        modal.classList.remove("active");
-                        showDashboardScreen();
-                    }
-                });
+                if (window.NetworkEngine) {
+                    window.NetworkEngine.createRoom(lastRoomId, pName, function(res) {
+                        if (res.success) {
+                            modal.classList.remove("active");
+                            showDashboardScreen();
+                        }
+                    });
+                }
             };
         }
     } else if (savedBox) {
@@ -270,12 +298,15 @@ function setupMultiplayerLobbyEvents() {
         btnCreate.onclick = function() {
             const nameInp = document.getElementById("mp-player-name-input");
             const pName = (nameInp && nameInp.value) ? nameInp.value.trim() : "قائد سيادي";
-            window.NetworkEngine.createRoom(null, pName, function(res) {
-                if (res.success) {
-                    modal.classList.remove("active");
-                    showDashboardScreen();
-                }
-            });
+            if (window.NetworkEngine) {
+                window.NetworkEngine.createRoom(null, pName, function(res) {
+                    if (res.success) {
+                        modal.classList.remove("active");
+                        showDashboardScreen();
+                        openCreateCountryModal();
+                    }
+                });
+            }
         };
     }
 
@@ -288,30 +319,36 @@ function setupMultiplayerLobbyEvents() {
             const pName = (nameInp && nameInp.value) ? nameInp.value.trim() : "قائد سيادي";
 
             if (!code) {
-                alert("يرجى إدخال رمز الغرفة أولاً!");
+                window.showGameToast("يرجى إدخال رمز الغرفة أولاً!", "⚠️");
                 return;
             }
 
-            window.NetworkEngine.joinRoom(code, pName, function(res) {
-                if (res.success) {
-                    modal.classList.remove("active");
-                    showDashboardScreen();
-                }
-            });
+            if (window.NetworkEngine) {
+                window.NetworkEngine.joinRoom(code, pName, function(res) {
+                    if (res.success) {
+                        modal.classList.remove("active");
+                        showDashboardScreen();
+                    }
+                });
+            }
         };
     }
 }
 
 // =========================================================================
-// 5. نافذة تأسيس دولة جديدة ومزامنتها عبر الشبكة (Nation Creation Sync)
+// 5. نافذة تأسيس دولة جديدة والانتقال المباشر إلى مشهد العاصمة 3D
 // =========================================================================
 function openCreateCountryModal() {
     const modal = document.getElementById("modal-create-country");
     if (!modal) return;
     const nameInp = document.getElementById("country-name-input");
-    if (nameInp) nameInp.value = "";
+    if (nameInp) {
+        nameInp.value = "";
+        setTimeout(() => nameInp.focus(), 80);
+    }
     modal.classList.add("active");
 }
+window.openCreateCountryModal = openCreateCountryModal;
 
 function setupCreationModalEvents() {
     const modal = document.getElementById("modal-create-country");
@@ -331,7 +368,8 @@ function setupCreationModalEvents() {
             const nationName = nameInp ? nameInp.value.trim() : "";
 
             if (!nationName) {
-                alert("يرجى إدخال اسم الدولة!");
+                window.showGameToast("يرجى كتابة اسم دولتك أولاً!", "⚠️");
+                if (nameInp) nameInp.focus();
                 return;
             }
 
@@ -352,10 +390,10 @@ function setupCreationModalEvents() {
                     name: nationName,
                     flag: flagColors,
                     stage: 1,
-                    stageName: "المرحلة 1",
-                    population: 1000,
+                    stageName: "النشأة والتأسيس",
+                    population: 10,
                     employed: 0,
-                    unemployed: 1000,
+                    unemployed: 10,
                     budget: 0,
                     disposableRevenue: 200,
                     bank: 0,
@@ -364,14 +402,13 @@ function setupCreationModalEvents() {
                     currencyValue: 1.0,
                     perCapitaIncome: 200,
                     area: 10,
-                    buildings: {},
+                    buildings: window.BuildingsEngine ? window.BuildingsEngine.createDefaultBuildings() : {},
                     sectors: {},
                     energy: {},
                     military: { inventory: {}, totalPower: 0, totalCrew: 0, totalFuelConsumption: 0, netAmmoBalance: 0, ammoDemand: 0, ammoProduction: 0 }
                 };
             }
 
-            // فحص الاتصال بالشبكة لبث الدولة لكافة اللاعبين
             if (window.NetworkEngine && window.NetworkEngine.getRoomId()) {
                 window.NetworkEngine.syncNewCountry(newCountry);
             } else {
@@ -386,13 +423,23 @@ function setupCreationModalEvents() {
             }
 
             modal.classList.remove("active");
-            window.showGameToast("تم إعلان تأسيس دولة [" + nationName + "] بنجاح!", "👑");
+            window.currentViewingCountry = newCountry;
+            window.isViewingAsSpectator = false;
+
+            // الانتقال الفوري والمباشر إلى مشهد العاصمة ثلاثي الأبعاد!
+            if (window.CapitalView && typeof window.CapitalView.open === "function") {
+                window.CapitalView.open(newCountry);
+            } else if (window.CountryViewController) {
+                window.CountryViewController.open(newCountry);
+            }
+
+            window.showGameToast("🎉 مرحباً بك في عاصمة [" + nationName + "]! اضغط على أي أرض أو أيقونة للبناء", "🏛️");
         };
     }
 }
 
 // =========================================================================
-// 6. نافذة تدوير السنة المالية العادية (Single Player Next Year Modal)
+// 6. نافذة تدوير السنة المالية (Next Year Modal)
 // =========================================================================
 function setupYearConfirmationEvents() {
     const modal = document.getElementById("modal-confirm-year");
@@ -410,11 +457,19 @@ function setupYearConfirmationEvents() {
         btnYes.onclick = function() {
             modal.classList.remove("active");
             if (window.currentWorld) {
-                window.currentWorld.advanceYear();
+                if (typeof window.currentWorld.advanceYear === "function") {
+                    window.currentWorld.advanceYear();
+                }
                 if (window.GameSFX) window.GameSFX.newYear();
                 if (window.NetworkEngine) window.NetworkEngine.refreshAllGameViews();
                 else renderNationsTable();
-                window.showGameToast("انطلقت السنة المالية " + window.currentWorld.year + "م!", "🌟");
+
+                // تحديث العاصمة فوراً إذا كان اللاعب داخل مشهد العاصمة
+                if (window.CapitalView && typeof window.CapitalView.refreshHUDAndMap === "function") {
+                    window.CapitalView.refreshHUDAndMap();
+                }
+
+                window.showGameToast("🌟 انطلقت السنة المالية " + (window.currentWorld.year || 1) + "م وتم جني العوائد!", "💰");
             }
         };
     }
@@ -451,13 +506,11 @@ function setupTabSwitching() {
             }
         });
 
-        // مزامنة أزرار الجوال السفلية
         document.querySelectorAll(".mob-nav-btn").forEach(function(mBtn) {
             if (mBtn.dataset.target === targetKey) mBtn.classList.add("active");
             else mBtn.classList.remove("active");
         });
 
-        // إعادة رسم محتوى التاب النشط
         if (targetKey === "table") renderNationsTable();
         else if (targetKey === "charts" && window.ChartsManager) window.ChartsManager.render(window.currentWorld);
         else if (targetKey === "chronicle" && window.ChronicleManager) window.ChronicleManager.render(window.currentWorld);
@@ -497,23 +550,22 @@ function renderNationsTable() {
 
     const countries = (window.currentWorld && window.currentWorld.countries) ? window.currentWorld.countries : [];
 
-    // تحديث إحصائيات الشريط العلوي
     const countBadge = document.getElementById("global-stats-count");
-    if (countBadge) countBadge.textContent = "🌍 إجمالي الدول: " + countries.length;
+    if (countBadge) countBadge.textContent = "🌍 الدول: " + countries.length;
 
     const yearBadge = document.getElementById("global-year-badge");
-    if (yearBadge && window.currentWorld) yearBadge.textContent = "⏳ السنة المالية: " + (window.currentWorld.year || 1) + "م";
+    if (yearBadge && window.currentWorld) yearBadge.textContent = "⏳ السنة: " + (window.currentWorld.year || 1) + "م";
 
     if (countries.length === 0) {
         grid.innerHTML = `
             <div class="nations-empty-card">
                 <div style="font-size:3.2rem; margin-bottom:10px;">🏰</div>
-                <h3 style="color:#fde047; margin-bottom:8px;">لا توجد أي دول مؤسسة في هذا العالم حتى الآن!</h3>
+                <h3 style="color:#fde047; margin-bottom:8px;">ابدأ رحلتك الآن وأسس دولتك الأولى!</h3>
                 <p style="color:#e2e8f0; font-size:0.92rem; margin-bottom:18px;">
-                    اضغط على زر (<strong>+ تأسيس دولة</strong>) في الشريط العلوي لإعلان قيام أول إمبراطورية سيادية.
+                    صمّم علمك الوطني وانتقل مباشرةً إلى عاصمتك ثلاثية الأبعاد لبناء المنشآت وقيادة الجيوش.
                 </p>
                 <button type="button" class="btn btn-primary" onclick="openCreateCountryModal()">
-                    🏰 + تأسيس أول دولة الآن ➔
+                    🏰 + تأسيس دولتي والدخول للعاصمة ➔
                 </button>
             </div>
         `;
@@ -549,8 +601,8 @@ function renderNationsTable() {
 
             <div class="nation-card-stats-grid">
                 <div class="nation-card-stat">
-                    <span class="stat-label">💰 الميزانية:</span>
-                    <span class="stat-val text-gold">$${Number(c.budget || 0).toLocaleString()}</span>
+                    <span class="stat-label">💵 السيولة:</span>
+                    <span class="stat-val text-emerald">$${Number(c.disposableRevenue || 0).toLocaleString()}</span>
                 </div>
                 <div class="nation-card-stat">
                     <span class="stat-label">👥 السكان:</span>
@@ -567,7 +619,7 @@ function renderNationsTable() {
             </div>
 
             <div class="nation-card-play-footer">
-                ${isMyOwn ? '🎮 فتح غرفة القيادة وإدارة المنشآت ➔' : '👁️ استعراض العاصمة 3D والمؤشرات ➔'}
+                ${isMyOwn ? '🏛️ دخول العاصمة 3D والبناء المباشر ➔' : '👁️ التجول في العاصمة 3D ➔'}
             </div>
         `;
 
@@ -575,12 +627,13 @@ function renderNationsTable() {
             window.GameSFX.playClick();
             if (window.CountryViewController) {
                 window.CountryViewController.open(c.id);
+            } else if (window.CapitalView) {
+                window.CapitalView.open(c);
             }
         };
 
         grid.appendChild(card);
 
-        // رسم العلم
         const flagBox = document.getElementById("nation-flag-grid-" + c.id);
         if (flagBox) {
             if (window.FlagEditor && typeof window.FlagEditor.renderFlag === "function") {
@@ -615,7 +668,7 @@ function showDashboardScreen() {
 
 function saveWorldToFile() {
     if (!window.currentWorld) return;
-    const jsonStr = JSON.stringify(window.currentWorld.toJSON(), null, 2);
+    const jsonStr = JSON.stringify(window.currentWorld.toJSON ? window.currentWorld.toJSON() : window.currentWorld, null, 2);
     const blob = new Blob([jsonStr], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -634,22 +687,28 @@ function handleFileUpload(file) {
     reader.onload = function(e) {
         try {
             const data = JSON.parse(e.target.result);
-            if (window.World) {
+            if (window.World && typeof window.World.fromJSON === "function") {
                 window.currentWorld = window.World.fromJSON(data);
+            } else {
+                window.currentWorld = data;
+            }
+            const firstCountry = (window.currentWorld && window.currentWorld.countries && window.currentWorld.countries[0]) || null;
+            if (firstCountry && window.CapitalView) {
+                window.CapitalView.open(firstCountry);
+            } else {
                 showDashboardScreen();
                 renderNationsTable();
-                window.showGameToast("تم تحميل العالم المحفوظ بنجاح!", "📂");
             }
+            window.showGameToast("تم تحميل العالم المحفوظ بنجاح!", "📂");
         } catch (err) {
-            alert("فشل تحميل ملف الحفظ، تأكد من صحة الملف!");
+            window.showGameToast("فشل تحميل ملف الحفظ، تأكد من صحة الملف!", "⚠️");
         }
     };
     reader.readAsText(file);
 }
 
-// بدء تشغيل المحرك عند جاهزية الصفحة
 if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", initGame);
 } else {
-    initGame();
+    CountryViewController && initGame();
 }
