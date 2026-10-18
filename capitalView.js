@@ -1083,7 +1083,8 @@ window.CapitalView = (function() {
             { id: 'cap-pitch-toggle', text: '📐', title: 'تبديل زاوية الكاميرا', cls: 'btn-secondary', onClick: togglePitchPreset },
             { id: 'cap-time-toggle', text: '☀️', title: 'تبديل الإضاءة والوقت', cls: 'btn-accent', onClick: cycleTimeOfDay },
             { id: 'cap-badges-toggle', text: '🏷️', title: 'إظهار/إخفاء أيقونات المباني', cls: 'btn-primary', onClick: () => { showBuildingBadges = !showBuildingBadges; } },
-            { id: 'cap-expand-grid', text: '🗺️+', title: 'توسيع الرقعة السداسية', cls: 'btn-secondary', onClick: () => expandGrid(1) }
+            { id: 'cap-expand-grid', text: '🗺️+', title: 'توسيع الرقعة السداسية', cls: 'btn-secondary', onClick: () => expandGrid(1) },
+            { id: 'cap-fullscreen-btn', text: '⛶', title: 'ملء الشاشة وإخفاء شريط المتصفح', cls: 'btn-accent', onClick: () => { if (window.toggleGameFullscreen) window.toggleGameFullscreen(); } }
         ];
 
         extraButtons.forEach(cfg => {
@@ -1239,14 +1240,28 @@ window.CapitalView = (function() {
         }
     }
 
+    function hideTooltip() {
+        const tooltip = document.getElementById('capital-tooltip');
+        if (tooltip) {
+            tooltip.style.display = 'none';
+            tooltip.innerHTML = '';
+        }
+    }
+
     function openDrawer(drawerId) {
         closeInspectorPopup();
+        hideTooltip();
         const drawers = ['cap-drawer-build', 'cap-drawer-sectors', 'cap-drawer-economy'];
         drawers.forEach(id => {
             const el = document.getElementById(id);
             if (el) {
-                if (id === drawerId) el.classList.add('active');
-                else el.classList.remove('active');
+                if (id === drawerId) {
+                    el.style.display = 'flex';
+                    el.classList.add('active');
+                } else {
+                    el.classList.remove('active');
+                    el.style.display = 'none';
+                }
             }
         });
         activeDrawerId = drawerId;
@@ -1269,22 +1284,35 @@ window.CapitalView = (function() {
     function closeAllDrawers() {
         ['cap-drawer-build', 'cap-drawer-sectors', 'cap-drawer-economy'].forEach(id => {
             const el = document.getElementById(id);
-            if (el) el.classList.remove('active');
+            if (el) {
+                el.classList.remove('active');
+                el.style.display = 'none';
+            }
         });
         document.querySelectorAll('.cap-dock-btn').forEach(btn => btn.classList.remove('active'));
         activeDrawerId = null;
+        hideTooltip();
     }
 
     function closeInspectorPopup() {
         const popup = document.getElementById('cap-inspector-popup');
-        if (popup) popup.classList.remove('active');
+        if (popup) {
+            popup.classList.remove('active');
+            popup.style.display = 'none';
+        }
         selectedHex = null;
+        hideTooltip();
     }
 
     // =========================================================================
     // 7. التفاعل المباشر بالضغط على المباني والأراضي داخل المشهد ثلاثي الأبعاد
     // =========================================================================
     function handleHexTap(hex) {
+        hideTooltip();
+        if (activeDrawerId) {
+            closeAllDrawers();
+            return;
+        }
         if (!hex || !currentCountry) {
             closeInspectorPopup();
             return;
@@ -1312,6 +1340,8 @@ window.CapitalView = (function() {
 
     // أ. نافذة القلعة السيادية والترقية والبنك (عند الضغط على القصر الملكي في وسط العاصمة)
     function openCitadelInspector(hex) {
+        closeAllDrawers();
+        hideTooltip();
         const popup = document.getElementById('cap-inspector-popup');
         const body = document.getElementById('cap-inspector-body');
         if (!popup || !body || !currentCountry) return;
@@ -1321,6 +1351,8 @@ window.CapitalView = (function() {
         const comp = window.BuildingsEngine ? window.BuildingsEngine.checkStageCompletion(currentCountry, currentStage) : { ownedTypes: 0, totalTypes: 12, isComplete: false, missing: [] };
         const pct = comp.totalTypes > 0 ? Math.round((comp.ownedTypes / comp.totalTypes) * 100) : 0;
         const bankVal = Number(currentCountry.bank !== undefined ? currentCountry.bank : (currentCountry.bankBalance || 0));
+        const popVal = Number(currentCountry.population || 0);
+        const unempVal = Math.max(0, popVal - Number(currentCountry.employed || 0));
 
         body.innerHTML = `
             <div class="cap-insp-header">
@@ -1362,17 +1394,17 @@ window.CapitalView = (function() {
                     </div>
                 </div>
                 <div class="cap-insp-chip">
-                    <span class="chip-ico">👷</span>
+                    <span class="chip-ico">👥</span>
                     <div>
-                        <small>العمال المتاحون</small>
-                        <strong class="text-purple">${Number(currentCountry.unemployed || 0).toLocaleString()}</strong>
+                        <small>السكان (العمال)</small>
+                        <strong class="text-purple">${popVal.toLocaleString()} (👷${unempVal.toLocaleString()})</strong>
                     </div>
                 </div>
                 <div class="cap-insp-chip">
                     <span class="chip-ico">⭐</span>
                     <div>
                         <small>المؤشر العام</small>
-                        <strong class="text-cyan">${Number(currentCountry.generalIndex || 100).toLocaleString()}</strong>
+                        <strong class="text-cyan">${Number(currentCountry.generalIndex || 0).toLocaleString()}</strong>
                     </div>
                 </div>
             </div>
@@ -1388,6 +1420,8 @@ window.CapitalView = (function() {
             </div>
         `;
 
+        popup.style.display = 'block';
+        popup.style.display = 'block';
         popup.classList.add('active');
 
         const btnUpg = document.getElementById('btn-insp-upgrade-stage');
@@ -1398,20 +1432,35 @@ window.CapitalView = (function() {
                 if (res.success) {
                     currentBuildStageTab = Number(currentCountry.stage) || 1;
                     refreshHUDAndMap();
-                    openCitadelInspector(hex);
+                    closeInspectorPopup();
                     if (window.NetworkEngine) window.NetworkEngine.syncCountryChanges(currentCountry);
                 }
             };
         }
 
         const btnOpenBuild = document.getElementById('btn-insp-open-build');
-        if (btnOpenBuild) btnOpenBuild.onclick = () => openDrawer('cap-drawer-build');
+        if (btnOpenBuild) {
+            btnOpenBuild.onclick = () => {
+                closeInspectorPopup();
+                openDrawer('cap-drawer-build');
+            };
+        }
 
         const btnOpenBank = document.getElementById('btn-insp-open-bank');
-        if (btnOpenBank) btnOpenBank.onclick = () => openDrawer('cap-drawer-economy');
+        if (btnOpenBank) {
+            btnOpenBank.onclick = () => {
+                closeInspectorPopup();
+                openDrawer('cap-drawer-economy');
+            };
+        }
 
         const btnOpenMil = document.getElementById('btn-insp-open-mil');
-        if (btnOpenMil) btnOpenMil.onclick = () => openMilitaryFromCapital();
+        if (btnOpenMil) {
+            btnOpenMil.onclick = () => {
+                closeInspectorPopup();
+                openMilitaryFromCapital();
+            };
+        }
 
         const btnDonateAlly = document.getElementById('btn-insp-donate-ally');
         if (btnDonateAlly) {
@@ -1426,6 +1475,8 @@ window.CapitalView = (function() {
 
     // ب. نافذة المنشأة التفاعلية (عند الضغط على أي مبنى قائم في العاصمة 3D)
     function openBuildingInspector(hex) {
+        closeAllDrawers();
+        hideTooltip();
         const popup = document.getElementById('cap-inspector-popup');
         const body = document.getElementById('cap-inspector-body');
         if (!popup || !body || !currentCountry || !hex.cluster) return;
@@ -1599,6 +1650,8 @@ window.CapitalView = (function() {
 
     // ج. عند الضغط على أرض أو شاطئ أو بحر فارغ في المشهد ثلاثي الأبعاد
     function openEmptyTileInspector(hex) {
+        closeInspectorPopup();
+        hideTooltip();
         if (!isCountryOwner(currentCountry)) return;
 
         if (hex.type === 'water') {
@@ -2191,6 +2244,7 @@ window.CapitalView = (function() {
         // دعم كامل للمس المتعدد والنقر على الهواتف
         wrapper.addEventListener('touchstart', e => {
             if (e.target !== canvas) return;
+            hideTooltip();
             if (e.touches.length === 1) {
                 camera.isDragging = true;
                 camera.dragMode = 'pan';
@@ -2198,7 +2252,7 @@ window.CapitalView = (function() {
                 pointerMovedDist = 0;
                 camera.lastMouseX = e.touches[0].clientX;
                 camera.lastMouseY = e.touches[0].clientY;
-                handleHover(e.touches[0].clientX, e.touches[0].clientY);
+                handleHover(e.touches[0].clientX, e.touches[0].clientY, true);
             } else if (e.touches.length === 2) {
                 camera.isDragging = true;
                 camera.dragMode = 'pinch';
@@ -2293,7 +2347,7 @@ window.CapitalView = (function() {
         canvas.height = Math.max(240, rect.height);
     }
 
-    function handleHover(clientX, clientY) {
+    function handleHover(clientX, clientY, isTouch = false) {
         if (!canvas) return;
         const rect = canvas.getBoundingClientRect();
         const mx = clientX - rect.left;
@@ -2318,7 +2372,15 @@ window.CapitalView = (function() {
         const tooltip = document.getElementById('capital-tooltip');
         if (!tooltip) return;
 
-        if (hoveredHex && !activeDrawerId) {
+        const inspPopup = document.getElementById('cap-inspector-popup');
+        const isInspOpen = inspPopup && inspPopup.classList.contains('active');
+
+        if (isTouch || camera.isDragging || activeDrawerId || isInspOpen || !hoveredHex) {
+            tooltip.style.display = 'none';
+            return;
+        }
+
+        if (hoveredHex) {
             tooltip.style.display = 'block';
             const tx = Math.min(canvas.width - 220, mx + 14);
             const ty = Math.min(canvas.height - 90, my + 14);
@@ -3735,11 +3797,12 @@ window.CapitalView = (function() {
             subEl.textContent = `🏆 م${stNum}` + (isOwner ? '' : ' 👁️');
         }
 
-        // رسم مصغر للعلم في شريط العاصمة العلوي
+        // رسم مصغر للعلم في شريط العاصمة العلوي (يدعم مصفوفة أحادية أو ثنائية)
         const miniFlag = document.getElementById('cap-mini-flag');
         if (miniFlag && Array.isArray(country.flag)) {
             miniFlag.innerHTML = '';
-            country.flag.slice(0, 12).forEach(col => {
+            const flatFlag = Array.isArray(country.flag[0]) ? country.flag.flat() : country.flag;
+            flatFlag.slice(0, 12).forEach(col => {
                 const d = document.createElement('div');
                 d.style.background = col || '#e11d48';
                 miniFlag.appendChild(d);
@@ -3761,7 +3824,9 @@ window.CapitalView = (function() {
         country.unemployed = unemp;
 
         const wrkEl = document.getElementById('cap-val-workers');
-        if (wrkEl) wrkEl.textContent = `${unemp.toLocaleString()}`;
+        if (wrkEl) {
+            wrkEl.textContent = pop === 0 ? '0 (ابنِ 🏠)' : `${pop.toLocaleString()} (👷${unemp.toLocaleString()})`;
+        }
 
         const elecVal = Number(country.sectors?.electricity || 0);
         const elecEl = document.getElementById('cap-val-elec');
@@ -3776,7 +3841,7 @@ window.CapitalView = (function() {
         if (waterPill) waterPill.classList.toggle('pill-alert-red', waterVal < 0);
 
         const idxEl = document.getElementById('cap-val-index');
-        if (idxEl) idxEl.textContent = `${Number(country.generalIndex || 100).toLocaleString()}`;
+        if (idxEl) idxEl.textContent = `${Number(country.generalIndex || 0).toLocaleString()}`;
 
         const milPower = (country.military && typeof country.military.totalPower === "number") ?
             country.military.totalPower :
