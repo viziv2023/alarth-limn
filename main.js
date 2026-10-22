@@ -1,15 +1,13 @@
 /**
  * ============================================================================
- * main.js - محرك التشغيل الرئيسي والانتقال المباشر لمشهد العاصمة 3D (v5.1)
+ * main.js - محرك التشغيل الرئيسي والانتقال المباشر لمشهد العاصمة 3D (v5.2)
  * ============================================================================
  *
- * الإصلاحات والمزايا المحدثة (v5.1):
- * 1. دعم تطبيق الجوال المستقل (PWA Service Worker + زر ملء الشاشة التلقائي لإخفاء شريط المتصفح).
- * 2. محرر العلم الوطني التفاعلي المضمون (3×4 خلايا ملونة قابلة للرسم باللمس أو الماوس + قوالب سريعة).
- * 3. ضبط السكان ليبدأوا من الصفر (0) بحيث يخرج السكان حصرياً من البيوت ومولدات السكان.
- * 4. ضبط المؤشر العام للدولة (generalIndex) ليبدأ من (0) ويتغير ديناميكياً حسب حالة الدولة.
- * 5. نظام عرض مضمون لسباق المؤشرات الـ 8 (السباق)، الكشاف، التاريخ، البورصة، والبنك الدولي
- *    مع معالج تباين ذكي يمنع الخلفيات البيضاء ويزيل المساحات الفارغة ويظهر الأعلام بوضوح.
+ * الإصلاحات والمزايا المحدثة (v5.2):
+ * 1. تفعيل تلقائي لنظام الحرب (WarView.init) وإصلاح تبديل تاب غرفة الحرب.
+ * 2. إصلاح التمرير السلس في نافذة تأسيس الدولة ومحرر العلم الوطني على الهواتف.
+ * 3. تنظيم شامل للدخول في الروم واختيار الاسم والدولة دون أخطاء أو تداخل في الملكية.
+ * 4. دعم تطبيق الجوال المستقل (PWA Service Worker + زر ملء الشاشة التلقائي).
  */
 
 window.currentWorld = null;
@@ -61,7 +59,7 @@ window.showGameToast = function(msg, icon) {
 
     const toast = document.createElement("div");
     toast.className = "game-toast";
-    toast.innerHTML = `<span style="font-size:1.2rem;">${icon || "🌟"}</span><span>${msg}</span>`;
+    toast.innerHTML = `<span style="font-size:1.1rem;">${icon || "🌟"}</span><span>${msg}</span>`;
     container.appendChild(toast);
 
     setTimeout(function() {
@@ -119,7 +117,7 @@ function registerPWAAndFullscreen() {
 }
 
 // =========================================================================
-// 0.ب. محرر العلم الوطني التفاعلي المضمون (Fixes Black Flag Issue 100%)
+// 0.ب. محرر العلم الوطني التفاعلي المضمون (مع دعم تمرير النافذة بسلاسة)
 // =========================================================================
 let activeFlagBrushColor = "#c0392b";
 let currentFlagCellsState = [
@@ -178,7 +176,6 @@ function ensureInteractiveFlagDesigner() {
     const grid = document.getElementById("flag-grid");
     if (!grid) return;
 
-    // إذا كانت الخلايا الحالية كلها سوداء أو فارغة، نعيد ضبطها لألوان زاهية
     const allBlack = currentFlagCellsState.every(c => !c || c === "#000000" || c === "#111111" || c === "rgb(0, 0, 0)");
     if (allBlack) {
         currentFlagCellsState = [
@@ -210,8 +207,7 @@ function ensureInteractiveFlagDesigner() {
         cell.setAttribute("data-idx", String(i));
         cell.setAttribute("data-color", col);
 
-        cell.addEventListener("mousedown", function(e) {
-            e.preventDefault();
+        cell.addEventListener("mousedown", function() {
             isPaintingFlag = true;
             if (window.GameSFX) window.GameSFX.playClick();
             paintCell(cell, i, activeFlagBrushColor);
@@ -224,33 +220,17 @@ function ensureInteractiveFlagDesigner() {
         });
 
         cell.addEventListener("click", function() {
+            if (window.GameSFX) window.GameSFX.playClick();
             paintCell(cell, i, activeFlagBrushColor);
         });
 
-        cell.addEventListener("touchstart", function(e) {
-            e.preventDefault();
-            if (window.GameSFX) window.GameSFX.playClick();
-            paintCell(cell, i, activeFlagBrushColor);
-        }, { passive: false });
-
         grid.appendChild(cell);
     }
-
-    grid.addEventListener("touchmove", function(e) {
-        if (!e.touches || !e.touches[0]) return;
-        e.preventDefault();
-        const target = document.elementFromPoint(e.touches[0].clientX, e.touches[0].clientY);
-        if (target && target.classList.contains("flag-cell")) {
-            const idx = Number(target.getAttribute("data-idx"));
-            if (!isNaN(idx)) paintCell(target, idx, activeFlagBrushColor);
-        }
-    }, { passive: false });
 
     window.addEventListener("mouseup", function() {
         isPaintingFlag = false;
     });
 
-    // ربط أزرار لوحة الألوان الجاهزة
     const paletteBtns = document.querySelectorAll("#preset-palette .palette-btn");
     paletteBtns.forEach(function(btn) {
         const col = btn.getAttribute("data-color");
@@ -267,7 +247,6 @@ function ensureInteractiveFlagDesigner() {
         };
     });
 
-    // ربط منتقي اللون المخصص
     const customInp = document.getElementById("custom-color-input");
     if (customInp) {
         customInp.oninput = function(e) {
@@ -279,16 +258,15 @@ function ensureInteractiveFlagDesigner() {
         };
     }
 
-    // إضافة أزرار قوالب سريعة للرسم السريع إن لم تكن موجودة
     const wrap = grid.closest(".flag-designer-wrap");
     if (wrap && !document.getElementById("flag-quick-tools")) {
         const toolsRow = document.createElement("div");
         toolsRow.id = "flag-quick-tools";
         toolsRow.style.cssText = "display:flex; gap:6px; flex-wrap:wrap; justify-content:center; margin-top:4px;";
         toolsRow.innerHTML = `
-            <button type="button" id="btn-flag-random" class="btn btn-secondary btn-sm" style="font-size:0.72rem; padding:3px 9px;">🎲 علم عشوائي</button>
-            <button type="button" id="btn-flag-stripes" class="btn btn-secondary btn-sm" style="font-size:0.72rem; padding:3px 9px;">🏳️ 3 خطوط</button>
-            <button type="button" id="btn-flag-fill" class="btn btn-secondary btn-sm" style="font-size:0.72rem; padding:3px 9px;">🪣 تلوين الكل</button>
+            <button type="button" id="btn-flag-random" class="btn btn-secondary btn-sm" style="font-size:0.7rem; padding:2px 8px;">🎲 علم عشوائي</button>
+            <button type="button" id="btn-flag-stripes" class="btn btn-secondary btn-sm" style="font-size:0.7rem; padding:2px 8px;">🏳️ 3 خطوط</button>
+            <button type="button" id="btn-flag-fill" class="btn btn-secondary btn-sm" style="font-size:0.7rem; padding:2px 8px;">🪣 تلوين الكل</button>
         `;
         wrap.appendChild(toolsRow);
 
@@ -320,7 +298,6 @@ function ensureInteractiveFlagDesigner() {
         };
     }
 
-    // توحيد واجهة FlagEditor لضمان التوافق مع كافة ملفات اللعبة الـ 30
     window.FlagEditor = window.FlagEditor || {};
     window.FlagEditor.getCurrentFlag = function() {
         const domCells = document.querySelectorAll("#flag-grid .flag-cell, #flag-grid > div");
@@ -358,7 +335,11 @@ function initGame() {
     ensureInteractiveFlagDesigner();
 
     if (window.CountryViewController && typeof window.CountryViewController.init === "function") {
-        window.CountryViewController.init();
+        try { window.CountryViewController.init(); } catch (e) {}
+    }
+
+    if (window.WarView && typeof window.WarView.init === "function") {
+        try { window.WarView.init(); } catch (e) {}
     }
 
     renderNationsTable();
@@ -380,10 +361,12 @@ function setupMainMenuEvents() {
     if (btnNew) {
         btnNew.onclick = function() {
             window.GameSFX.playClick();
-            if (window.innerWidth <= 950 && window.toggleGameFullscreen) {
+            if (window.innerWidth <= 960 && window.toggleGameFullscreen) {
                 window.toggleGameFullscreen(true);
             }
-            if (window.World) window.currentWorld = new window.World();
+            if (!window.currentWorld && window.World) {
+                window.currentWorld = new window.World();
+            }
             showDashboardScreen();
             renderNationsTable();
             openCreateCountryModal();
@@ -507,7 +490,7 @@ function setupDashboardEvents() {
 }
 
 // =========================================================================
-// 4. إدارة نافذة الغرف المتعددة والحفظ الدائم (Multiplayer Lobby)
+// 4. إدارة نافذة الغرف المتعددة والحفظ الدائم (Multiplayer Lobby - بدون أخطاء)
 // =========================================================================
 function getSafeLocalStorage(key) {
     try {
@@ -521,24 +504,34 @@ function openMultiplayerLobbyModal() {
     const modal = document.getElementById("modal-multiplayer-lobby");
     if (!modal) return;
 
+    const nameInp = document.getElementById("mp-player-name-input");
+    const savedName = getSafeLocalStorage("hegemony_player_name");
+    if (nameInp && savedName) {
+        nameInp.value = savedName;
+    }
+
     const lastRoomId = getSafeLocalStorage("hegemony_last_active_room");
     const savedBox = document.getElementById("mp-saved-room-box");
     const savedDesc = document.getElementById("mp-saved-room-desc");
 
     if (lastRoomId && getSafeLocalStorage("hegemony_room_save_" + lastRoomId) && savedBox && savedDesc) {
         savedBox.style.display = "block";
-        savedDesc.textContent = "رمز الغرفة المحفوظة: " + lastRoomId + " (يمكنك استئنافها ومتابعة اللعب)";
+        savedDesc.textContent = "رمز الغرفة المحفوظة: " + lastRoomId + " (يمكنك استئنافها ومتابعة اللعب فوراً)";
 
         const btnResume = document.getElementById("btn-resume-saved-room");
         if (btnResume) {
             btnResume.onclick = function() {
-                const nameInp = document.getElementById("mp-player-name-input");
-                const pName = (nameInp && nameInp.value) ? nameInp.value.trim() : "قائد سيادي";
+                const pName = (nameInp && nameInp.value && nameInp.value.trim()) ? nameInp.value.trim() : "قائد سيادي";
+                btnResume.disabled = true;
+                btnResume.textContent = "⏳ جاري استعادة الغرفة...";
                 if (window.NetworkEngine) {
                     window.NetworkEngine.createRoom(lastRoomId, pName, function(res) {
-                        if (res.success) {
+                        btnResume.disabled = false;
+                        btnResume.textContent = "🌟 استئناف الغرفة المحفوظة ➔";
+                        if (res && res.success) {
                             modal.classList.remove("active");
                             showDashboardScreen();
+                            renderNationsTable();
                         }
                     });
                 }
@@ -566,13 +559,26 @@ function setupMultiplayerLobbyEvents() {
     if (btnCreate) {
         btnCreate.onclick = function() {
             const nameInp = document.getElementById("mp-player-name-input");
-            const pName = (nameInp && nameInp.value) ? nameInp.value.trim() : "قائد سيادي";
+            const pName = (nameInp && nameInp.value && nameInp.value.trim()) ? nameInp.value.trim() : "قائد سيادي";
+
+            btnCreate.disabled = true;
+            const origText = btnCreate.textContent;
+            btnCreate.textContent = "⏳ جاري فتح الغرفة...";
+
             if (window.NetworkEngine) {
                 window.NetworkEngine.createRoom(null, pName, function(res) {
-                    if (res.success) {
+                    btnCreate.disabled = false;
+                    btnCreate.textContent = origText;
+                    if (res && res.success) {
                         modal.classList.remove("active");
                         showDashboardScreen();
-                        openCreateCountryModal();
+                        renderNationsTable();
+
+                        const myCId = window.NetworkEngine.getMyCountryId();
+                        const existingCountries = (window.currentWorld && window.currentWorld.countries) ? window.currentWorld.countries : [];
+                        if (!myCId && existingCountries.length === 0) {
+                            openCreateCountryModal();
+                        }
                     }
                 });
             }
@@ -585,18 +591,38 @@ function setupMultiplayerLobbyEvents() {
             const codeInp = document.getElementById("mp-room-code-input");
             const nameInp = document.getElementById("mp-player-name-input");
             const code = codeInp ? codeInp.value.trim() : "";
-            const pName = (nameInp && nameInp.value) ? nameInp.value.trim() : "قائد سيادي";
+            const pName = (nameInp && nameInp.value && nameInp.value.trim()) ? nameInp.value.trim() : "قائد سيادي";
 
             if (!code) {
-                window.showGameToast("يرجى إدخال رمز الغرفة أولاً!", "⚠️");
+                window.showGameToast("يرجى إدخال رمز الغرفة أولاً (مثال: 4821 أو HEG-4821)!", "⚠️");
+                if (codeInp) codeInp.focus();
                 return;
             }
 
+            btnJoin.disabled = true;
+            const origText = btnJoin.textContent;
+            btnJoin.textContent = "⏳ جاري الاتصال...";
+
             if (window.NetworkEngine) {
                 window.NetworkEngine.joinRoom(code, pName, function(res) {
-                    if (res.success) {
+                    btnJoin.disabled = false;
+                    btnJoin.textContent = origText;
+                    if (res && res.success) {
                         modal.classList.remove("active");
                         showDashboardScreen();
+                        renderNationsTable();
+
+                        setTimeout(function() {
+                            const myCId = window.NetworkEngine.getMyCountryId();
+                            const countries = (window.currentWorld && window.currentWorld.countries) ? window.currentWorld.countries : [];
+                            if (!myCId) {
+                                if (countries.length === 0) {
+                                    openCreateCountryModal();
+                                } else {
+                                    window.showGameToast("اختر دولة متاحة للقيادة من البطاقات أو اضغط (🏰 + دولة) لتأسيس دولتك!", "👑");
+                                }
+                            }
+                        }, 300);
                     }
                 });
             }
@@ -643,6 +669,15 @@ function setupCreationModalEvents() {
                 return;
             }
 
+            // منع تكرار نفس اسم الدولة داخل نفس العالم
+            const existingCountries = (window.currentWorld && Array.isArray(window.currentWorld.countries)) ? window.currentWorld.countries : [];
+            const duplicate = existingCountries.find(c => String(c.name).trim() === nationName);
+            if (duplicate) {
+                window.showGameToast("توجد دولة بهذا الاسم بالفعل! يرجى اختيار اسم مميز لدولتك.", "⚠️");
+                if (nameInp) nameInp.focus();
+                return;
+            }
+
             const flagColors = window.FlagEditor && typeof window.FlagEditor.getCurrentFlag === "function" ?
                 window.FlagEditor.getCurrentFlag() :
                 [...currentFlagCellsState];
@@ -678,12 +713,16 @@ function setupCreationModalEvents() {
                 };
             }
 
-            // ضمان أن السكان يبدأون من الصفر (0) وأن المؤشر العام يبدأ من الصفر (0) ويتحدث حسب حالة الدولة
             newCountry.flag = flagColors;
             newCountry.population = 0;
             newCountry.employed = 0;
             newCountry.unemployed = 0;
             newCountry.generalIndex = 0;
+
+            if (window.NetworkEngine) {
+                newCountry.ownerPlayerId = window.NetworkEngine.getLocalPlayerId();
+                newCountry.ownerPlayerName = window.NetworkEngine.getPlayerName ? window.NetworkEngine.getPlayerName() : "قائد سيادي";
+            }
 
             if (window.SectorsEngine && typeof window.SectorsEngine.recalculateCountrySectors === "function") {
                 window.SectorsEngine.recalculateCountrySectors(newCountry, window.currentWorld);
@@ -704,6 +743,9 @@ function setupCreationModalEvents() {
                         window.currentWorld.countries.push(newCountry);
                     }
                 }
+                if (window.NetworkEngine && typeof window.NetworkEngine.claimCountry === "function") {
+                    window.NetworkEngine.claimCountry(newCountry.id);
+                }
                 renderNationsTable();
             }
 
@@ -711,7 +753,6 @@ function setupCreationModalEvents() {
             window.currentViewingCountry = newCountry;
             window.isViewingAsSpectator = false;
 
-            // الانتقال الفوري والمباشر إلى مشهد العاصمة ثلاثي الأبعاد
             if (window.CapitalView && typeof window.CapitalView.open === "function") {
                 window.CapitalView.open(newCountry);
             } else if (window.CountryViewController) {
@@ -826,9 +867,8 @@ function setupTabSwitching() {
             enhanceAndSanitizeTabDOM("exchange-content-wrapper", "exchange", window.currentWorld);
         } else if (targetKey === "war") {
             if (window.WarView && typeof window.WarView.render === "function") {
-                try { window.WarView.render(window.currentWorld); } catch (e) {}
+                try { window.WarView.render(window.currentWorld); } catch (e) { console.error(e); }
             }
-            enhanceAndSanitizeTabDOM("war-content-wrapper", "war", window.currentWorld);
         }
     }
 
@@ -851,7 +891,7 @@ function setupTabSwitching() {
 }
 
 // =========================================================================
-// 7.أ. محرك سباق المؤشرات الـ 8 المضمون (Fixes Missing Race / Charts Tab)
+// 7.أ. محرك سباق المؤشرات الـ 8 المضمون (Race / Charts Tab)
 // =========================================================================
 const CHART_INDICATORS_META = [
     { key: "budget", title: "💰 الميزانية والعائد السنوي", unit: "$", prefix: true, color: "#fbbf24", getVal: c => Number(c.budget || 0) },
@@ -942,19 +982,17 @@ function renderChartsAndRaceTab(world, filterKey) {
 }
 
 // =========================================================================
-// 7.ب. معالج التباين، إزالة المسافات الضخمة، وإظهار الأعلام في الكشاف والتاريخ والبنك والبورصة
+// 7.ب. معالج التباين وإظهار الأعلام في الكشاف والتاريخ والبنك والبورصة
 // =========================================================================
 function populateAllFlagPlaceholders(rootEl, countries) {
     if (!rootEl || !Array.isArray(countries)) return;
 
-    // 1. العناصر المزودة بـ data-flag-country
     rootEl.querySelectorAll("[data-flag-country]").forEach(function(el) {
         const cId = el.getAttribute("data-flag-country");
         const c = countries.find(item => String(item.id) === String(cId) || String(item.name) === String(cId));
         if (c) window.renderFlagGridToElement(el, c.flag, 38, 24);
     });
 
-    // 2. أي عنصر يحمل كلاس table-flag أو mini-flag أو flag داخل الجداول والبطاقات
     rootEl.querySelectorAll(".table-flag, .mini-flag, .analytics-flag, .chronicle-flag").forEach(function(el) {
         if (el.children.length === 0) {
             const row = el.closest("tr, .analytics-card, .dossier-card, div");
@@ -985,12 +1023,10 @@ function enhanceAndSanitizeTabDOM(wrapperId, tabKey, world) {
 
     const countries = (world && Array.isArray(world.countries)) ? world.countries : [];
 
-    // إذا كان التاب فارغاً (مثلاً في المعاينة أو قبل بناء محتوى خارجي)، نرسم لوحة متكاملة عالية التباين
     if (wrapper.children.length === 0) {
         renderBuiltInTabFallback(wrapper, tabKey, world, countries);
     }
 
-    // فحص كافة العناصر الداخلية لمنع الخلفيات البيضاء والمسافات العمودية الضخمة وتراكب الأرقام
     wrapper.querySelectorAll("*").forEach(function(el) {
         const bg = (el.style && (el.style.backgroundColor || el.style.background)) ?
             (el.style.backgroundColor || el.style.background).toLowerCase() : "";
@@ -1006,13 +1042,12 @@ function enhanceAndSanitizeTabDOM(wrapperId, tabKey, world) {
             }
         }
 
-        // تقليص المسافات العمودية والهامشية المبالغ فيها في البورصة والبنك والكشاف
         if (el.style) {
             if (parseInt(el.style.marginBottom, 10) > 16) el.style.marginBottom = "10px";
             if (parseInt(el.style.marginTop, 10) > 16) el.style.marginTop = "10px";
             if (parseInt(el.style.paddingTop, 10) > 18) el.style.paddingTop = "10px";
             if (parseInt(el.style.paddingBottom, 10) > 18) el.style.paddingBottom = "10px";
-            if ( parseInt(el.style.gap, 10) > 16) el.style.gap = "10px";
+            if (parseInt(el.style.gap, 10) > 16) el.style.gap = "10px";
             if (el.style.minHeight && parseInt(el.style.minHeight, 10) > 220 && el.tagName.toLowerCase() !== "canvas") {
                 el.style.minHeight = "0px";
             }
@@ -1081,7 +1116,7 @@ function renderBuiltInTabFallback(wrapper, tabKey, world, countries) {
         `;
     } else if (tabKey === "chronicle") {
         const events = (world && Array.isArray(world.history)) ? world.history : [];
-        const eventsHtml = events.length > 0 ? events.map((ev, idx) => `
+        const eventsHtml = events.length > 0 ? events.map((ev) => `
             <tr>
                 <td class="td-center"><span class="badge badge-gold" style="font-size:0.72rem; padding:2px 8px;">سنة ${ev.year || yr}م</span></td>
                 <td><strong style="color:#fffbeb;">${ev.text || ev.description || "حدث تاريخي سيادي"}</strong></td>
@@ -1206,15 +1241,6 @@ function renderBuiltInTabFallback(wrapper, tabKey, world, countries) {
                 <p style="font-size:0.84rem; color:#fde68a;">تباع فوائض القطاعات تلقائياً للدول التي تعاني من عجز في نفس القطاع مع نهاية كل سنة مالية وتودع أرباحها في البنك الوطني.</p>
             </div>
         `;
-    } else if (tabKey === "war") {
-        wrapper.innerHTML = `
-            <div class="wb-card">
-                <div class="card-header-flex">
-                    <h3>⚔️ غرفة العمليات العسكرية المشتركة</h3>
-                </div>
-                <p style="font-size:0.84rem; color:#fde68a;">جهز جيشك من داخل العاصمة (🎖️ الجيش) ثم أعلن التعبئة العسكرية لخوض المعارك الميدانية.</p>
-            </div>
-        `;
     }
 }
 
@@ -1238,9 +1264,9 @@ function renderNationsTable() {
     if (countries.length === 0) {
         grid.innerHTML = `
             <div class="nations-empty-card">
-                <div style="font-size:3.2rem; margin-bottom:10px;">🏰</div>
-                <h3 style="color:#fde047; margin-bottom:8px;">ابدأ رحلتك الآن وأسس دولتك الأولى!</h3>
-                <p style="color:#e2e8f0; font-size:0.92rem; margin-bottom:18px;">
+                <div style="font-size:2.8rem; margin-bottom:8px;">🏰</div>
+                <h3 style="color:#fde047; margin-bottom:6px;">ابدأ رحلتك الآن وأسس دولتك الأولى!</h3>
+                <p style="color:#e2e8f0; font-size:0.88rem; margin-bottom:14px;">
                     صمّم علمك الوطني وانتقل مباشرةً إلى عاصمتك ثلاثية الأبعاد لبناء المنشآت وقيادة الجيوش.
                 </p>
                 <button type="button" class="btn btn-primary" onclick="openCreateCountryModal()">
@@ -1251,15 +1277,32 @@ function renderNationsTable() {
         return;
     }
 
-    const myCountryId = (window.NetworkEngine && typeof window.NetworkEngine.getMyCountryId === "function") ?
-        window.NetworkEngine.getMyCountryId() :
-        null;
+    const isMpActive = !!(window.NetworkEngine && window.NetworkEngine.getRoomId());
 
     countries.forEach(function(c, idx) {
-        const isMyOwn = myCountryId ? String(myCountryId) === String(c.id) : true;
+        const ownerInfo = (window.NetworkEngine && typeof window.NetworkEngine.getCountryOwnerInfo === "function") ?
+            window.NetworkEngine.getCountryOwnerInfo(c.id) :
+            { isMine: true, isClaimed: true, ownerName: null };
+
         const milPower = (c.military && typeof c.military.totalPower === "number") ?
             c.military.totalPower :
             (Number(c.militaryPower) || 0);
+
+        let ownershipBadgeHtml = '<span class="badge badge-gold" style="font-size:0.68rem; padding:2px 7px;">👑 دولتي</span>';
+        let footerActionText = '🏛️ دخول العاصمة 3D والبناء المباشر ➔';
+
+        if (isMpActive) {
+            if (ownerInfo.isMine) {
+                ownershipBadgeHtml = `<span class="badge badge-gold" style="font-size:0.68rem; padding:2px 7px;">👑 دولتي</span>`;
+                footerActionText = '🏛️ دخول عاصمتي 3D والبناء المباشر ➔';
+            } else if (!ownerInfo.isClaimed) {
+                ownershipBadgeHtml = `<span class="badge badge-military" style="font-size:0.68rem; padding:2px 7px;">🟢 متاحة للقيادة</span>`;
+                footerActionText = '👑 تولي قيادة الدولة ودخول العاصمة 3D ➔';
+            } else {
+                ownershipBadgeHtml = `<span class="badge badge-purple" style="font-size:0.68rem; padding:2px 7px;">👤 ${ownerInfo.ownerName || 'قائد آخر'}</span>`;
+                footerActionText = '👁️ التجول في العاصمة 3D (مشاهدة) ➔';
+            }
+        }
 
         const card = document.createElement("div");
         card.className = "nation-sovereign-card";
@@ -1268,7 +1311,7 @@ function renderNationsTable() {
         card.innerHTML = `
             <div class="nation-card-top-ribbon">
                 <span class="nation-stage-pill">🏆 ${c.stageName || ("المرحلة " + (c.stage || 1))}</span>
-                ${isMyOwn ? '<span class="badge badge-gold" style="font-size:0.7rem; padding:2px 8px;">👑 دولتي</span>' : '<span class="badge badge-purple" style="font-size:0.7rem; padding:2px 8px;">👁️ مشاهدة</span>'}
+                ${ownershipBadgeHtml}
                 <span class="nation-index-pill">#${idx + 1}</span>
             </div>
 
@@ -1298,12 +1341,15 @@ function renderNationsTable() {
             </div>
 
             <div class="nation-card-play-footer">
-                ${isMyOwn ? '🏛️ دخول العاصمة 3D والبناء المباشر ➔' : '👁️ التجول في العاصمة 3D ➔'}
+                ${footerActionText}
             </div>
         `;
 
         card.onclick = function() {
             window.GameSFX.playClick();
+            if (isMpActive && !ownerInfo.isClaimed && !window.NetworkEngine.getMyCountryId()) {
+                window.NetworkEngine.claimCountry(c.id);
+            }
             if (window.CountryViewController) {
                 window.CountryViewController.open(c.id);
             } else if (window.CapitalView) {
@@ -1315,7 +1361,7 @@ function renderNationsTable() {
 
         const flagBox = document.getElementById("nation-flag-grid-" + c.id);
         if (flagBox) {
-            window.renderFlagGridToElement(flagBox, c.flag, 76, 48);
+            window.renderFlagGridToElement(flagBox, c.flag, 72, 44);
         }
     });
 }
