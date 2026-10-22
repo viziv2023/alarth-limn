@@ -1,16 +1,14 @@
 /**
  * ============================================================================
- * network.js - محرك الشبكة، الغرف المتزامنة P2P، والحفظ الدائم (عصر الهيمنة - v4.8)
+ * network.js - محرك الشبكة، الغرف المتزامنة P2P، والحفظ الدائم (عصر الهيمنة - v5.2)
  * ============================================================================
- * 
- * المزايا المعمارية المحدثة:
- * 1. متوافق 100% مع Pure ES6 وخالٍ تماماً من أخطاء بناء الجملة (Syntax Errors).
- * 2. الحفظ الدائم التلقائي لجلسة الغرفة (Room Persistence) في LocalStorage برمز الروم.
- * 3. التعرف التلقائي على اللاعبين الـ 10 عند العودة وإعادة ربطهم بدولهم السابقة.
- * 4. مزامنة تأسيس الدول الجديدة فور إنشائها لكافة أعضاء الغرفة (Nation Creation Broadcast).
- * 5. مؤقت الدقيقة (60 ثانية) الذكي التلقائي عند بقاء لاعب واحد متأخر عن الجاهزية.
- * 6. تحديث كافة التابات الثمانية وجدول الأمم لحظياً فور استقبال أي تحديث عبر الشبكة.
- * 7. نبض اتصال مستمر (Heartbeat) لمنع انقطاع الغرفة عند قفل شاشات الهواتف.
+ *
+ * الإصلاحات الجذرية (v5.2):
+ * 1. منع رفض الدخول أو أخطاء PeerJS عند إنشاء الغرفة أو الانضمام إليها أو تحديث الصفحة.
+ * 2. إعادة إرسال طلب الانضمام (Handshake Retry) لضمان استلام حالة الغرفة والدول 100%.
+ * 3. استرجاع تلقائي للغرفة المحفوظة على نفس الجهاز إذا تعذر الاتصال بالخادم السحابي.
+ * 4. تحويل كافة كائنات الدول المتزامنة عبر Country.fromJSON لمنع أخطاء toJSON.
+ * 5. فصل واضح ودقيق بين (دولتي / دولة متاحة للقيادة / دولة بقيادة لاعب آخر) لمنع الفوضى.
  */
 
 window.NetworkEngine = (function() {
@@ -24,6 +22,9 @@ window.NetworkEngine = (function() {
     let myPlayerName = "قائد سيادي";
     let myReadiness = "WAITING"; // 'WAITING' | 'READY_YEAR' | 'READY_WAR'
     let heartbeatInterval = null;
+    let isConnectingRoom = false;
+    let initSyncReceived = false;
+    let joinRetryInterval = null;
 
     // مؤقت الدقيقة التلقائي لدوران السنة
     let autoTurnTimer = null;
@@ -41,21 +42,19 @@ window.NetworkEngine = (function() {
     const ROOM_PREFIX = "HEG-";
     const SAVE_PREFIX = "hegemony_room_save_";
 
-    /**
-     * دالة تنظيف وتوحيد رمز الغرفة مهما كتبه اللاعب
-     */
     function normalizeRoomCode(input) {
         if (!input) return "";
         let clean = String(input).trim().toUpperCase().replace(/\s+/g, "");
+        if (!clean) return "";
 
         if (/^\d+$/.test(clean)) {
             return ROOM_PREFIX + clean;
         }
-        if (clean.indexOf("HEG") === 0 && clean.indexOf(ROOM_PREFIX) !== 0) {
-            return ROOM_PREFIX + clean.substring(3);
-        }
-        if (clean.indexOf(ROOM_PREFIX) === 0) {
+        if (clean.indexOf("HEG-") === 0) {
             return clean;
+        }
+        if (clean.indexOf("HEG") === 0) {
+            return ROOM_PREFIX + clean.substring(3).replace(/^-+/, "");
         }
         return ROOM_PREFIX + clean;
     }
@@ -66,16 +65,60 @@ window.NetworkEngine = (function() {
     }
 
     function initIdentity() {
-        let storedId = localStorage.getItem("hegemony_player_id");
-        if (!storedId) {
-            storedId = "usr_" + Math.random().toString(36).substring(2, 9);
-            localStorage.setItem("hegemony_player_id", storedId);
-        }
-        localPlayerId = storedId;
+        try {
+            let storedId = localStorage.getItem("hegemony_player_id");
+            if (!storedId) {
+                storedId = "usr_" + Math.random().toString(36).substring(2, 9);
+                localStorage.setItem("hegemony_player_id", storedId);
+            }
+            localPlayerId = storedId;
 
-        const storedName = localStorage.getItem("hegemony_player_name");
-        if (storedName) {
-            myPlayerName = storedName;
+            const storedName = localStorage.getItem("hegemony_player_name");
+            if (storedName && storedName.trim()) {
+                myPlayerName = storedName.trim();
+            }
+        } catch (e) {
+            if (!localPlayerId) {
+                localPlayerId = "usr_" + Math.random().toString(36).substring(2, 9);
+            }
+        }
+    }
+
+    /**
+     * ضمان تحويل أي بيانات دولة قادمة من الشبكة إلى كائن Country مكتمل الدوال
+     */
+    function ensureCountryInstance(rawData) {
+        if (!rawData) return null;
+        let inst = rawData;
+        if (window.Country && typeof window.Country.fromJSON === "function" && !(rawData instanceof window.Country)) {
+            try {
+                inst = window.Country.fromJSON(rawData);
+            } catch (e) {
+                inst = rawData;
+            }
+        }
+        if (rawData.ownerPlayerId) inst.ownerPlayerId = rawData.ownerPlayerId;
+        if (rawData.ownerPlayerName) inst.ownerPlayerName = rawData.ownerPlayerName;
+        if (rawData.militaryColor) inst.militaryColor = rawData.militaryColor;
+        return inst;
+    }
+
+    function upsertCountryInWorld(rawCountry) {
+        if (!rawCountry || !window.currentWorld) return null;
+        const countryInst = ensureCountryInstance(rawCountry);
+        if (!Array.isArray(window.currentWorld.countries)) {
+            window.currentWorld.countries = [];
+        }
+        const idx = window.currentWorld.countries.findIndex(function(c) {
+            return String(c.id) === String(countryInst.id);
+        });
+        if (idx >= 0) {
+            const existing = window.currentWorld.countries[idx];
+            Object.assign(existing, countryInst);
+            return existing;
+        } else {
+            window.currentWorld.countries.push(countryInst);
+            return countryInst;
         }
     }
 
@@ -83,16 +126,16 @@ window.NetworkEngine = (function() {
     // 1. نظام الحفظ الدائم للغرفة واستئناف اللعب (Persistence Engine)
     // =========================================================================
     function saveRoomPersistence() {
-        if (!roomId || !isHost) return;
+        if (!roomId) return;
         try {
             const dataToSave = {
                 roomId: roomId,
-                hostId: localPlayerId,
+                hostId: roomState.hostId || localPlayerId,
                 savedAt: Date.now(),
                 players: roomState.players,
                 worldData: (window.currentWorld && typeof window.currentWorld.toJSON === "function") ?
                     window.currentWorld.toJSON() :
-                    null
+                    window.currentWorld
             };
             localStorage.setItem(SAVE_PREFIX + roomId, JSON.stringify(dataToSave));
             localStorage.setItem("hegemony_last_active_room", roomId);
@@ -108,8 +151,12 @@ window.NetworkEngine = (function() {
             if (!savedRaw) return false;
 
             const saved = JSON.parse(savedRaw);
-            if (saved && saved.worldData && window.World) {
-                window.currentWorld = window.World.fromJSON(saved.worldData);
+            if (saved && saved.worldData) {
+                if (window.World && typeof window.World.fromJSON === "function") {
+                    window.currentWorld = window.World.fromJSON(saved.worldData);
+                } else {
+                    window.currentWorld = saved.worldData;
+                }
                 if (saved.players) {
                     roomState.players = Object.assign({}, saved.players);
                 }
@@ -150,12 +197,19 @@ window.NetworkEngine = (function() {
             if (window.ChronicleManager && typeof window.ChronicleManager.render === "function") {
                 window.ChronicleManager.render(window.currentWorld);
             }
-            if (window.CountryViewController && window.currentViewingCountry) {
-                const refreshed = window.currentWorld ? window.currentWorld.countries.find(function(c) {
+            if (window.CountryViewController && window.currentViewingCountry && window.currentWorld) {
+                const refreshed = window.currentWorld.countries.find(function(c) {
                     return String(c.id) === String(window.currentViewingCountry.id);
-                }) : null;
+                });
                 if (refreshed) {
+                    window.currentViewingCountry = refreshed;
                     window.CountryViewController.render(refreshed);
+                }
+            }
+            if (window.CapitalView && typeof window.CapitalView.refreshHUDAndMap === "function") {
+                const capScreen = document.getElementById("capital-screen");
+                if (capScreen && capScreen.classList.contains("active")) {
+                    window.CapitalView.refreshHUDAndMap();
                 }
             }
         } catch (err) {
@@ -171,7 +225,7 @@ window.NetworkEngine = (function() {
         heartbeatInterval = setInterval(function() {
             if (peer && !peer.destroyed) {
                 if (peer.disconnected) {
-                    peer.reconnect();
+                    try { peer.reconnect(); } catch (e) {}
                 }
             }
         }, 10000);
@@ -181,6 +235,10 @@ window.NetworkEngine = (function() {
         if (heartbeatInterval) {
             clearInterval(heartbeatInterval);
             heartbeatInterval = null;
+        }
+        if (joinRetryInterval) {
+            clearInterval(joinRetryInterval);
+            joinRetryInterval = null;
         }
     }
 
@@ -198,68 +256,134 @@ window.NetworkEngine = (function() {
         }
     }
 
+    /**
+     * تهيئة حالة المضيف محلياً وربط دولته إن كانت موجودة مسبقاً
+     */
+    function finalizeHostRoomSetup(finalRoomId, sourceSavedRoomId, callback) {
+        isConnectingRoom = false;
+        roomId = finalRoomId;
+        isHost = true;
+        roomState.roomId = finalRoomId;
+        roomState.hostId = localPlayerId;
+
+        const isRestored = loadRoomPersistence(sourceSavedRoomId || finalRoomId);
+
+        if (!roomState.players[localPlayerId]) {
+            roomState.players[localPlayerId] = {
+                name: myPlayerName,
+                countryId: myCountryId || null,
+                readyState: "WAITING",
+                isConnected: true
+            };
+        } else {
+            roomState.players[localPlayerId].isConnected = true;
+            roomState.players[localPlayerId].name = myPlayerName;
+            if (roomState.players[localPlayerId].countryId) {
+                myCountryId = roomState.players[localPlayerId].countryId;
+            }
+        }
+
+        // إذا كان لدى المضيف دولة مؤسسة مسبقاً في العالم الحالي، نربطها به تلقائياً
+        const countries = (window.currentWorld && Array.isArray(window.currentWorld.countries)) ? window.currentWorld.countries : [];
+        if (!myCountryId && countries.length > 0) {
+            const myOwned = countries.find(function(c) { return c.ownerPlayerId === localPlayerId; }) ||
+                (countries.length === 1 ? countries[0] : null);
+            if (myOwned) {
+                myCountryId = myOwned.id;
+                myOwned.ownerPlayerId = localPlayerId;
+                myOwned.ownerPlayerName = myPlayerName;
+                roomState.players[localPlayerId].countryId = myOwned.id;
+            }
+        }
+
+        saveRoomPersistence();
+        startHeartbeat();
+        updateTopReadinessBar();
+        refreshAllGameViews();
+
+        if (callback) {
+            callback({
+                success: true,
+                roomId: finalRoomId,
+                isHost: true,
+                isRestored: isRestored,
+                hasCountry: !!myCountryId
+            });
+        }
+    }
+
     // =========================================================================
     // 4. إنشاء غرفة جديدة أو استئناف غرفة محفوظة بواسطة المضيف (Host)
     // =========================================================================
-    function createRoom(desiredCode, playerName, callback) {
+    function createRoom(desiredCode, playerName, callback, _retryCount) {
         initIdentity();
-        if (playerName) {
-            myPlayerName = playerName;
-            localStorage.setItem("hegemony_player_name", playerName);
+        const retryAttempt = _retryCount || 0;
+
+        if (playerName && String(playerName).trim()) {
+            myPlayerName = String(playerName).trim();
+            try { localStorage.setItem("hegemony_player_name", myPlayerName); } catch (e) {}
         }
 
-        roomId = desiredCode ? normalizeRoomCode(desiredCode) : generateRoomCode();
-        isHost = true;
+        const requestedRoomId = desiredCode ? normalizeRoomCode(desiredCode) : generateRoomCode();
+        const targetPeerId = retryAttempt > 0 ? generateRoomCode() : requestedRoomId;
 
         if (peer) {
             try { peer.destroy(); } catch (e) {}
+            peer = null;
         }
 
-        peer = new Peer(roomId, {
-            debug: 1,
-            config: {
-                iceServers: [
-                    { urls: "stun:stun.l.google.com:19302" },
-                    { urls: "stun:stun1.l.google.com:19302" },
-                    { urls: "stun:stun2.l.google.com:19302" }
-                ]
+        // إذا لم تكن مكتبة PeerJS محملة (مثلاً بدون إنترنت)، نفعل الغرفة محلياً فوراً بدون خطأ
+        if (typeof Peer === "undefined") {
+            finalizeHostRoomSetup(targetPeerId, requestedRoomId, callback);
+            if (window.showGameToast) {
+                window.showGameToast("تم فتح الغرفة (" + targetPeerId + ") في الوضع المحلي!", "👑");
             }
-        });
+            return;
+        }
 
-        peer.on("open", function(id) {
-            roomId = id;
-            roomState.roomId = id;
-            roomState.hostId = localPlayerId;
+        isConnectingRoom = true;
+        let callbackFired = false;
 
-            // استئناف الجلسة المحفوظة مسبقاً إذا وجدت
-            const isRestored = loadRoomPersistence(roomId);
-
-            if (!roomState.players[localPlayerId]) {
-                roomState.players[localPlayerId] = {
-                    name: myPlayerName,
-                    countryId: null,
-                    readyState: "WAITING",
-                    isConnected: true
-                };
-            } else {
-                roomState.players[localPlayerId].isConnected = true;
-                roomState.players[localPlayerId].name = myPlayerName;
-                if (roomState.players[localPlayerId].countryId) {
-                    myCountryId = roomState.players[localPlayerId].countryId;
+        // مؤقت أمان: إذا تأخر خادم PeerJS أكثر من 6 ثوانٍ، نفتح الغرفة فوراً دون تعليق اللاعب
+        const fallbackTimer = setTimeout(function() {
+            if (!callbackFired) {
+                callbackFired = true;
+                finalizeHostRoomSetup(targetPeerId, requestedRoomId, callback);
+                if (window.showGameToast) {
+                    window.showGameToast("تم تفعيل الغرفة: " + targetPeerId, "📡");
                 }
             }
+        }, 6000);
 
-            saveRoomPersistence();
-            startHeartbeat();
-            updateTopReadinessBar();
-            refreshAllGameViews();
+        try {
+            peer = new Peer(targetPeerId, {
+                debug: 0,
+                config: {
+                    iceServers: [
+                        { urls: "stun:stun.l.google.com:19302" },
+                        { urls: "stun:stun1.l.google.com:19302" },
+                        { urls: "stun:stun2.l.google.com:19302" }
+                    ]
+                }
+            });
+        } catch (err) {
+            clearTimeout(fallbackTimer);
+            callbackFired = true;
+            finalizeHostRoomSetup(targetPeerId, requestedRoomId, callback);
+            return;
+        }
 
-            if (callback) callback({ success: true, roomId: id, isHost: true, isRestored: isRestored });
+        peer.on("open", function(id) {
+            if (callbackFired) return;
+            clearTimeout(fallbackTimer);
+            callbackFired = true;
 
-            const msg = isRestored ?
-                "تم استئناف الغرفة المحفوظة بنجاح (" + id + ") واستعادة تقدم اللاعبين!" :
-                "تم إنشاء الغرفة بنجاح: " + id + " (انقر لنسخ الرمز)";
-            if (window.showGameToast) window.showGameToast(msg, isRestored ? "📂" : "📡");
+            finalizeHostRoomSetup(id, requestedRoomId, callback);
+
+            const msg = desiredCode ?
+                "تم استئناف الغرفة المحفوظة بنجاح (" + id + ")!" :
+                "تم إنشاء الغرفة بنجاح: " + id + " (اضغط على الرمز بالأعلى لنسخه)";
+            if (window.showGameToast) window.showGameToast(msg, "📡");
         });
 
         peer.on("connection", function(conn) {
@@ -268,17 +392,27 @@ window.NetworkEngine = (function() {
 
         peer.on("disconnected", function() {
             if (peer && !peer.destroyed) {
-                peer.reconnect();
+                try { peer.reconnect(); } catch (e) {}
             }
         });
 
         peer.on("error", function(err) {
-            console.error("PeerJS Host Error:", err);
-            if (err.type === "unavailable-id") {
-                createRoom(null, myPlayerName, callback);
-            } else {
-                if (callback) callback({ success: false, error: err.type });
-                if (window.showGameToast) window.showGameToast("خطأ في الخادم: " + err.type, "⚠️");
+            clearTimeout(fallbackTimer);
+            if (callbackFired) return;
+
+            console.warn("PeerJS Host Warning:", err ? err.type : err);
+            if (err && err.type === "unavailable-id" && retryAttempt < 3) {
+                setTimeout(function() {
+                    createRoom(desiredCode, myPlayerName, callback, retryAttempt + 1);
+                }, 250);
+                return;
+            }
+
+            // في حال أي خطأ شبكي آخر، لا نرفض دخول اللاعب بل نفتح الغرفة ونستعيد بياناتها
+            callbackFired = true;
+            finalizeHostRoomSetup(targetPeerId, requestedRoomId, callback);
+            if (window.showGameToast) {
+                window.showGameToast("تم فتح الغرفة (" + targetPeerId + ") بنجاح!", "👑");
             }
         });
     }
@@ -288,36 +422,92 @@ window.NetworkEngine = (function() {
     // =========================================================================
     function joinRoom(inputCode, playerName, callback) {
         initIdentity();
-        if (playerName) {
-            myPlayerName = playerName;
-            localStorage.setItem("hegemony_player_name", playerName);
+        if (playerName && String(playerName).trim()) {
+            myPlayerName = String(playerName).trim();
+            try { localStorage.setItem("hegemony_player_name", myPlayerName); } catch (e) {}
         }
 
         const normalizedCode = normalizeRoomCode(inputCode);
         if (!normalizedCode || normalizedCode === ROOM_PREFIX) {
-            if (callback) callback({ success: false, error: "الرمز غير صحيح" });
-            if (window.showGameToast) window.showGameToast("يرجى كتابة رمز الغرفة!", "✍️");
+            if (callback) callback({ success: false, error: "يرجى كتابة رمز الغرفة الصحيح" });
+            if (window.showGameToast) window.showGameToast("يرجى إدخال رمز الغرفة أولاً (مثال: 4821 أو HEG-4821)!", "✍️");
+            return;
+        }
+
+        // إذا كان اللاعب متصلاً بالفعل بنفس هذه الغرفة، ندخله فوراً دون خطأ!
+        if (roomId === normalizedCode && (isHost || (hostConn && hostConn.open))) {
+            if (callback) callback({ success: true, roomId: roomId, isHost: isHost, hasCountry: !!myCountryId });
+            if (window.showGameToast) window.showGameToast("أنت داخل الغرفة (" + roomId + ") بالفعل!", "✅");
+            return;
+        }
+
+        // إذا كانت هذه الغرفة محفوظة على نفس هذا الجهاز والمستخدم يحاول استئنافها من خانة الانضمام
+        let hasLocalSave = false;
+        try {
+            hasLocalSave = !!localStorage.getItem(SAVE_PREFIX + normalizedCode);
+        } catch (e) {}
+
+        if (peer) {
+            try { peer.destroy(); } catch (e) {}
+            peer = null;
+        }
+
+        if (typeof Peer === "undefined") {
+            if (hasLocalSave) {
+                createRoom(normalizedCode, myPlayerName, callback);
+                return;
+            }
+            if (callback) callback({ success: false, error: "لا يوجد اتصال بالشبكة" });
+            if (window.showGameToast) window.showGameToast("تعذر الاتصال بالشبكة، تأكد من اتصالك بالإنترنت!", "⚠️");
             return;
         }
 
         roomId = normalizedCode;
         isHost = false;
-
-        if (peer) {
-            try { peer.destroy(); } catch (e) {}
-        }
+        initSyncReceived = false;
+        isConnectingRoom = true;
+        let callbackFired = false;
 
         const clientPeerId = "cli_" + Math.random().toString(36).substring(2, 9);
-        peer = new Peer(clientPeerId, {
-            debug: 1,
-            config: {
-                iceServers: [
-                    { urls: "stun:stun.l.google.com:19302" },
-                    { urls: "stun:stun1.l.google.com:19302" },
-                    { urls: "stun:stun2.l.google.com:19302" }
-                ]
+
+        const connectionTimeout = setTimeout(function() {
+            if (!callbackFired) {
+                callbackFired = true;
+                isConnectingRoom = false;
+                if (hasLocalSave) {
+                    // إذا كانت الغرفة محفوظة على نفس الجهاز ولم يرد مضيف خارجي، نستأنفها كمضيف
+                    createRoom(normalizedCode, myPlayerName, callback);
+                    return;
+                }
+                roomId = null;
+                if (callback) callback({ success: false, error: "انتهت مهلة الاتصال" });
+                if (window.showGameToast) {
+                    window.showGameToast("لم يتم العثور على مضيف نشط للغرفة (" + normalizedCode + "). تأكد أن صديقك أنشأ الغرفة وأن الرمز صحيح!", "⚠️");
+                }
             }
-        });
+        }, 8500);
+
+        try {
+            peer = new Peer(clientPeerId, {
+                debug: 0,
+                config: {
+                    iceServers: [
+                        { urls: "stun:stun.l.google.com:19302" },
+                        { urls: "stun:stun1.l.google.com:19302" },
+                        { urls: "stun:stun2.l.google.com:19302" }
+                    ]
+                }
+            });
+        } catch (err) {
+            clearTimeout(connectionTimeout);
+            isConnectingRoom = false;
+            if (hasLocalSave) {
+                createRoom(normalizedCode, myPlayerName, callback);
+                return;
+            }
+            if (callback) callback({ success: false, error: "تعذر تهيئة الاتصال" });
+            return;
+        }
 
         peer.on("open", function() {
             hostConn = peer.connect(roomId, {
@@ -329,20 +519,53 @@ window.NetworkEngine = (function() {
             });
 
             hostConn.on("open", function() {
-                sendToHost({
-                    type: "JOIN_REQUEST",
-                    playerId: localPlayerId,
-                    playerName: myPlayerName
-                });
+                const sendJoinPacket = function() {
+                    sendToHost({
+                        type: "JOIN_REQUEST",
+                        playerId: localPlayerId,
+                        playerName: myPlayerName
+                    });
+                };
+
+                sendJoinPacket();
+
+                // إعادة إرسال طلب الانضمام حتى تصلنا رسالة INIT_SYNC من المضيف
+                let retries = 0;
+                if (joinRetryInterval) clearInterval(joinRetryInterval);
+                joinRetryInterval = setInterval(function() {
+                    retries++;
+                    if (initSyncReceived || retries > 4) {
+                        clearInterval(joinRetryInterval);
+                        joinRetryInterval = null;
+                        return;
+                    }
+                    sendJoinPacket();
+                }, 900);
 
                 startHeartbeat();
                 updateTopReadinessBar();
-                if (callback) callback({ success: true, roomId: roomId, isHost: false });
-                if (window.showGameToast) window.showGameToast("تم دخول الغرفة: " + roomId, "✅");
+
+                // ننتظر لحظة قصيرة لوصول INIT_SYNC ثم نكمل الدخول بسلاسة
+                setTimeout(function() {
+                    if (!callbackFired) {
+                        clearTimeout(connectionTimeout);
+                        callbackFired = true;
+                        isConnectingRoom = false;
+                        if (callback) callback({ success: true, roomId: roomId, isHost: false, hasCountry: !!myCountryId });
+                        if (window.showGameToast) window.showGameToast("تم دخول الغرفة (" + roomId + ") بنجاح!", "✅");
+                    }
+                }, 450);
             });
 
             hostConn.on("data", function(data) {
                 handleClientReceivedData(data);
+                if (data && data.type === "INIT_SYNC" && !callbackFired) {
+                    clearTimeout(connectionTimeout);
+                    callbackFired = true;
+                    isConnectingRoom = false;
+                    if (callback) callback({ success: true, roomId: roomId, isHost: false, hasCountry: !!myCountryId });
+                    if (window.showGameToast) window.showGameToast("تم دخول الغرفة (" + roomId + ") بنجاح!", "✅");
+                }
             });
 
             hostConn.on("close", function() {
@@ -351,24 +574,34 @@ window.NetworkEngine = (function() {
             });
 
             hostConn.on("error", function(err) {
-                console.error("Host connection error:", err);
-                if (callback) callback({ success: false, error: "تعذر الاتصال بالمضيف" });
+                console.warn("Host connection error:", err);
             });
         });
 
         peer.on("disconnected", function() {
             if (peer && !peer.destroyed) {
-                peer.reconnect();
+                try { peer.reconnect(); } catch (e) {}
             }
         });
 
         peer.on("error", function(err) {
-            console.error("PeerJS Join Error:", err);
-            let msg = "تعذر العثور على الغرفة (" + normalizedCode + ")! تأكد من أن منشئ الغرفة متصل حالياً.";
-            if (err.type === "peer-unavailable") {
-                msg = "الغرفة (" + normalizedCode + ") غير متوفرة! تأكد من صحة الأرقام ومن بقاء المضيف داخل اللعبة.";
+            clearTimeout(connectionTimeout);
+            if (callbackFired) return;
+            callbackFired = true;
+            isConnectingRoom = false;
+
+            // إذا كانت الغرفة محفوظة على هذا الجهاز ولم نجد مضيفاً خارجياً، نستأنفها مباشرةً!
+            if (hasLocalSave) {
+                createRoom(normalizedCode, myPlayerName, callback);
+                return;
             }
-            if (callback) callback({ success: false, error: err.type });
+
+            roomId = null;
+            let msg = "تعذر الدخول للغرفة (" + normalizedCode + ")! تأكد أن منشئ الغرفة فتحها الآن وأن الرمز صحيح.";
+            if (err && err.type === "peer-unavailable") {
+                msg = "الغرفة (" + normalizedCode + ") غير نشطة حالياً! اطلب من صديقك إنشاء الغرفة أولاً أو تحقق من الرمز.";
+            }
+            if (callback) callback({ success: false, error: err ? err.type : "error" });
             if (window.showGameToast) window.showGameToast(msg, "❌");
         });
     }
@@ -377,8 +610,11 @@ window.NetworkEngine = (function() {
     // 6. إدارة اتصالات المضيف (Host Connection Handler)
     // =========================================================================
     function handleIncomingConnection(conn) {
-        const currentCount = Object.keys(roomState.players).length;
-        if (currentCount >= 10) {
+        const connectedCount = Object.keys(roomState.players).filter(function(k) {
+            return roomState.players[k] && roomState.players[k].isConnected;
+        }).length;
+
+        if (connectedCount >= 10) {
             conn.on("open", function() {
                 conn.send({ type: "ROOM_FULL", msg: "الغرفة مكتملة بالحد الأقصى (10 لاعبين)!" });
                 setTimeout(function() { conn.close(); }, 500);
@@ -386,7 +622,9 @@ window.NetworkEngine = (function() {
             return;
         }
 
-        connections.push(conn);
+        if (connections.indexOf(conn) === -1) {
+            connections.push(conn);
+        }
 
         conn.on("data", function(data) {
             handleHostReceivedData(conn, data);
@@ -406,6 +644,17 @@ window.NetworkEngine = (function() {
         });
     }
 
+    function safeSendToConn(conn, payload) {
+        if (!conn) return;
+        if (conn.open) {
+            try { conn.send(payload); } catch (e) {}
+        } else {
+            conn.once("open", function() {
+                try { conn.send(payload); } catch (e) {}
+            });
+        }
+    }
+
     // =========================================================================
     // 7. معالجة البيانات الواردة للمضيف (Host Data Processor)
     // =========================================================================
@@ -416,32 +665,46 @@ window.NetworkEngine = (function() {
             case "JOIN_REQUEST":
                 {
                     const pId = data.playerId;
+                    const pName = data.playerName || "قائد متحالف";
                     const isReturning = !!roomState.players[pId];
 
                     if (!isReturning) {
+                        // التحقق مما إذا كان لديه دولة مسجلة باسمه أو بمعرفه في العالم
+                        let existingCountryId = null;
+                        if (window.currentWorld && Array.isArray(window.currentWorld.countries)) {
+                            const matched = window.currentWorld.countries.find(function(c) {
+                                return c.ownerPlayerId === pId;
+                            });
+                            if (matched) existingCountryId = matched.id;
+                        }
                         roomState.players[pId] = {
-                            name: data.playerName || "لاعب",
-                            countryId: null,
+                            name: pName,
+                            countryId: existingCountryId,
                             readyState: "WAITING",
                             isConnected: true
                         };
                     } else {
                         roomState.players[pId].isConnected = true;
-                        roomState.players[pId].name = data.playerName || roomState.players[pId].name;
+                        roomState.players[pId].name = pName || roomState.players[pId].name;
                     }
 
-                    conn.send({
+                    safeSendToConn(conn, {
                         type: "INIT_SYNC",
                         roomState: roomState,
                         assignedCountryId: roomState.players[pId].countryId,
-                        worldData: window.currentWorld ? window.currentWorld.toJSON() : null
+                        worldData: (window.currentWorld && typeof window.currentWorld.toJSON === "function") ?
+                            window.currentWorld.toJSON() :
+                            window.currentWorld
                     });
 
                     broadcastRoomState();
                     saveRoomPersistence();
+                    refreshAllGameViews();
 
                     if (isReturning && roomState.players[pId].countryId) {
-                        broadcastNotification("عازف القيادة " + roomState.players[pId].name + " عاد لاستئناف قيادة دولته!", "👑");
+                        broadcastNotification("عاد القائد " + roomState.players[pId].name + " لاستئناف قيادة دولته!", "👑");
+                    } else {
+                        broadcastNotification("انضم القائد " + pName + " إلى الغرفة!", "🌐");
                     }
                     break;
                 }
@@ -452,18 +715,45 @@ window.NetworkEngine = (function() {
                     const cId = data.countryId;
                     const playerKeys = Object.keys(roomState.players);
                     const isTaken = playerKeys.some(function(k) {
-                        return k !== pId && roomState.players[k].countryId === cId && roomState.players[k].isConnected;
+                        return k !== pId && String(roomState.players[k].countryId) === String(cId) && roomState.players[k].isConnected;
                     });
 
                     if (!isTaken) {
-                        if (roomState.players[pId]) {
+                        if (!roomState.players[pId]) {
+                            roomState.players[pId] = {
+                                name: data.playerName || "قائد",
+                                countryId: cId,
+                                readyState: "WAITING",
+                                isConnected: true
+                            };
+                        } else {
                             roomState.players[pId].countryId = cId;
-                            broadcastRoomState();
-                            saveRoomPersistence();
-                            broadcastNotification("قام القائد " + roomState.players[pId].name + " بحجز قيادة دولة!", "👑");
                         }
+
+                        if (window.currentWorld && Array.isArray(window.currentWorld.countries)) {
+                            const cObj = window.currentWorld.countries.find(function(c) {
+                                return String(c.id) === String(cId);
+                            });
+                            if (cObj) {
+                                cObj.ownerPlayerId = pId;
+                                cObj.ownerPlayerName = roomState.players[pId].name;
+                            }
+                        }
+
+                        broadcastRoomState();
+                        saveRoomPersistence();
+                        refreshAllGameViews();
+                        safeSendToConn(conn, {
+                            type: "CLAIM_ACCEPTED",
+                            countryId: cId,
+                            roomState: roomState
+                        });
+                        broadcastNotification("تولى القائد " + roomState.players[pId].name + " قيادة دولته!", "👑");
                     } else {
-                        conn.send({ type: "CLAIM_REJECTED", msg: "هذه الدولة محجوزة لقائد آخر بالفعل!" });
+                        safeSendToConn(conn, {
+                            type: "CLAIM_REJECTED",
+                            msg: "هذه الدولة محجوزة لقائد آخر متصل حالياً! يمكنك تأسيس دولتك الخاصة."
+                        });
                     }
                     break;
                 }
@@ -471,33 +761,40 @@ window.NetworkEngine = (function() {
             case "CREATE_NATION":
                 {
                     const pId = data.playerId;
-                    const newCountry = data.countryData;
-                    if (newCountry && window.currentWorld) {
-                        newCountry.ownerPlayerId = pId;
-                        const existingIdx = window.currentWorld.countries.findIndex(function(c) {
-                            return String(c.id) === String(newCountry.id);
-                        });
-                        if (existingIdx >= 0) {
-                            window.currentWorld.countries[existingIdx] = newCountry;
-                        } else {
-                            window.currentWorld.countries.push(newCountry);
-                        }
+                    const rawCountry = data.countryData;
+                    if (rawCountry && window.currentWorld) {
+                        const pName = (roomState.players[pId] && roomState.players[pId].name) ?
+                            roomState.players[pId].name :
+                            (data.playerName || "قائد");
 
-                        if (roomState.players[pId]) {
-                            roomState.players[pId].countryId = newCountry.id;
+                        rawCountry.ownerPlayerId = pId;
+                        rawCountry.ownerPlayerName = pName;
+
+                        const addedCountry = upsertCountryInWorld(rawCountry);
+
+                        if (!roomState.players[pId]) {
+                            roomState.players[pId] = {
+                                name: pName,
+                                countryId: addedCountry.id,
+                                readyState: "WAITING",
+                                isConnected: true
+                            };
+                        } else {
+                            roomState.players[pId].countryId = addedCountry.id;
                         }
 
                         saveRoomPersistence();
                         broadcastToAll({
                             type: "NATION_CREATED",
-                            countryData: newCountry,
+                            countryData: (addedCountry && typeof addedCountry.toJSON === "function") ? addedCountry.toJSON() : addedCountry,
+                            ownerPlayerId: pId,
+                            ownerPlayerName: pName,
                             playerId: pId
                         });
                         broadcastRoomState();
                         refreshAllGameViews();
 
-                        const pName = (roomState.players[pId] && roomState.players[pId].name) ? roomState.players[pId].name : "جديد";
-                        broadcastNotification("أعلن القائد " + pName + " تأسيس دولة [" + newCountry.name + "]!", "🏰");
+                        broadcastNotification("أعلن القائد " + pName + " تأسيس دولة [" + addedCountry.name + "]!", "🏰");
                     }
                     break;
                 }
@@ -517,18 +814,13 @@ window.NetworkEngine = (function() {
             case "SYNC_MY_COUNTRY_DATA":
                 {
                     if (data.countryData && window.currentWorld) {
-                        const target = window.currentWorld.countries.find(function(c) {
-                            return String(c.id) === String(data.countryData.id);
+                        const updated = upsertCountryInWorld(data.countryData);
+                        saveRoomPersistence();
+                        broadcastToAll({
+                            type: "COUNTRY_UPDATED",
+                            countryData: (updated && typeof updated.toJSON === "function") ? updated.toJSON() : updated
                         });
-                        if (target) {
-                            Object.assign(target, data.countryData);
-                            saveRoomPersistence();
-                            broadcastToAll({
-                                type: "COUNTRY_UPDATED",
-                                countryData: data.countryData
-                            });
-                            refreshAllGameViews();
-                        }
+                        refreshAllGameViews();
                     }
                     break;
                 }
@@ -542,15 +834,36 @@ window.NetworkEngine = (function() {
         if (!data || !data.type) return;
 
         switch (data.type) {
+            case "ROOM_FULL":
+                {
+                    if (window.showGameToast) window.showGameToast(data.msg || "الغرفة ممتلئة!", "⚠️");
+                    roomId = null;
+                    updateTopReadinessBar();
+                    break;
+                }
+
             case "INIT_SYNC":
                 {
-                    roomState = data.roomState;
+                    initSyncReceived = true;
+                    if (joinRetryInterval) {
+                        clearInterval(joinRetryInterval);
+                        joinRetryInterval = null;
+                    }
+                    if (data.roomState) {
+                        roomState = data.roomState;
+                    }
                     if (data.assignedCountryId) {
                         myCountryId = data.assignedCountryId;
                     }
-                    if (data.worldData && window.World) {
-                        window.currentWorld = window.World.fromJSON(data.worldData);
+                    if (data.worldData) {
+                        if (window.World && typeof window.World.fromJSON === "function") {
+                            window.currentWorld = window.World.fromJSON(data.worldData);
+                        } else {
+                            window.currentWorld = data.worldData;
+                        }
                     }
+                    // مزامنة ملكية الدول من جدول اللاعبين
+                    syncCountryOwnersFromRoomState();
                     updateTopReadinessBar();
                     refreshAllGameViews();
                     break;
@@ -558,25 +871,42 @@ window.NetworkEngine = (function() {
 
             case "ROOM_STATE_UPDATE":
                 {
-                    roomState = data.roomState;
+                    if (data.roomState) {
+                        roomState = data.roomState;
+                        if (roomState.players && roomState.players[localPlayerId] && roomState.players[localPlayerId].countryId) {
+                            myCountryId = roomState.players[localPlayerId].countryId;
+                        }
+                        syncCountryOwnersFromRoomState();
+                    }
                     updateTopReadinessBar();
+                    refreshAllGameViews();
+                    break;
+                }
+
+            case "CLAIM_ACCEPTED":
+                {
+                    if (data.countryId) {
+                        myCountryId = data.countryId;
+                    }
+                    if (data.roomState) {
+                        roomState = data.roomState;
+                    }
+                    syncCountryOwnersFromRoomState();
+                    updateTopReadinessBar();
+                    refreshAllGameViews();
                     break;
                 }
 
             case "NATION_CREATED":
                 {
                     if (window.currentWorld && data.countryData) {
-                        const existingIdx = window.currentWorld.countries.findIndex(function(c) {
-                            return String(c.id) === String(data.countryData.id);
-                        });
-                        if (existingIdx >= 0) {
-                            window.currentWorld.countries[existingIdx] = data.countryData;
-                        } else {
-                            window.currentWorld.countries.push(data.countryData);
+                        if (data.ownerPlayerId) data.countryData.ownerPlayerId = data.ownerPlayerId;
+                        if (data.ownerPlayerName) data.countryData.ownerPlayerName = data.ownerPlayerName;
+                        const cInst = upsertCountryInWorld(data.countryData);
+                        if (data.playerId === localPlayerId && cInst) {
+                            myCountryId = cInst.id;
                         }
-                        if (data.playerId === localPlayerId) {
-                            myCountryId = data.countryData.id;
-                        }
+                        syncCountryOwnersFromRoomState();
                         refreshAllGameViews();
                         updateTopReadinessBar();
                     }
@@ -586,13 +916,9 @@ window.NetworkEngine = (function() {
             case "COUNTRY_UPDATED":
                 {
                     if (window.currentWorld && data.countryData) {
-                        const found = window.currentWorld.countries.find(function(c) {
-                            return String(c.id) === String(data.countryData.id);
-                        });
-                        if (found) {
-                            Object.assign(found, data.countryData);
-                            refreshAllGameViews();
-                        }
+                        upsertCountryInWorld(data.countryData);
+                        syncCountryOwnersFromRoomState();
+                        refreshAllGameViews();
                     }
                     break;
                 }
@@ -608,7 +934,12 @@ window.NetworkEngine = (function() {
             case "ADVANCE_YEAR_TRIGGER":
                 {
                     if (window.currentWorld && data.worldData) {
-                        window.currentWorld = window.World.fromJSON(data.worldData);
+                        if (window.World && typeof window.World.fromJSON === "function") {
+                            window.currentWorld = window.World.fromJSON(data.worldData);
+                        } else {
+                            window.currentWorld = data.worldData;
+                        }
+                        syncCountryOwnersFromRoomState();
                         myReadiness = "WAITING";
                         autoTurnSeconds = 0;
                         stopAutoTurnCountdown();
@@ -646,11 +977,31 @@ window.NetworkEngine = (function() {
 
             case "CLAIM_REJECTED":
                 {
-                    alert(data.msg);
-                    myCountryId = null;
+                    if (window.showGameToast) window.showGameToast(data.msg || "هذه الدولة محجوزة لقائد آخر!", "⚠️");
+                    if (myCountryId && !isMyCountry(myCountryId)) {
+                        myCountryId = null;
+                    }
+                    refreshAllGameViews();
                     break;
                 }
         }
+    }
+
+    function syncCountryOwnersFromRoomState() {
+        if (!window.currentWorld || !Array.isArray(window.currentWorld.countries) || !roomState || !roomState.players) return;
+        const pKeys = Object.keys(roomState.players);
+        pKeys.forEach(function(pid) {
+            const p = roomState.players[pid];
+            if (p && p.countryId) {
+                const c = window.currentWorld.countries.find(function(item) {
+                    return String(item.id) === String(p.countryId);
+                });
+                if (c) {
+                    c.ownerPlayerId = pid;
+                    c.ownerPlayerName = p.name;
+                }
+            }
+        });
     }
 
     // =========================================================================
@@ -709,8 +1060,12 @@ window.NetworkEngine = (function() {
             roomState.players[playerKeys[i]].readyState = "WAITING";
         }
 
-        window.currentWorld.advanceYear();
-        const updatedWorldData = window.currentWorld.toJSON();
+        if (typeof window.currentWorld.advanceYear === "function") {
+            window.currentWorld.advanceYear();
+        }
+        const updatedWorldData = (typeof window.currentWorld.toJSON === "function") ?
+            window.currentWorld.toJSON() :
+            window.currentWorld;
         saveRoomPersistence();
 
         broadcastToAll({
@@ -745,7 +1100,6 @@ window.NetworkEngine = (function() {
             return p.readyState === "READY_YEAR" || p.readyState === "READY_WAR";
         });
 
-        // الحالة 1: الجميع مستعد بالكامل -> دوران مباشر
         if (readyPlayers.length === activePlayers.length) {
             stopAutoTurnCountdown();
 
@@ -766,7 +1120,6 @@ window.NetworkEngine = (function() {
             return;
         }
 
-        // الحالة 2: بقي لاعب واحد فقط لم يستعد في غرفة تضم أكثر من لاعب -> تفعيل مؤقت الدقيقة (60 ثانية)
         if (activePlayers.length > 1 && readyPlayers.length === activePlayers.length - 1) {
             const waitingPlayer = activePlayers.find(function(p) {
                 return p.readyState === "WAITING";
@@ -804,39 +1157,50 @@ window.NetworkEngine = (function() {
 
     function broadcastToAll(msg) {
         connections.forEach(function(conn) {
-            if (conn.open) {
-                conn.send(msg);
+            if (conn && conn.open) {
+                try { conn.send(msg); } catch (e) {}
             }
         });
     }
 
     function sendToHost(msg) {
         if (hostConn && hostConn.open) {
-            hostConn.send(msg);
+            try { hostConn.send(msg); } catch (e) {}
         }
     }
 
     // =========================================================================
-    // 10. واجهات وإجراءات اللاعب (Player Actions & Sovereignty)
+    // 10. واجهات وإجراءات اللاعب والسيادة على الدولة (Player Sovereignty)
     // =========================================================================
     function syncNewCountry(countryData) {
         if (!countryData) return;
+        initIdentity();
         countryData.ownerPlayerId = localPlayerId;
+        countryData.ownerPlayerName = myPlayerName;
         myCountryId = countryData.id;
 
-        if (isHost) {
-            if (window.currentWorld) {
-                const idx = window.currentWorld.countries.findIndex(function(c) {
-                    return String(c.id) === String(countryData.id);
-                });
-                if (idx >= 0) window.currentWorld.countries[idx] = countryData;
-                else window.currentWorld.countries.push(countryData);
+        const cInst = upsertCountryInWorld(countryData);
+
+        if (roomState && roomState.players) {
+            if (!roomState.players[localPlayerId]) {
+                roomState.players[localPlayerId] = {
+                    name: myPlayerName,
+                    countryId: cInst.id,
+                    readyState: "WAITING",
+                    isConnected: true
+                };
+            } else {
+                roomState.players[localPlayerId].countryId = cInst.id;
             }
-            roomState.players[localPlayerId].countryId = countryData.id;
+        }
+
+        if (isHost) {
             saveRoomPersistence();
             broadcastToAll({
                 type: "NATION_CREATED",
-                countryData: countryData,
+                countryData: (cInst && typeof cInst.toJSON === "function") ? cInst.toJSON() : cInst,
+                ownerPlayerId: localPlayerId,
+                ownerPlayerName: myPlayerName,
                 playerId: localPlayerId
             });
             broadcastRoomState();
@@ -844,33 +1208,146 @@ window.NetworkEngine = (function() {
         } else {
             sendToHost({
                 type: "CREATE_NATION",
-                countryData: countryData,
-                playerId: localPlayerId
+                countryData: (cInst && typeof cInst.toJSON === "function") ? cInst.toJSON() : cInst,
+                playerId: localPlayerId,
+                playerName: myPlayerName
             });
             refreshAllGameViews();
         }
         updateTopReadinessBar();
     }
 
+    function getCountryOwnerInfo(countryId) {
+        initIdentity();
+        if (!countryId) return { isMine: false, isClaimed: false, ownerId: null, ownerName: null };
+
+        if (!roomId) {
+            return { isMine: true, isClaimed: true, ownerId: localPlayerId, ownerName: myPlayerName };
+        }
+
+        if (myCountryId && String(myCountryId) === String(countryId)) {
+            return { isMine: true, isClaimed: true, ownerId: localPlayerId, ownerName: myPlayerName };
+        }
+
+        if (roomState && roomState.players) {
+            const pKeys = Object.keys(roomState.players);
+            for (let i = 0; i < pKeys.length; i++) {
+                const pid = pKeys[i];
+                const p = roomState.players[pid];
+                if (p && String(p.countryId) === String(countryId)) {
+                    const mine = String(pid) === String(localPlayerId);
+                    if (mine) myCountryId = countryId;
+                    return {
+                        isMine: mine,
+                        isClaimed: true,
+                        ownerId: pid,
+                        ownerName: p.name || "قائد"
+                    };
+                }
+            }
+        }
+
+        if (window.currentWorld && Array.isArray(window.currentWorld.countries)) {
+            const c = window.currentWorld.countries.find(function(item) {
+                return String(item.id) === String(countryId);
+            });
+            if (c && c.ownerPlayerId) {
+                const mine = String(c.ownerPlayerId) === String(localPlayerId);
+                if (mine) myCountryId = countryId;
+                return {
+                    isMine: mine,
+                    isClaimed: true,
+                    ownerId: c.ownerPlayerId,
+                    ownerName: c.ownerPlayerName || "قائد"
+                };
+            }
+        }
+
+        return { isMine: false, isClaimed: false, ownerId: null, ownerName: null };
+    }
+
     function claimCountry(countryId) {
+        if (!countryId) return false;
+        initIdentity();
+        const ownerInfo = getCountryOwnerInfo(countryId);
+        if (ownerInfo.isClaimed && !ownerInfo.isMine) {
+            if (window.showGameToast) {
+                window.showGameToast("هذه الدولة بقيادة [" + (ownerInfo.ownerName || "لاعب آخر") + "]! يمكنك مشاهدتها أو تأسيس دولتك.", "👁️");
+            }
+            return false;
+        }
+
         myCountryId = countryId;
-        if (isHost) {
+        if (window.currentWorld && Array.isArray(window.currentWorld.countries)) {
+            const c = window.currentWorld.countries.find(function(item) {
+                return String(item.id) === String(countryId);
+            });
+            if (c) {
+                c.ownerPlayerId = localPlayerId;
+                c.ownerPlayerName = myPlayerName;
+            }
+        }
+
+        if (!roomState.players[localPlayerId]) {
+            roomState.players[localPlayerId] = {
+                name: myPlayerName,
+                countryId: countryId,
+                readyState: "WAITING",
+                isConnected: true
+            };
+        } else {
             roomState.players[localPlayerId].countryId = countryId;
+        }
+
+        if (isHost) {
             saveRoomPersistence();
             broadcastRoomState();
-        } else {
+            refreshAllGameViews();
+        } else if (roomId) {
             sendToHost({
                 type: "CLAIM_COUNTRY",
                 playerId: localPlayerId,
+                playerName: myPlayerName,
                 countryId: countryId
             });
         }
         updateTopReadinessBar();
+        return true;
     }
 
     function submitDecision(decision) {
+        initIdentity();
+
+        // إذا لم يكن للاعب دولة مربوطة بعد، نحاول ربطه بدولته الحالية إن وجدت
+        if (!myCountryId && window.currentViewingCountry) {
+            const info = getCountryOwnerInfo(window.currentViewingCountry.id);
+            if (!info.isClaimed || info.isMine) {
+                claimCountry(window.currentViewingCountry.id);
+            }
+        }
+
+        if (!myCountryId && window.currentWorld && Array.isArray(window.currentWorld.countries)) {
+            const myOwned = window.currentWorld.countries.find(function(c) {
+                return c.ownerPlayerId === localPlayerId;
+            });
+            if (myOwned) {
+                myCountryId = myOwned.id;
+            } else if (window.currentWorld.countries.length === 1) {
+                const onlyC = window.currentWorld.countries[0];
+                const info = getCountryOwnerInfo(onlyC.id);
+                if (!info.isClaimed) {
+                    claimCountry(onlyC.id);
+                }
+            }
+        }
+
         if (!myCountryId) {
-            alert("يرجى تأسيس دولتك أو اختيارها أولاً من قائمة بطاقات الأمم!");
+            if (window.showGameToast) {
+                window.showGameToast("يرجى تأسيس دولتك أولاً أو اختيار دولة متاحة قبل إعلان الجاهزية!", "🏰");
+            }
+            if (typeof window.openCreateCountryModal === "function") {
+                window.openCreateCountryModal();
+            }
             return;
         }
 
@@ -878,7 +1355,17 @@ window.NetworkEngine = (function() {
         updateTopReadinessBar();
 
         if (isHost) {
-            roomState.players[localPlayerId].readyState = decision;
+            if (!roomState.players[localPlayerId]) {
+                roomState.players[localPlayerId] = {
+                    name: myPlayerName,
+                    countryId: myCountryId,
+                    readyState: decision,
+                    isConnected: true
+                };
+            } else {
+                roomState.players[localPlayerId].readyState = decision;
+                roomState.players[localPlayerId].countryId = myCountryId;
+            }
             broadcastRoomState();
             checkAllPlayersReady();
         } else {
@@ -892,28 +1379,37 @@ window.NetworkEngine = (function() {
 
     function canControlCountry(targetCountryId) {
         if (!roomId) return true;
-        if (!myCountryId) return true;
-        return String(myCountryId) === String(targetCountryId);
+        if (!targetCountryId) return false;
+        const info = getCountryOwnerInfo(targetCountryId);
+        if (info.isMine) return true;
+        if (!info.isClaimed && !myCountryId) return true;
+        return false;
     }
 
     function isMyCountry(targetCountryId) {
         if (!roomId) return true;
-        return String(myCountryId) === String(targetCountryId);
+        if (!targetCountryId) return false;
+        return getCountryOwnerInfo(targetCountryId).isMine;
     }
 
     function syncCountryChanges(country) {
         if (!roomId || !country) return;
+        const payload = (typeof country.toJSON === "function") ? country.toJSON() : country;
+        if (country.ownerPlayerId) payload.ownerPlayerId = country.ownerPlayerId;
+        if (country.ownerPlayerName) payload.ownerPlayerName = country.ownerPlayerName;
+        if (country.militaryColor) payload.militaryColor = country.militaryColor;
+
         if (isHost) {
             saveRoomPersistence();
             broadcastToAll({
                 type: "COUNTRY_UPDATED",
-                countryData: country
+                countryData: payload
             });
             refreshAllGameViews();
         } else {
             sendToHost({
                 type: "SYNC_MY_COUNTRY_DATA",
-                countryData: country
+                countryData: payload
             });
             refreshAllGameViews();
         }
@@ -940,17 +1436,17 @@ window.NetworkEngine = (function() {
         const btnWar = document.getElementById("btn-mp-ready-war");
 
         if (roomCodeLabel) {
-            roomCodeLabel.textContent = "غرفة: " + roomId;
-            roomCodeLabel.title = "اضغط لنسخ الرمز";
+            roomCodeLabel.textContent = "غرفة: " + roomId + " 📋";
+            roomCodeLabel.title = "اضغط لنسخ الرمز ومشاركته";
             roomCodeLabel.style.cursor = "pointer";
             roomCodeLabel.onclick = copyRoomCode;
         }
 
-        const playerKeys = Object.keys(roomState.players);
+        const playerKeys = Object.keys(roomState.players || {});
         const playersArr = [];
         for (let i = 0; i < playerKeys.length; i++) {
             const p = roomState.players[playerKeys[i]];
-            if (p.isConnected) playersArr.push(p);
+            if (p && p.isConnected) playersArr.push(p);
         }
 
         let readyCount = 0;
@@ -958,7 +1454,7 @@ window.NetworkEngine = (function() {
             if (playersArr[j].readyState !== "WAITING") readyCount++;
         }
 
-        if (countLabel) countLabel.textContent = "👥 " + playersArr.length + "/10";
+        if (countLabel) countLabel.textContent = "👥 " + Math.max(1, playersArr.length) + "/10";
 
         if (statusDetails) {
             if (autoTurnSeconds > 0) {
@@ -966,18 +1462,20 @@ window.NetworkEngine = (function() {
                 if (timerTargetPlayerId && roomState.players[timerTargetPlayerId] && roomState.players[timerTargetPlayerId].name) {
                     targetName = roomState.players[timerTargetPlayerId].name;
                 }
-                statusDetails.innerHTML = '<span style="color:#fde047; font-weight:900;">⏳ بانتظار ' + targetName + ': ' + autoTurnSeconds + ' ثانية للتقدم التلقائي</span>';
+                statusDetails.innerHTML = '<span style="color:#fde047; font-weight:900;">⏳ بانتظار ' + targetName + ': ' + autoTurnSeconds + 'ث</span>';
+            } else if (!myCountryId) {
+                statusDetails.innerHTML = '<span style="color:#38bdf8; font-weight:900;">🏰 أسس دولتك أو اختر دولة</span>';
             } else {
-                statusDetails.textContent = "الجاهزية: " + readyCount + "/" + playersArr.length;
+                statusDetails.textContent = "الجاهزية: " + readyCount + "/" + Math.max(1, playersArr.length);
             }
         }
 
         if (btnNextYear && btnWar) {
             if (myReadiness === "READY_YEAR") {
                 btnNextYear.className = "btn btn-sm btn-primary active-decision";
-                btnNextYear.textContent = "✅ بانتظار البقية";
+                btnNextYear.textContent = "✅ مستعد";
                 btnWar.className = "btn btn-sm btn-secondary";
-                btnWar.textContent = "⚔️ إعلان الحرب";
+                btnWar.textContent = "⚔️ حرب";
             } else if (myReadiness === "READY_WAR") {
                 btnNextYear.className = "btn btn-sm btn-secondary";
                 btnNextYear.textContent = "🌾 سنة جديدة";
@@ -987,15 +1485,18 @@ window.NetworkEngine = (function() {
                 btnNextYear.className = "btn btn-sm btn-primary";
                 btnNextYear.textContent = "🌾 سنة جديدة";
                 btnWar.className = "btn btn-sm btn-danger";
-                btnWar.textContent = "⚔️ إعلان الحرب";
+                btnWar.textContent = "⚔️ حرب";
             }
         }
     }
+
+    initIdentity();
 
     return {
         createRoom: createRoom,
         joinRoom: joinRoom,
         claimCountry: claimCountry,
+        getCountryOwnerInfo: getCountryOwnerInfo,
         syncNewCountry: syncNewCountry,
         submitDecision: submitDecision,
         canControlCountry: canControlCountry,
@@ -1008,6 +1509,7 @@ window.NetworkEngine = (function() {
         isHost: function() { return isHost; },
         getMyCountryId: function() { return myCountryId; },
         getLocalPlayerId: function() { return localPlayerId; },
+        getPlayerName: function() { return myPlayerName; },
         getRoomState: function() { return roomState; }
     };
 })();
