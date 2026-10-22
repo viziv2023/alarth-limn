@@ -18,7 +18,9 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
 
-    <!-- مكتبة PeerJS للاتصال الشبكي المباشر P2P بين الهواتف دون الحاجة لخادم خارجي -->
+    <!-- محرك الغرف السحابية الموحدة الفوري عبر WebSockets (يعمل على كافة شبكات الجوال 4G/5G/WiFi بدون رفض دخول) -->
+    <script src="https://unpkg.com/mqtt@5.3.4/dist/mqtt.min.js"></script>
+    <!-- مكتبة PeerJS كخط احتياطي إضافي -->
     <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
 
     <link rel="stylesheet" href="style.css" />
@@ -38,14 +40,14 @@
     <!-- شريط الجاهزية واتخاذ القرار العلوي المتزامن للغرف والهواتف ومؤقت الـ 60 ثانية -->
     <div id="multiplayer-status-bar" style="display:none;">
         <div class="mp-bar-info">
-            <span id="mp-room-code-label" class="mp-badge-room">غرفة: --</span>
+            <span id="mp-room-code-label" class="mp-badge-room">روم: --</span>
             <span id="mp-players-count" class="mp-badge-count">👥 1/10</span>
-            <span id="mp-status-details" class="mp-status-text">بانتظار تحديد قرارك...</span>
+            <span id="mp-status-details" class="mp-status-text">متصل بالروم الموحد</span>
         </div>
         <div class="mp-bar-actions">
             <button id="btn-mp-ready-year" class="btn btn-sm btn-primary">🌾 جاهز للسنة التالية</button>
             <button id="btn-mp-ready-war" class="btn btn-sm btn-danger">⚔️ إعلان الحرب</button>
-            <button id="btn-mp-open-lobby" class="btn btn-sm btn-secondary" title="إدارة الغرفة">⚙️</button>
+            <button id="btn-mp-open-lobby" class="btn btn-sm btn-secondary" title="إدارة الروم">⚙️</button>
         </div>
     </div>
 
@@ -55,7 +57,7 @@
             <div class="menu-hero-side">
                 <div class="menu-crown-emblem">👑</div>
                 <div>
-                    <span class="menu-badge-tactical">✨ 3D CAPITAL STRATEGY v5.2 ✨</span>
+                    <span class="menu-badge-tactical">✨ 3D CAPITAL STRATEGY v6.0 ✨</span>
                 </div>
                 <h1 class="game-title">عصر الهيمنة</h1>
                 <p class="subtitle">ابنِ عاصمتك ثلاثية الأبعاد، طوّر منشآتك بالرموز التفاعلية، وقُد جيوشك!</p>
@@ -63,14 +65,14 @@
                 <div class="menu-features-pills">
                     <span class="menu-feature-pill">🏛️ عاصمة 3D تفاعلية</span>
                     <span class="menu-feature-pill">🏗️ 72 منشأة بالرموز</span>
-                    <span class="menu-feature-pill">🌐 غرف لـ 10 لاعبين</span>
+                    <span class="menu-feature-pill">🔢 روم موحد بالأرقام فقط</span>
                     <span class="menu-feature-pill">📱 تصميم جوال أفقي</span>
                 </div>
             </div>
 
             <div class="menu-buttons">
                 <button id="btn-menu-new" class="btn btn-primary">🏰 ابدأ اللعب وأسس دولتك الآن ➔</button>
-                <button id="btn-menu-multiplayer" class="btn btn-accent">🌐 غرف اللعب الجماعي ( الأونلاين )</button>
+                <button id="btn-menu-multiplayer" class="btn btn-accent">🌐 دخول الروم الموحد (أونلاين بالأرقام)</button>
                 <button id="btn-menu-load" class="btn btn-secondary">📂 استرجاع عالم محفوظ (JSON)</button>
                 <button id="btn-menu-fullscreen" type="button" class="btn btn-secondary btn-sm">⛶ وضع ملء الشاشة للجوال (إخفاء شريط المتصفح)</button>
                 <input type="file" id="file-input-menu" accept=".json" style="display:none;" />
@@ -97,7 +99,7 @@
                 <button id="btn-go-my-capital" class="btn btn-accent">🏛️ عاصمتي 3D</button>
                 <button id="btn-global-next-year" class="btn btn-primary btn-advance-year">🌟 إنهاء السنة ➔</button>
                 <button id="btn-add-nation" class="btn btn-secondary">🏰 + دولة</button>
-                <button id="btn-open-rooms-modal" class="btn btn-secondary" title="إدارة الغرف والتعددية">🌐 الغرف</button>
+                <button id="btn-open-rooms-modal" class="btn btn-secondary" title="إدارة الروم الموحد">🌐 الروم</button>
                 <button id="btn-save-to-file" class="btn btn-secondary" title="حفظ تقدم اللعبة">💾</button>
                 <button id="btn-load-from-file" class="btn btn-secondary" title="تحميل ملف حفظ">📁</button>
                 <button id="btn-fullscreen-dash" type="button" class="btn btn-secondary btn-sm" title="ملء الشاشة وإخفاء شريط المتصفح">⛶</button>
@@ -658,40 +660,60 @@
         </div>
     </div>
 
-    <!-- نافذة اللوبي والانضمام للغرف المتعددة (Multiplayer Lobby Modal) -->
+    <!-- =======================================================================
+         نافذة الروم السحابي الموحد بالأرقام فقط (Unified Numeric Cloud Room Modal)
+         ======================================================================= -->
     <div id="modal-multiplayer-lobby" class="modal">
-        <div class="modal-content" style="max-width: 520px;">
-            <h2 style="color:#38bdf8; display:flex; align-items:center; gap:8px; font-size:1.1rem; margin:0;">🌐 غرفة اللعب الجماعي (Multiplayer P2P)</h2>
-            <p style="font-size:0.8rem; color:#fde68a; margin:0;">ادخل اسمك ثم أنشئ غرفة جديدة أو انضم برمز صديقك، وبعدها أسس دولتك أو اختر قيادة دولة متاحة.</p>
+        <div class="modal-content" style="max-width: 530px;">
+            <h2 style="color:#38bdf8; display:flex; align-items:center; gap:8px; font-size:1.05rem; margin:0;">🌐 الروم الموحد السحابي (دخول فوري بالأرقام فقط)</h2>
+            <p style="font-size:0.78rem; color:#fde68a; margin:0;">نظام غرف موحد لا يرفض الدخول أبداً: ادخل الروم العام الموحد (1000) بضغطة زر، أو اكتب أي رقم مع أصدقائك وستجتمعون تلقائياً في نفس الروم!</p>
 
             <div class="form-group" style="margin-top:4px;">
                 <label>👤 اسمك كقائد / لاعب:</label>
                 <input type="text" id="mp-player-name-input" placeholder="اكتب اسمك أو لقبك..." value="قائد سيادي" />
             </div>
 
-            <div id="mp-saved-room-box" style="display:none; background:#1b1330; border:2px solid #34d399; border-radius:12px; padding:8px 10px; margin:4px 0;">
-                <h4 style="color:#34d399; margin-bottom:3px; font-size:0.86rem;">🔄 عثرنا على غرفة سابقة محفوظة لجهازك:</h4>
-                <p id="mp-saved-room-desc" style="font-size:0.76rem; color:#e2e8f0; margin-bottom:6px;">رمز الغرفة المحفوظة: --</p>
-                <button type="button" id="btn-resume-saved-room" class="btn btn-primary btn-sm" style="width:100%;">
-                    🌟 استئناف الغرفة المحفوظة ➔
+            <!-- الخيار 1: الروم الموحد العام الفوري برقم 1000 -->
+            <div style="background:linear-gradient(90deg, rgba(16, 185, 129, 0.18), rgba(6, 95, 70, 0.35)); border:2px solid #34d399; border-radius:12px; padding:10px; margin:2px 0;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                    <h4 style="color:#6ee7b7; margin:0; font-size:0.88rem;">🌍 1. الروم الموحد العام (بدون كتابة رمز):</h4>
+                    <span class="badge badge-gold" style="font-size:0.72rem; padding:1px 8px;">الرقم الموحد: 1000</span>
+                </div>
+                <button type="button" id="btn-join-unified-global-room" class="btn btn-primary btn-sm" style="width:100%; background:linear-gradient(180deg, #10b981 0%, #059669 100%) !important; border-color:#a7f3d0 !important;">
+                    🚀 دخول الروم الموحد العام (1000) فوراً ➔
                 </button>
             </div>
 
-            <div style="background:#130c24; border:1.5px solid #3b82f6; border-radius:12px; padding:10px; margin:4px 0;">
-                <h4 style="color:#fde047; margin-bottom:6px; font-size:0.88rem;">1. إنشاء غرفة جديدة واستضافة أصدقائك:</h4>
-                <button type="button" id="btn-create-new-room" class="btn btn-primary btn-sm" style="width:100%;">👑 إنشاء غرفة وتوليد الرمز ➔</button>
-            </div>
-
-            <div style="background:#130c24; border:1.5px solid #f59e0b; border-radius:12px; padding:10px; margin:4px 0;">
-                <h4 style="color:#fde047; margin-bottom:6px; font-size:0.88rem;">2. أو الانضمام إلى غرفة صديقك بالرمز:</h4>
-                <div style="display:flex; gap:6px;">
-                    <input type="text" id="mp-room-code-input" placeholder="أدخل الرمز (مثال: 4821 أو HEG-4821)" style="flex:1;" />
-                    <button type="button" id="btn-join-existing-room" class="btn btn-accent btn-sm" style="white-space:nowrap;">دخول الغرفة ➔</button>
+            <!-- الخيار 2: دخول أو فتح روم برقم مخصص (أرقام فقط) -->
+            <div style="background:#130c24; border:2px solid #f59e0b; border-radius:12px; padding:10px; margin:2px 0;">
+                <h4 style="color:#fde047; margin-bottom:6px; font-size:0.86rem;">🔢 2. أو ادخل/أنشئ روماً مشتركاً بأي رقم تختاره (أرقام فقط):</h4>
+                <div style="display:flex; gap:6px; align-items:stretch;">
+                    <input type="tel" inputmode="numeric" pattern="[0-9]*" id="mp-room-code-input" placeholder="اكتب رقم الروم (مثال: 4821)" style="flex:1; font-size:1.05rem; font-weight:900; text-align:center; letter-spacing:2px; color:#fde047;" />
+                    <button type="button" id="btn-join-existing-room" class="btn btn-accent btn-sm" style="white-space:nowrap; padding:6px 14px;">دخول بالرقم ➔</button>
+                </div>
+                <div style="display:flex; gap:5px; margin-top:6px; flex-wrap:wrap; align-items:center;">
+                    <span style="font-size:0.72rem; color:#cbd5e1;">أرقام سريعة:</span>
+                    <button type="button" class="btn btn-secondary btn-sm mp-quick-num-btn" data-room="1111" style="padding:2px 8px; font-size:0.72rem;">1111</button>
+                    <button type="button" class="btn btn-secondary btn-sm mp-quick-num-btn" data-room="2222" style="padding:2px 8px; font-size:0.72rem;">2222</button>
+                    <button type="button" class="btn btn-secondary btn-sm mp-quick-num-btn" data-room="5555" style="padding:2px 8px; font-size:0.72rem;">5555</button>
+                    <button type="button" class="btn btn-secondary btn-sm mp-quick-num-btn" data-room="9999" style="padding:2px 8px; font-size:0.72rem;">9999</button>
+                    <button type="button" id="btn-create-new-room" class="btn btn-secondary btn-sm" style="padding:2px 8px; font-size:0.72rem; margin-right:auto; border-color:#fbbf24; color:#fde047;">🎲 رقم عشوائي جديد</button>
                 </div>
             </div>
 
-            <div class="modal-actions" style="margin-top:4px;">
-                <button type="button" id="btn-close-mp-lobby" class="btn btn-secondary btn-sm">إغلاق</button>
+            <!-- استئناف آخر روم محفوظ -->
+            <div id="mp-saved-room-box" style="display:none; background:#1b1330; border:1.5px solid #38bdf8; border-radius:10px; padding:7px 10px; margin:2px 0;">
+                <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap;">
+                    <span id="mp-saved-room-desc" style="font-size:0.76rem; color:#e2e8f0; font-weight:800;">آخر روم محفوظ: --</span>
+                    <button type="button" id="btn-resume-saved-room" class="btn btn-accent btn-sm">
+                        🔄 استئناف الروم ➔
+                    </button>
+                </div>
+            </div>
+
+            <div class="modal-actions" style="margin-top:4px; justify-content:space-between;">
+                <button type="button" id="btn-reset-current-room" class="btn btn-danger btn-sm" style="display:none;">🗑️ تصفير دول الروم الحالي</button>
+                <button type="button" id="btn-close-mp-lobby" class="btn btn-secondary btn-sm" style="margin-right:auto;">إغلاق</button>
             </div>
         </div>
     </div>
