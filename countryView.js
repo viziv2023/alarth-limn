@@ -434,6 +434,15 @@ class CountryViewController {
         const country = resolveCountryObject(target);
         if (!country) return;
 
+        if (window.NetworkEngine && window.NetworkEngine.getRoomId()) {
+            const ownerInfo = typeof window.NetworkEngine.getCountryOwnerInfo === "function"
+                ? window.NetworkEngine.getCountryOwnerInfo(country.id)
+                : null;
+            if (ownerInfo && !ownerInfo.isClaimed && !window.NetworkEngine.getMyCountryId()) {
+                window.NetworkEngine.claimCountry(country.id);
+            }
+        }
+
         const isOwner = window.NetworkEngine ? window.NetworkEngine.canControlCountry(country.id) : true;
         window.isViewingAsSpectator = !isOwner;
         window.currentViewingCountry = country;
