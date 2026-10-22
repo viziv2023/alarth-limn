@@ -1174,6 +1174,28 @@ window.CapitalView = (function() {
                 closeInspectorPopup();
             };
         }
+
+        const btnToggleTopbar = document.getElementById('btn-toggle-cap-topbar');
+        const btnRestoreTopbar = document.getElementById('btn-restore-cap-topbar');
+        const capTopbar = document.getElementById('cap-landscape-topbar');
+
+        if (btnToggleTopbar && capTopbar) {
+            btnToggleTopbar.onclick = () => {
+                if (window.GameSFX) window.GameSFX.playClick();
+                capTopbar.classList.add('topbar-collapsed');
+                if (btnRestoreTopbar) btnRestoreTopbar.style.display = 'inline-flex';
+                setTimeout(resizeCanvas, 30);
+            };
+        }
+
+        if (btnRestoreTopbar && capTopbar) {
+            btnRestoreTopbar.onclick = () => {
+                if (window.GameSFX) window.GameSFX.playClick();
+                capTopbar.classList.remove('topbar-collapsed');
+                btnRestoreTopbar.style.display = 'none';
+                setTimeout(resizeCanvas, 30);
+            };
+        }
     }
 
     function handleDockAction(action) {
@@ -2179,6 +2201,11 @@ window.CapitalView = (function() {
         }
     }
 
+    function isTouchInsideOverlayUI(target) {
+        if (!target || typeof target.closest !== 'function') return false;
+        return !!target.closest('.cap-bottom-drawer, .cap-inspector-card, .cap-bottom-dock, .capital-floating-controls, #btn-restore-cap-topbar');
+    }
+
     function attachInputs() {
         const wrapper = document.getElementById('capital-canvas-wrapper');
         if (!wrapper) return;
@@ -2186,7 +2213,7 @@ window.CapitalView = (function() {
         wrapper.addEventListener('contextmenu', e => e.preventDefault());
 
         wrapper.addEventListener('mousedown', e => {
-            if (e.target !== canvas) return;
+            if (isTouchInsideOverlayUI(e.target) || e.target !== canvas) return;
             camera.isDragging = true;
             pointerDownPos = { x: e.clientX, y: e.clientY };
             pointerMovedDist = 0;
@@ -2236,14 +2263,18 @@ window.CapitalView = (function() {
         });
 
         wrapper.addEventListener('wheel', e => {
+            if (isTouchInsideOverlayUI(e.target)) return;
             e.preventDefault();
             const delta = e.deltaY < 0 ? 0.14 : -0.14;
             adjustZoom(delta, e.clientX, e.clientY);
         }, { passive: false });
 
-        // دعم كامل للمس المتعدد والنقر على الهواتف
+        // دعم كامل للمس المتعدد والنقر على الهواتف دون تعطيل التمرير داخل الأدراج والقوائم
         wrapper.addEventListener('touchstart', e => {
-            if (e.target !== canvas) return;
+            if (isTouchInsideOverlayUI(e.target) || e.target !== canvas) {
+                camera.isDragging = false;
+                return;
+            }
             hideTooltip();
             if (e.touches.length === 1) {
                 camera.isDragging = true;
@@ -2262,11 +2293,11 @@ window.CapitalView = (function() {
                 camera.touchDist = Math.hypot(dx, dy);
                 camera.touchAngle = Math.atan2(dy, dx);
             }
-        }, { passive: false });
+        }, { passive: true });
 
         wrapper.addEventListener('touchmove', e => {
-            if (!camera.isDragging) return;
-            e.preventDefault();
+            if (isTouchInsideOverlayUI(e.target) || !camera.isDragging) return;
+            if (e.cancelable) e.preventDefault();
 
             if (e.touches.length === 1 && camera.dragMode === 'pan') {
                 const dx = e.touches[0].clientX - camera.lastMouseX;
