@@ -55,7 +55,7 @@
             <div class="menu-hero-side">
                 <div class="menu-crown-emblem">👑</div>
                 <div>
-                    <span class="menu-badge-tactical">✨ 3D CAPITAL STRATEGY v5.0 ✨</span>
+                    <span class="menu-badge-tactical">✨ 3D CAPITAL STRATEGY v5.2 ✨</span>
                 </div>
                 <h1 class="game-title">عصر الهيمنة</h1>
                 <p class="subtitle">ابنِ عاصمتك ثلاثية الأبعاد، طوّر منشآتك بالرموز التفاعلية، وقُد جيوشك!</p>
@@ -454,7 +454,7 @@
                 <div class="logistics-card highlight-ammo">
                     <span class="l-lbl">💣 رصيد الذخيرة</span>
                     <span class="l-val text-emerald" id="stat-mil-ammo">0</span>
-                    <div class="ammo-sub-flex" style="display:flex; justify-content:space-between; font-size:0.78rem; color:#fde68a; margin-top:2px;">
+                    <div class="ammo-sub-flex" style="display:flex; justify-content:space-between; font-size:0.72rem; color:#fde68a; margin-top:2px;">
                         <span id="stat-ammo-demand">الطلب: 0</span>
                         <span id="stat-ammo-prod">الإنتاج: 0</span>
                     </div>
@@ -492,8 +492,8 @@
             <div class="battle-nation-tag" style="flex-direction:row-reverse;">
                 <div id="battle-defender-flag" class="table-flag"></div>
                 <div>
-                    <span style="font-size:0.75rem; color:#fde68a;">🛡️ جيش الدفاع</span>
-                    <h3 id="battle-defender-name" style="color:#fb7185;">--</h3>
+                    <span style="font-size:0.7rem; color:#fde68a;">🛡️ جيش الدفاع</span>
+                    <h3 id="battle-defender-name" style="color:#fb7185; font-size:0.88rem; margin:0;">--</h3>
                 </div>
             </div>
 
@@ -502,8 +502,8 @@
             <div class="battle-nation-tag">
                 <div id="battle-attacker-flag" class="table-flag"></div>
                 <div>
-                    <span style="font-size:0.75rem; color:#fde68a;">🔥 جيش الهجوم</span>
-                    <h3 id="battle-attacker-name" style="color:#34d399;">--</h3>
+                    <span style="font-size:0.7rem; color:#fde68a;">🔥 جيش الهجوم</span>
+                    <h3 id="battle-attacker-name" style="color:#34d399; font-size:0.88rem; margin:0;">--</h3>
                 </div>
             </div>
         </header>
@@ -517,8 +517,8 @@
          6. شاشة العاصمة ثلاثية الأبعاد (المركز الرئيسي للعب بالوضع الأفقي Landscape HUD)
          ======================================================================= -->
     <div id="capital-screen" class="screen">
-        <!-- الشريط العلوي البصري المختصر بالرموز (Landscape Resource Bar) -->
-        <header class="cap-landscape-topbar">
+        <!-- الشريط العلوي البصري الرشيق القابل للطي (Compact Collapsible Landscape Topbar) -->
+        <header class="cap-landscape-topbar" id="cap-landscape-topbar">
             <div class="cap-nation-identity" id="cap-header-nation-box" title="اضغط لعرض القلعة السيادية والترقية">
                 <div id="cap-mini-flag" class="cap-mini-flag"></div>
                 <div class="cap-nation-titles">
@@ -561,12 +561,16 @@
             <div class="cap-top-actions">
                 <button id="btn-cap-next-year" class="btn btn-primary btn-sm" title="إنهاء السنة وجني العوائد">⏳ سنة 1م ➔</button>
                 <button id="btn-back-from-capital" class="btn btn-secondary btn-sm" title="الانتقال إلى خريطة العالم ومجلس الأمم">🌍 العالم</button>
+                <button id="btn-toggle-cap-topbar" type="button" class="btn btn-secondary btn-sm" title="إخفاء الشريط العلوي لتوسيع الخريطة">🔼</button>
             </div>
         </header>
 
         <!-- مساحة المشهد ثلاثي الأبعاد + النوافذ التفاعلية والشريط السفلي -->
         <div class="capital-canvas-wrapper" id="capital-canvas-wrapper">
             <canvas id="capital-canvas"></canvas>
+
+            <!-- زر استعادة الشريط العلوي عند إخفائه -->
+            <button type="button" id="btn-restore-cap-topbar" title="إظهار الشريط العلوي">🔽 إظهار الشريط</button>
 
             <!-- تلميح سريع عند التمرير -->
             <div id="capital-tooltip" style="display:none; position:absolute; pointer-events:none; background:rgba(24,16,44,0.95); border:2px solid #fbbf24; border-radius:12px; padding:6px 12px; color:#fffbeb; font-size:0.8rem; font-weight:800; z-index:100; box-shadow:0 6px 18px rgba(0,0,0,0.6);"></div>
@@ -588,7 +592,7 @@
             <div id="cap-drawer-build" class="cap-bottom-drawer">
                 <div class="cap-drawer-header">
                     <div style="display:flex; align-items:center; gap:8px;">
-                        <span style="font-size:1.35rem;">🏗️</span>
+                        <span style="font-size:1.2rem;">🏗️</span>
                         <h3>تشييد المنشآت وتطوير العاصمة</h3>
                     </div>
                     <button type="button" class="btn btn-secondary btn-sm cap-drawer-close">✕ إغلاق</button>
@@ -600,7 +604,7 @@
             <div id="cap-drawer-sectors" class="cap-bottom-drawer">
                 <div class="cap-drawer-header">
                     <div style="display:flex; align-items:center; gap:8px;">
-                        <span style="font-size:1.35rem;">🎯</span>
+                        <span style="font-size:1.2rem;">🎯</span>
                         <h3>توازن قطاعات الدولة الـ 16</h3>
                     </div>
                     <button type="button" class="btn btn-secondary btn-sm cap-drawer-close">✕ إغلاق</button>
@@ -612,7 +616,7 @@
             <div id="cap-drawer-economy" class="cap-bottom-drawer">
                 <div class="cap-drawer-header">
                     <div style="display:flex; align-items:center; gap:8px;">
-                        <span style="font-size:1.35rem;">💰</span>
+                        <span style="font-size:1.2rem;">💰</span>
                         <h3>الخزينة والبنك وإمبراطورية الطاقة</h3>
                     </div>
                     <button type="button" class="btn btn-secondary btn-sm cap-drawer-close">✕ إغلاق</button>
@@ -657,36 +661,36 @@
     <!-- نافذة اللوبي والانضمام للغرف المتعددة (Multiplayer Lobby Modal) -->
     <div id="modal-multiplayer-lobby" class="modal">
         <div class="modal-content" style="max-width: 520px;">
-            <h2 style="color:#38bdf8; display:flex; align-items:center; gap:8px;">🌐 غرفة اللعب الجماعي (Multiplayer P2P)</h2>
-            <p style="font-size:0.84rem; color:#fde68a;">العب مع أصدقائك (حتى 10 لاعبين)؛ كل لاعب يبني عاصمته المستقلة وتتزامن النتائج فوراً.</p>
+            <h2 style="color:#38bdf8; display:flex; align-items:center; gap:8px; font-size:1.1rem; margin:0;">🌐 غرفة اللعب الجماعي (Multiplayer P2P)</h2>
+            <p style="font-size:0.8rem; color:#fde68a; margin:0;">ادخل اسمك ثم أنشئ غرفة جديدة أو انضم برمز صديقك، وبعدها أسس دولتك أو اختر قيادة دولة متاحة.</p>
 
-            <div class="form-group" style="margin-top:6px;">
-                <label>اسمك كقائد / لاعب:</label>
+            <div class="form-group" style="margin-top:4px;">
+                <label>👤 اسمك كقائد / لاعب:</label>
                 <input type="text" id="mp-player-name-input" placeholder="اكتب اسمك أو لقبك..." value="قائد سيادي" />
             </div>
 
-            <div id="mp-saved-room-box" style="display:none; background:#1b1330; border:2px solid #34d399; border-radius:14px; padding:10px; margin:6px 0;">
-                <h4 style="color:#34d399; margin-bottom:4px;">🔄 عثرنا على غرفة سابقة محفوظة لجهازك:</h4>
-                <p id="mp-saved-room-desc" style="font-size:0.8rem; color:#e2e8f0; margin-bottom:6px;">رمز الغرفة المحفوظة: --</p>
+            <div id="mp-saved-room-box" style="display:none; background:#1b1330; border:2px solid #34d399; border-radius:12px; padding:8px 10px; margin:4px 0;">
+                <h4 style="color:#34d399; margin-bottom:3px; font-size:0.86rem;">🔄 عثرنا على غرفة سابقة محفوظة لجهازك:</h4>
+                <p id="mp-saved-room-desc" style="font-size:0.76rem; color:#e2e8f0; margin-bottom:6px;">رمز الغرفة المحفوظة: --</p>
                 <button type="button" id="btn-resume-saved-room" class="btn btn-primary btn-sm" style="width:100%;">
                     🌟 استئناف الغرفة المحفوظة ➔
                 </button>
             </div>
 
-            <div style="background:#130c24; border:2px solid #3b82f6; border-radius:14px; padding:12px; margin:6px 0;">
-                <h4 style="color:#fde047; margin-bottom:6px;">1. إنشاء غرفة جديدة واستضافة أصدقائك:</h4>
+            <div style="background:#130c24; border:1.5px solid #3b82f6; border-radius:12px; padding:10px; margin:4px 0;">
+                <h4 style="color:#fde047; margin-bottom:6px; font-size:0.88rem;">1. إنشاء غرفة جديدة واستضافة أصدقائك:</h4>
                 <button type="button" id="btn-create-new-room" class="btn btn-primary btn-sm" style="width:100%;">👑 إنشاء غرفة وتوليد الرمز ➔</button>
             </div>
 
-            <div style="background:#130c24; border:2px solid #f59e0b; border-radius:14px; padding:12px; margin:6px 0;">
-                <h4 style="color:#fde047; margin-bottom:6px;">2. أو الانضمام إلى غرفة موجودة:</h4>
-                <div style="display:flex; gap:8px;">
-                    <input type="text" id="mp-room-code-input" placeholder="أدخل رمز الغرفة (مثال: HEG-4821)" style="flex:1;" />
+            <div style="background:#130c24; border:1.5px solid #f59e0b; border-radius:12px; padding:10px; margin:4px 0;">
+                <h4 style="color:#fde047; margin-bottom:6px; font-size:0.88rem;">2. أو الانضمام إلى غرفة صديقك بالرمز:</h4>
+                <div style="display:flex; gap:6px;">
+                    <input type="text" id="mp-room-code-input" placeholder="أدخل الرمز (مثال: 4821 أو HEG-4821)" style="flex:1;" />
                     <button type="button" id="btn-join-existing-room" class="btn btn-accent btn-sm" style="white-space:nowrap;">دخول الغرفة ➔</button>
                 </div>
             </div>
 
-            <div class="modal-actions" style="margin-top:6px;">
+            <div class="modal-actions" style="margin-top:4px;">
                 <button type="button" id="btn-close-mp-lobby" class="btn btn-secondary btn-sm">إغلاق</button>
             </div>
         </div>
@@ -697,9 +701,9 @@
         <div class="modal-content modal-cad-forge">
             <div class="forge-header-bar">
                 <div style="display:flex; align-items:center; gap:10px;">
-                    <span style="font-size:1.6rem;">🛠️</span>
+                    <span style="font-size:1.4rem;">🛠️</span>
                     <div>
-                        <h2 style="color:#fde047; margin:0; font-size:1.2rem;">استوديو التصميم الهندسي للأسلحة (CAD Studio)</h2>
+                        <h2 style="color:#fde047; margin:0; font-size:1.05rem;">استوديو التصميم الهندسي للأسلحة (CAD Studio)</h2>
                     </div>
                 </div>
                 <div style="display:flex; gap:8px;">
@@ -938,7 +942,7 @@
     <!-- 8. نافذة تقديم المساعدات المالية -->
     <div id="modal-donate-aid" class="modal">
         <div class="modal-content" style="max-width: 480px;">
-            <h2 style="color: #6ee7b7; display: flex; align-items: center; gap: 8px;">🎁 إرسال منحة ومساعدة مالية</h2>
+            <h2 style="color: #6ee7b7; display: flex; align-items: center; gap: 8px; font-size:1.1rem; margin:0;">🎁 إرسال منحة ومساعدة مالية</h2>
 
             <div class="form-group" style="margin-top: 4px;">
                 <label>الدولة المانحة (المصدر):</label>
@@ -973,39 +977,45 @@
         </div>
     </div>
 
-    <!-- 9. نافذة حشد المهاجم -->
+    <!-- 9. نافذة حشد المهاجم (قابلة للتمرير الكامل مع تعبئة تلقائية) -->
     <div id="modal-war-mobilize" class="modal">
         <div class="modal-content modal-large">
             <div class="modal-header-fixed">
-                <h2 id="war-modal-attacker-name" style="margin:0; font-size:1.2rem; color:#fde047;">⚔️ تجهيز الحملة العسكرية</h2>
+                <h2 id="war-modal-attacker-name" style="margin:0; font-size:1.05rem; color:#fde047;">⚔️ تجهيز الحملة العسكرية</h2>
                 <div class="form-group" style="margin:4px 0;">
-                    <label>حدد الدولة الهدف المراد غزوها:</label>
+                    <label>🎯 حدد الدولة الهدف المراد غزوها:</label>
                     <select id="war-target-defender-select"></select>
+                </div>
+                <div style="background:#1b1330; padding:6px 10px; border-radius:10px; border:1px solid #4a3b6e; display:flex; gap:8px; align-items:center; justify-content:space-between; flex-wrap:wrap; margin-top:4px;">
+                    <span style="font-size:0.76rem; color:#fde68a;">حدد الوحدات المشاركة بالهجوم:</span>
+                    <div style="display:flex; gap:6px;">
+                        <button type="button" id="btn-attacker-all-out" class="btn btn-military btn-sm">⚔️ تعبئة كامل الجيش</button>
+                        <button type="button" id="btn-attacker-clear-units" class="btn btn-secondary btn-sm">تصفير</button>
+                    </div>
                 </div>
             </div>
 
             <div class="form-group form-group-units-scrollable">
-                <label style="margin-bottom:4px; font-weight:bold; color:#fde68a;">حدد عدد ونوع الوحدات العسكرية المشاركة بالهجوم:</label>
                 <div class="w-mobilize-scroll" id="war-mobilize-units-list"></div>
             </div>
 
             <div class="modal-actions">
-                <button id="btn-confirm-mobilize-attack" class="btn btn-primary btn-sm">📣 تثبيت الجيش وإرسال الإنذار ➔</button>
-                <button onclick="document.getElementById('modal-war-mobilize').classList.remove('active')" class="btn btn-secondary btn-sm">إلغاء</button>
+                <button type="button" id="btn-confirm-mobilize-attack" class="btn btn-primary btn-sm">📣 تثبيت الجيش وإرسال الإنذار ➔</button>
+                <button type="button" onclick="document.getElementById('modal-war-mobilize').classList.remove('active')" class="btn btn-secondary btn-sm">إلغاء</button>
             </div>
         </div>
     </div>
 
     <!-- 10. نافذة قرار المدافع -->
     <div id="modal-defender-decision" class="modal">
-        <div class="modal-content modal-large" style="border: 3px solid #fb7185;">
+        <div class="modal-content modal-large" style="border: 2.5px solid #fb7185;">
             <div class="modal-header-fixed">
-                <h2 id="defender-decision-title" style="color:#fb7185; margin:0; font-size:1.2rem;">🚨 طبول الحرب تقرع — إنذار عاجل!</h2>
-                <p style="font-size:0.85rem; color:#fffbeb; margin:4px 0;">الدولة المستهدفة: <strong id="defender-country-name-label" class="text-gold">--</strong> | القوة المحتشدة ضدك: <span id="war-attacker-units-count-badge" class="badge badge-gold">0</span></p>
+                <h2 id="defender-decision-title" style="color:#fb7185; margin:0; font-size:1.05rem;">🚨 طبول الحرب تقرع — إنذار عاجل!</h2>
+                <p style="font-size:0.8rem; color:#fffbeb; margin:3px 0;">الدولة المستهدفة: <strong id="defender-country-name-label" class="text-gold">--</strong> | القوة المحتشدة ضدك: <span id="war-attacker-units-count-badge" class="badge badge-gold">0</span></p>
 
-                <div style="background:#1b1330; padding:8px 12px; border-radius:12px; border:1.5px solid #4a3b6e; display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-                    <button id="btn-defender-all-out" class="btn btn-military btn-sm">🛡️ النفير العام (تعبئة كامل الجيش)</button>
-                    <span style="font-size:0.78rem; color:#fde68a;">أو اختر الوحدات المدافعة يدوياً:</span>
+                <div style="background:#1b1330; padding:6px 10px; border-radius:10px; border:1px solid #4a3b6e; display:flex; gap:8px; align-items:center; justify-content:space-between; flex-wrap:wrap;">
+                    <span style="font-size:0.76rem; color:#fde68a;">اختر الوحدات المدافعة:</span>
+                    <button type="button" id="btn-defender-all-out" class="btn btn-military btn-sm">🛡️ النفير العام (تعبئة كامل الجيش)</button>
                 </div>
             </div>
 
@@ -1014,8 +1024,8 @@
             </div>
 
             <div class="modal-actions">
-                <button id="btn-defender-confront" class="btn btn-danger btn-sm">⚔️ خوض المعركة والدفاع!</button>
-                <button onclick="document.getElementById('modal-defender-decision').classList.remove('active')" class="btn btn-secondary btn-sm">إلغاء</button>
+                <button type="button" id="btn-defender-confront" class="btn btn-danger btn-sm">⚔️ خوض المعركة والدفاع!</button>
+                <button type="button" onclick="document.getElementById('modal-defender-decision').classList.remove('active')" class="btn btn-secondary btn-sm">إلغاء</button>
             </div>
         </div>
     </div>
@@ -1024,14 +1034,14 @@
     <div id="modal-battle-review" class="modal">
         <div class="modal-content modal-large">
             <div class="modal-header-fixed">
-                <h2 style="text-align:center; color:#fde047; margin:0; font-size:1.2rem;">⚔️ مواجهة الجيوش — مراجعة الجاهزية الميدانية ⚔️</h2>
+                <h2 style="text-align:center; color:#fde047; margin:0; font-size:1.05rem;">⚔️ مواجهة الجيوش — مراجعة الجاهزية الميدانية ⚔️</h2>
             </div>
 
             <div class="battle-review-grid">
                 <div class="review-column">
                     <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px; border-bottom:1.5px solid #352659; padding-bottom:4px; flex-shrink:0;">
                         <div id="review-defender-flag" class="table-flag"></div>
-                        <strong id="review-defender-name" style="color:#fb7185; font-size:0.9rem;">--</strong>
+                        <strong id="review-defender-name" style="color:#fb7185; font-size:0.86rem;">--</strong>
                     </div>
                     <div id="review-defender-forces-list"></div>
                 </div>
@@ -1039,14 +1049,14 @@
                 <div class="review-column">
                     <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px; border-bottom:1.5px solid #352659; padding-bottom:4px; flex-shrink:0;">
                         <div id="review-attacker-flag" class="table-flag"></div>
-                        <strong id="review-attacker-name" style="color:#34d399; font-size:0.9rem;">--</strong>
+                        <strong id="review-attacker-name" style="color:#34d399; font-size:0.86rem;">--</strong>
                     </div>
                     <div id="review-attacker-forces-list"></div>
                 </div>
             </div>
 
             <div class="modal-actions" style="justify-content:center;">
-                <button id="btn-start-battle-action" class="btn-battle-pulse">🔥 انطلاق المعركة الميدانية الآن! ➔</button>
+                <button type="button" id="btn-start-battle-action" class="btn-battle-pulse">🔥 انطلاق المعركة الميدانية الآن! ➔</button>
             </div>
         </div>
     </div>
@@ -1054,16 +1064,16 @@
     <!-- 12. تقرير نتائج المعركة -->
     <div id="modal-battle-report" class="modal">
         <div class="modal-content" style="width:520px; text-align:center;">
-            <div style="font-size:2.4rem; margin-bottom:2px;">🏆</div>
-            <h2 id="battle-report-winner-title" style="color:#fde047;">--</h2>
+            <div style="font-size:2rem; margin-bottom:2px;">🏆</div>
+            <h2 id="battle-report-winner-title" style="color:#fde047; font-size:1.1rem; margin:0;">--</h2>
 
-            <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:10px 0; text-align:right;">
-                <div id="report-defender-loss-text" style="background:#150f26; padding:10px; border-radius:12px; font-size:0.84rem; border-top:4px solid #fb7185;"></div>
-                <div id="report-attacker-loss-text" style="background:#150f26; padding:10px; border-radius:12px; font-size:0.84rem; border-top:4px solid #34d399;"></div>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin:8px 0; text-align:right;">
+                <div id="report-defender-loss-text" style="background:#150f26; padding:8px; border-radius:10px; font-size:0.8rem; border-top:3px solid #fb7185;"></div>
+                <div id="report-attacker-loss-text" style="background:#150f26; padding:8px; border-radius:10px; font-size:0.8rem; border-top:3px solid #34d399;"></div>
             </div>
 
             <div class="modal-actions" style="justify-content:center;">
-                <button id="btn-close-battle-report" class="btn btn-primary btn-sm">🎖️ تأكيد والعودة</button>
+                <button type="button" id="btn-close-battle-report" class="btn btn-primary btn-sm">🎖️ تأكيد والعودة</button>
             </div>
         </div>
     </div>
@@ -1071,7 +1081,7 @@
     <!-- 13. تأسيس دولة جديدة (مصمم أفقياً ليناسب شاشة الجوال بالعرض) -->
     <div id="modal-create-country" class="modal">
         <div class="modal-content modal-create-landscape">
-            <h2 style="color:#fde047; display:flex; align-items:center; gap:8px; font-size:1.15rem; margin:0;">🏰 تأسيس دولتك والانتقال للعاصمة 3D</h2>
+            <h2 style="color:#fde047; display:flex; align-items:center; gap:8px; font-size:1.05rem; margin:0;">🏰 تأسيس دولتك والانتقال للعاصمة 3D</h2>
             <div class="create-nation-landscape-grid">
                 <div class="create-col-info">
                     <div class="form-group">
@@ -1086,7 +1096,7 @@
                 </div>
 
                 <div class="create-col-flag">
-                    <label style="font-size:0.82rem; color:#fde68a; font-weight:800; display:block; margin-bottom:4px;">🎨 صمّم علمك الوطني (اضغط للتلوين):</label>
+                    <label style="font-size:0.78rem; color:#fde68a; font-weight:800; display:block; margin-bottom:4px;">🎨 صمّم علمك الوطني (اضغط للتلوين):</label>
                     <div class="flag-designer-wrap">
                         <div id="flag-grid" class="flag-grid">
                             <div class="flag-cell" data-idx="0" data-color="#c0392b" style="background:#c0392b;"></div>
@@ -1124,8 +1134,8 @@
                 </div>
             </div>
             <div class="modal-actions">
-                <button id="btn-confirm-creation" class="btn btn-primary">🏛️ إعلان التأسيس والدخول للعاصمة ➔</button>
-                <button id="btn-cancel-creation" class="btn btn-secondary">إلغاء</button>
+                <button type="button" id="btn-confirm-creation" class="btn btn-primary">🏛️ إعلان التأسيس والدخول للعاصمة ➔</button>
+                <button type="button" id="btn-cancel-creation" class="btn btn-secondary">إلغاء</button>
             </div>
         </div>
     </div>
@@ -1133,14 +1143,14 @@
     <!-- 14. نافذة تدوير السنة المالية -->
     <div id="modal-confirm-year" class="modal">
         <div class="modal-content" style="max-width: 440px; text-align: center;">
-            <div style="font-size: 2.5rem; line-height: 1; margin-bottom: 2px;">⏳✨</div>
-            <h2 id="confirm-year-title" style="color: #fde047; font-size:1.2rem;">الانتقال إلى السنة المالية الجديدة</h2>
-            <p id="confirm-year-desc" style="color: #fef3c7; font-size: 0.86rem; line-height: 1.5;">
+            <div style="font-size: 2.2rem; line-height: 1; margin-bottom: 2px;">⏳✨</div>
+            <h2 id="confirm-year-title" style="color: #fde047; font-size:1.1rem; margin:0;">الانتقال إلى السنة المالية الجديدة</h2>
+            <p id="confirm-year-desc" style="color: #fef3c7; font-size: 0.84rem; line-height: 1.5; margin:4px 0;">
                 سيتم جني عوائد المنشآت وإيداعها في سيولتك وخزينتك، وتحديث الأسعار والقطاعات لكافة الدول!
             </p>
-            <div class="modal-actions" style="justify-content: center; margin-top: 8px;">
-                <button id="btn-confirm-next-year-yes" class="btn btn-primary">🌟 نعم، ابدأ السنة الجديدة!</button>
-                <button id="btn-confirm-next-year-no" class="btn btn-secondary">تراجع</button>
+            <div class="modal-actions" style="justify-content: center; margin-top: 6px;">
+                <button type="button" id="btn-confirm-next-year-yes" class="btn btn-primary">🌟 نعم، ابدأ السنة الجديدة!</button>
+                <button type="button" id="btn-confirm-next-year-no" class="btn btn-secondary">تراجع</button>
             </div>
         </div>
     </div>
