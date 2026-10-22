@@ -500,6 +500,34 @@ function getSafeLocalStorage(key) {
     }
 }
 
+function enterNumericRoomAndProceed(roomNumStr) {
+    const modal = document.getElementById("modal-multiplayer-lobby");
+    const nameInp = document.getElementById("mp-player-name-input");
+    const pName = (nameInp && nameInp.value && nameInp.value.trim()) ? nameInp.value.trim() : "قائد سيادي";
+
+    if (!window.NetworkEngine) return;
+
+    window.NetworkEngine.joinRoom(roomNumStr, pName, function(res) {
+        if (res && res.success) {
+            if (modal) modal.classList.remove("active");
+            showDashboardScreen();
+            renderNationsTable();
+
+            setTimeout(function() {
+                const myCId = window.NetworkEngine.getMyCountryId();
+                const countries = (window.currentWorld && window.currentWorld.countries) ? window.currentWorld.countries : [];
+                if (!myCId) {
+                    if (countries.length === 0) {
+                        openCreateCountryModal();
+                    } else {
+                        window.showGameToast("تم دخول الروم (" + res.roomId + ")! اختر دولة متاحة أو اضغط (🏰 + دولة) لتأسيس دولتك.", "👑");
+                    }
+                }
+            }, 350);
+        }
+    });
+}
+
 function openMultiplayerLobbyModal() {
     const modal = document.getElementById("modal-multiplayer-lobby");
     if (!modal) return;
@@ -510,31 +538,34 @@ function openMultiplayerLobbyModal() {
         nameInp.value = savedName;
     }
 
-    const lastRoomId = getSafeLocalStorage("hegemony_last_active_room");
+    const btnResetRoom = document.getElementById("btn-reset-current-room");
+    if (btnResetRoom) {
+        const activeRoom = window.NetworkEngine && window.NetworkEngine.getRoomId();
+        btnResetRoom.style.display = activeRoom ? "inline-flex" : "none";
+        btnResetRoom.onclick = function() {
+            if (window.NetworkEngine && typeof window.NetworkEngine.resetCurrentRoom === "function") {
+                window.NetworkEngine.resetCurrentRoom();
+                modal.classList.remove("active");
+            }
+        };
+    }
+
+    const rawLastRoom = getSafeLocalStorage("hegemony_last_active_room");
+    const cleanLastRoom = (window.NetworkEngine && typeof window.NetworkEngine.normalizeRoomCode === "function") ?
+        window.NetworkEngine.normalizeRoomCode(rawLastRoom) :
+        (rawLastRoom ? String(rawLastRoom).replace(/[^0-9]/g, "") : "");
+
     const savedBox = document.getElementById("mp-saved-room-box");
     const savedDesc = document.getElementById("mp-saved-room-desc");
 
-    if (lastRoomId && getSafeLocalStorage("hegemony_room_save_" + lastRoomId) && savedBox && savedDesc) {
+    if (cleanLastRoom && savedBox && savedDesc) {
         savedBox.style.display = "block";
-        savedDesc.textContent = "رمز الغرفة المحفوظة: " + lastRoomId + " (يمكنك استئنافها ومتابعة اللعب فوراً)";
+        savedDesc.textContent = "🔄 آخر روم محفوظ لديك: رقم (" + cleanLastRoom + ")";
 
         const btnResume = document.getElementById("btn-resume-saved-room");
         if (btnResume) {
             btnResume.onclick = function() {
-                const pName = (nameInp && nameInp.value && nameInp.value.trim()) ? nameInp.value.trim() : "قائد سيادي";
-                btnResume.disabled = true;
-                btnResume.textContent = "⏳ جاري استعادة الغرفة...";
-                if (window.NetworkEngine) {
-                    window.NetworkEngine.createRoom(lastRoomId, pName, function(res) {
-                        btnResume.disabled = false;
-                        btnResume.textContent = "🌟 استئناف الغرفة المحفوظة ➔";
-                        if (res && res.success) {
-                            modal.classList.remove("active");
-                            showDashboardScreen();
-                            renderNationsTable();
-                        }
-                    });
-                }
+                enterNumericRoomAndProceed(cleanLastRoom);
             };
         }
     } else if (savedBox) {
@@ -555,77 +586,67 @@ function setupMultiplayerLobbyEvents() {
         };
     }
 
-    const btnCreate = document.getElementById("btn-create-new-room");
-    if (btnCreate) {
-        btnCreate.onclick = function() {
-            const nameInp = document.getElementById("mp-player-name-input");
-            const pName = (nameInp && nameInp.value && nameInp.value.trim()) ? nameInp.value.trim() : "قائد سيادي";
-
-            btnCreate.disabled = true;
-            const origText = btnCreate.textContent;
-            btnCreate.textContent = "⏳ جاري فتح الغرفة...";
-
-            if (window.NetworkEngine) {
-                window.NetworkEngine.createRoom(null, pName, function(res) {
-                    btnCreate.disabled = false;
-                    btnCreate.textContent = origText;
-                    if (res && res.success) {
-                        modal.classList.remove("active");
-                        showDashboardScreen();
-                        renderNationsTable();
-
-                        const myCId = window.NetworkEngine.getMyCountryId();
-                        const existingCountries = (window.currentWorld && window.currentWorld.countries) ? window.currentWorld.countries : [];
-                        if (!myCId && existingCountries.length === 0) {
-                            openCreateCountryModal();
-                        }
-                    }
-                });
+    // فلترة حقل رقم الغرفة ليقبل الأرقام فقط (مع تحويل الأرقام العربية تلقائياً)
+    const codeInp = document.getElementById("mp-room-code-input");
+    if (codeInp) {
+        codeInp.addEventListener("input", function() {
+            if (window.NetworkEngine && typeof window.NetworkEngine.normalizeRoomCode === "function") {
+                const cleaned = window.NetworkEngine.normalizeRoomCode(codeInp.value);
+                if (codeInp.value !== cleaned) {
+                    codeInp.value = cleaned;
+                }
+            } else {
+                codeInp.value = codeInp.value.replace(/[^0-9]/g, "");
             }
+        });
+    }
+
+    // زر الروم الموحد العام (1000) بضغطة واحدة
+    const btnUnifiedGlobal = document.getElementById("btn-join-unified-global-room");
+    if (btnUnifiedGlobal) {
+        btnUnifiedGlobal.onclick = function() {
+            if (window.GameSFX) window.GameSFX.playClick();
+            enterNumericRoomAndProceed("1000");
         };
     }
 
+    // أزرار الأرقام السريعة (1111, 2222, 5555, 9999)
+    modal.querySelectorAll(".mp-quick-num-btn").forEach(function(btn) {
+        btn.onclick = function() {
+            if (window.GameSFX) window.GameSFX.playClick();
+            const num = btn.getAttribute("data-room") || "1000";
+            if (codeInp) codeInp.value = num;
+            enterNumericRoomAndProceed(num);
+        };
+    });
+
+    // زر توليد رقم عشوائي جديد (4 أرقام فقط)
+    const btnCreate = document.getElementById("btn-create-new-room");
+    if (btnCreate) {
+        btnCreate.onclick = function() {
+            if (window.GameSFX) window.GameSFX.playClick();
+            const randNum = String(Math.floor(1000 + Math.random() * 9000));
+            if (codeInp) codeInp.value = randNum;
+            enterNumericRoomAndProceed(randNum);
+        };
+    }
+
+    // زر الدخول بالرقم المكتوب
     const btnJoin = document.getElementById("btn-join-existing-room");
     if (btnJoin) {
         btnJoin.onclick = function() {
-            const codeInp = document.getElementById("mp-room-code-input");
-            const nameInp = document.getElementById("mp-player-name-input");
-            const code = codeInp ? codeInp.value.trim() : "";
-            const pName = (nameInp && nameInp.value && nameInp.value.trim()) ? nameInp.value.trim() : "قائد سيادي";
+            if (window.GameSFX) window.GameSFX.playClick();
+            const rawCode = codeInp ? codeInp.value : "";
+            const numCode = (window.NetworkEngine && typeof window.NetworkEngine.normalizeRoomCode === "function") ?
+                window.NetworkEngine.normalizeRoomCode(rawCode) :
+                String(rawCode).replace(/[^0-9]/g, "");
 
-            if (!code) {
-                window.showGameToast("يرجى إدخال رمز الغرفة أولاً (مثال: 4821 أو HEG-4821)!", "⚠️");
+            if (!numCode) {
+                window.showGameToast("يرجى كتابة رقم الروم بالأرقام فقط (مثال: 4821) أو الضغط على الروم الموحد (1000)!", "🔢");
                 if (codeInp) codeInp.focus();
                 return;
             }
-
-            btnJoin.disabled = true;
-            const origText = btnJoin.textContent;
-            btnJoin.textContent = "⏳ جاري الاتصال...";
-
-            if (window.NetworkEngine) {
-                window.NetworkEngine.joinRoom(code, pName, function(res) {
-                    btnJoin.disabled = false;
-                    btnJoin.textContent = origText;
-                    if (res && res.success) {
-                        modal.classList.remove("active");
-                        showDashboardScreen();
-                        renderNationsTable();
-
-                        setTimeout(function() {
-                            const myCId = window.NetworkEngine.getMyCountryId();
-                            const countries = (window.currentWorld && window.currentWorld.countries) ? window.currentWorld.countries : [];
-                            if (!myCId) {
-                                if (countries.length === 0) {
-                                    openCreateCountryModal();
-                                } else {
-                                    window.showGameToast("اختر دولة متاحة للقيادة من البطاقات أو اضغط (🏰 + دولة) لتأسيس دولتك!", "👑");
-                                }
-                            }
-                        }, 300);
-                    }
-                });
-            }
+            enterNumericRoomAndProceed(numCode);
         };
     }
 }
