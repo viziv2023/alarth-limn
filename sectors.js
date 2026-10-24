@@ -7,7 +7,7 @@ class SectorsEngine {
     { id: "healthcare", name: "صحياً", category: "أمان وتنمية", icon: "🏥", desc: "المشافي والمراكز الطبية" },
     { id: "entertainment", name: "ترفيهياً", category: "أمان وتنمية", icon: "🎡", desc: "الحدائق والمنتزهات والترفيه" },
     { id: "navigation", name: "ملاحياً", category: "نقل ومنافذ", icon: "🧭", desc: "الملاحة وحركة الشحن" },
-    { id: "security", name: "أمنياً", category: "أمان وتنمية", icon: "🛡️", desc: "الشرطة والأمن وحماية الدولة" },
+    { id: "security", name: "أمنياً", category: "أمان وتنمية", icon: "🛡️", desc: "الشرطة والأمن والجيش وحماية الدولة" },
     { id: "civil", name: "مدنياً", category: "شؤون مدنية", icon: "🏛️", desc: "الدفاع المدني والتنظيم الحضري" },
     { id: "services", name: "خدمياً", category: "شؤون مدنية", icon: "🛠️", desc: "الخدمات البلدية واللوجستية" },
     { id: "ports", name: "موانئ", category: "نقل ومنافذ", icon: "⚓", desc: "أرصفة وموانئ الشحن البحري" },
@@ -33,6 +33,14 @@ class SectorsEngine {
     const b = country.buildings || {};
     const getCount = (id) => Number(b[id] || 0);
 
+    // حساب إجمالي الوحدات العسكرية لربطها بالمساحة والقطاع الأمني للدولة
+    let militaryUnitsCount = 0;
+    if (country.military && country.military.inventory) {
+      Object.values(country.military.inventory).forEach(cnt => {
+        militaryUnitsCount += Math.max(0, Number(cnt || 0));
+      });
+    }
+
     // 1. إجمالي عدد منشآت السكن
     const housingCount = (
       getCount("house") +
@@ -44,17 +52,18 @@ class SectorsEngine {
       getCount("skyscrapers")
     );
 
-    // 2. إجمالي مساحة الدولة (مجموع المنشآت عدا الطيور والحيوانات)
-    let totalArea = 0;
+    // 2. إجمالي مساحة الدولة (مجموع المنشآت المدنية عدا الطيور والحيوانات + الوحدات والمنشآت العسكرية)
+    let civilianArea = 0;
     if (window.BuildingsEngine && Array.isArray(window.BuildingsEngine.RESOURCES_LIST)) {
       window.BuildingsEngine.RESOURCES_LIST.forEach(r => {
         if (r.id !== "bird" && r.id !== "animal") {
-          totalArea += getCount(r.id);
+          civilianArea += getCount(r.id);
         }
       });
     } else {
-      totalArea = Object.keys(b).reduce((acc, key) => (key !== "bird" && key !== "animal") ? acc + Number(b[key] || 0) : acc, 0);
+      civilianArea = Object.keys(b).reduce((acc, key) => (key !== "bird" && key !== "animal") ? acc + Number(b[key] || 0) : acc, 0);
     }
+    const totalArea = civilianArea + militaryUnitsCount;
     country.area = totalArea;
 
     const calculated = {};
@@ -178,10 +187,11 @@ class SectorsEngine {
       (housingCount * 1)
     );
 
-    // 8) أمنياً
+    // 8) أمنياً (يشمل الشرطة + مساهمة الوحدات العسكرية في أمن الدولة)
     calculated.security = (
       (getCount("police_station") * 24) +
-      (getCount("police_headquarters") * 100)
+      (getCount("police_headquarters") * 100) +
+      (militaryUnitsCount * 1)
     ) - (housingCount * 1);
 
     // 9) مدنياً
@@ -193,7 +203,7 @@ class SectorsEngine {
     calculated.services = (
       (getCount("municipality") * 100) +
       (getCount("governorate") * 500)
-    ) - (totalArea * 1);
+    ) - (civilianArea * 1);
 
     // 11) موانئ
     calculated.ports = (
