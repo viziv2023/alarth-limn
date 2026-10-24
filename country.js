@@ -6,15 +6,21 @@ class Country {
 
     this.population = 0;
     this.employed = 0;
+    this.civilianEmployed = 0;
     this.unemployed = 0;
     this.unemploymentRate = 0;
     this.area = 0;
 
-    this.sectors = window.SectorsEngine.createDefaultSectors();
-    window.EnergyEngine.initCountryEnergy(this);
+    this.sectors = window.SectorsEngine ? window.SectorsEngine.createDefaultSectors() : {};
+    if (window.EnergyEngine && typeof window.EnergyEngine.initCountryEnergy === "function") {
+      window.EnergyEngine.initCountryEnergy(this);
+    }
 
     // المنظومة العسكرية والأسلحة المبتكرة الخاصة بالدولة
-    this.military = window.MilitaryEngine.createDefaultMilitary();
+    this.military = window.MilitaryEngine ? window.MilitaryEngine.createDefaultMilitary() : { inventory: {}, totalPower: 0, totalCrew: 0, totalUnits: 0 };
+    this.militaryPower = 0;
+    this.militaryCrew = 0;
+    this.militaryUnitsCount = 0;
     this.customUnits = []; // براءات الاختراع والأسلحة السيادية المصنعة
 
     // منظومة الموارد والمنشآت
@@ -42,21 +48,33 @@ class Country {
     this.wbDebt = 0;
     this.wbDebtDuration = 0;
     this.wbAnnualInstallment = 0;
+
+    // بيانات ملكية اللاعب واللون العسكري
+    this.ownerPlayerId = null;
+    this.ownerPlayerName = null;
+    this.militaryColor = null;
   }
 
   toJSON() {
+    if (window.MilitaryEngine && typeof window.MilitaryEngine.refreshMilitaryStats === "function") {
+      window.MilitaryEngine.refreshMilitaryStats(this);
+    }
     return {
       id: this.id,
       name: this.name,
       flag: this.flag,
       population: this.population,
       employed: this.employed,
+      civilianEmployed: this.civilianEmployed,
       unemployed: this.unemployed,
       unemploymentRate: this.unemploymentRate,
       area: this.area,
       sectors: this.sectors,
       energy: this.energy,
       military: this.military,
+      militaryPower: this.militaryPower,
+      militaryCrew: this.militaryCrew,
+      militaryUnitsCount: this.militaryUnitsCount,
       customUnits: this.customUnits,
       buildings: this.buildings,
       sectorRevenues: this.sectorRevenues,
@@ -75,7 +93,10 @@ class Country {
       year: this.year,
       wbDebt: this.wbDebt,
       wbDebtDuration: this.wbDebtDuration,
-      wbAnnualInstallment: this.wbAnnualInstallment
+      wbAnnualInstallment: this.wbAnnualInstallment,
+      ownerPlayerId: this.ownerPlayerId || null,
+      ownerPlayerName: this.ownerPlayerName || null,
+      militaryColor: this.militaryColor || null
     };
   }
 
@@ -84,12 +105,17 @@ class Country {
     country.id = data.id || country.id;
     country.population = data.population ?? 0;
     country.employed = data.employed ?? 0;
+    country.civilianEmployed = data.civilianEmployed ?? 0;
     country.unemployed = data.unemployed ?? 0;
     country.unemploymentRate = data.unemploymentRate ?? 0;
     country.area = data.area ?? 0;
-    country.sectors = data.sectors || window.SectorsEngine.createDefaultSectors();
-    country.energy = data.energy || window.EnergyEngine.initCountryEnergy(country);
-    country.military = data.military || window.MilitaryEngine.createDefaultMilitary();
+    country.sectors = data.sectors || (window.SectorsEngine ? window.SectorsEngine.createDefaultSectors() : {});
+    if (data.energy) {
+      country.energy = data.energy;
+    } else if (window.EnergyEngine && typeof window.EnergyEngine.initCountryEnergy === "function") {
+      window.EnergyEngine.initCountryEnergy(country);
+    }
+    country.military = data.military || (window.MilitaryEngine ? window.MilitaryEngine.createDefaultMilitary() : { inventory: {} });
     country.customUnits = Array.isArray(data.customUnits) ? data.customUnits : [];
 
     const defaultBldgs = window.BuildingsEngine ? window.BuildingsEngine.createDefaultBuildings() : {};
@@ -116,9 +142,18 @@ class Country {
     country.wbDebtDuration = data.wbDebtDuration ?? 0;
     country.wbAnnualInstallment = data.wbAnnualInstallment ?? 0;
 
+    country.ownerPlayerId = data.ownerPlayerId || null;
+    country.ownerPlayerName = data.ownerPlayerName || null;
+    country.militaryColor = data.militaryColor || null;
+
     // تسجيل أي أسلحة خاصة بهذه الدولة فورياً في قاعدة بيانات الأسلحة
     if (window.WeaponForge && Array.isArray(country.customUnits)) {
       country.customUnits.forEach(u => window.WeaponForge.registerUnitToGame(u));
+    }
+
+    // مزامنة الإحصائيات العسكرية فور استرجاع بيانات الدولة
+    if (window.MilitaryEngine && typeof window.MilitaryEngine.refreshMilitaryStats === "function") {
+      window.MilitaryEngine.refreshMilitaryStats(country);
     }
 
     return country;
