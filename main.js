@@ -72,6 +72,96 @@ window.showGameToast = function(msg, icon) {
     }, 3200);
 };
 
+// دالة موحدة لمعالجة ضغط اللاعب على أحد الزرين في الأعلى بعد انتهاء الشراء:
+// الزر الأول: (الانتقال للسنة الجديدة - READY_YEAR)
+// الزر الثاني: (الانتقال للحرب - READY_WAR)
+window.triggerPlayerTurnDecision = function(decision) {
+    if (window.GameSFX) window.GameSFX.playClick();
+
+    const countries = (window.currentWorld && Array.isArray(window.currentWorld.countries)) ? window.currentWorld.countries : [];
+    const myId = (window.NetworkEngine && typeof window.NetworkEngine.getMyCountryId === "function") ? window.NetworkEngine.getMyCountryId() : null;
+    const activeCountry = (myId && countries.find(c => String(c.id) === String(myId))) ||
+        window.currentViewingCountry ||
+        countries[0] ||
+        null;
+
+    if (!activeCountry) {
+        window.showGameToast("يرجى تأسيس دولتك أولاً قبل الانتقال للسنة الجديدة أو الحرب!", "🏰");
+        if (typeof window.openCreateCountryModal === "function") window.openCreateCountryModal();
+        return;
+    }
+
+    if (window.MilitaryEngine && typeof window.MilitaryEngine.syncCountryWithMilitary === "function") {
+        window.MilitaryEngine.syncCountryWithMilitary(activeCountry);
+    }
+
+    const isMp = !!(window.NetworkEngine && window.NetworkEngine.getRoomId());
+    if (isMp) {
+        window.NetworkEngine.submitDecision(decision);
+        return;
+    }
+
+    // في وضع اللعب الفردي أو المحلي على نفس الجهاز:
+    if (decision === "READY_WAR") {
+        if (window.WarView && typeof window.WarView.onNetworkWarPhaseTriggered === "function") {
+            window.WarView.onNetworkWarPhaseTriggered([
+                {
+                    playerId: "local_player",
+                    playerName: activeCountry.name,
+                    countryId: activeCountry.id
+                }
+            ], true);
+        }
+    } else {
+        const modal = document.getElementById("modal-confirm-year");
+        if (modal) modal.classList.add("active");
+    }
+};
+
+// تحديث مظهر ونصوص أزرار (الانتقال للسنة الجديدة) و(الانتقال للحرب) في جميع الشاشات
+window.updateAllTurnDecisionButtons = function(myReadiness, readyCount, totalActive, isMp) {
+    if (myReadiness === undefined && window.NetworkEngine && typeof window.NetworkEngine.getMyReadiness === "function") {
+        myReadiness = window.NetworkEngine.getMyReadiness();
+    }
+    if (isMp === undefined) {
+        isMp = !!(window.NetworkEngine && window.NetworkEngine.getRoomId());
+    }
+
+    const yearBtnIds = ["btn-mp-ready-year", "btn-global-next-year", "btn-cap-next-year", "btn-detail-next-year", "btn-mil-next-year"];
+    const warBtnIds = ["btn-mp-ready-war", "btn-global-go-war", "btn-cap-go-war", "btn-detail-go-war", "btn-mil-go-war"];
+    const currentYr = (window.currentWorld && window.currentWorld.year) ? window.currentWorld.year : 1;
+
+    const progressSuffix = (isMp && totalActive > 1) ? ` (${readyCount}/${totalActive})` : "";
+
+    yearBtnIds.forEach(function(id) {
+        const btn = document.getElementById(id);
+        if (!btn) return;
+        if (isMp && myReadiness === "READY_YEAR") {
+            btn.className = btn.className.replace(/btn-secondary/g, "btn-primary") + " active-decision";
+            btn.textContent = "✅ جاهز للسنة الجديدة" + progressSuffix;
+        } else {
+            btn.classList.remove("active-decision");
+            if (id === "btn-cap-next-year") {
+                btn.textContent = `🌟 الانتقال للسنة الجديدة (${currentYr + 1}م)`;
+            } else {
+                btn.textContent = "🌟 الانتقال للسنة الجديدة";
+            }
+        }
+    });
+
+    warBtnIds.forEach(function(id) {
+        const btn = document.getElementById(id);
+        if (!btn) return;
+        if (isMp && myReadiness === "READY_WAR") {
+            btn.className = btn.className.replace(/btn-secondary/g, "btn-danger") + " active-decision";
+            btn.textContent = "🚨 طلبت الحرب" + progressSuffix;
+        } else {
+            btn.classList.remove("active-decision");
+            btn.textContent = "⚔️ الانتقال للحرب";
+        }
+    });
+};
+
 // =========================================================================
 // 0. نظام ملء الشاشة وتثبيت التطبيق على الجوال (PWA & Fullscreen Mode)
 // =========================================================================
@@ -412,14 +502,14 @@ function setupDashboardEvents() {
     const btnNextYear = document.getElementById("btn-global-next-year");
     if (btnNextYear) {
         btnNextYear.onclick = function() {
-            window.GameSFX.playClick();
-            const isMp = window.NetworkEngine && window.NetworkEngine.getRoomId();
-            if (isMp) {
-                window.NetworkEngine.submitDecision("READY_YEAR");
-            } else {
-                const modal = document.getElementById("modal-confirm-year");
-                if (modal) modal.classList.add("active");
-            }
+            window.triggerPlayerTurnDecision("READY_YEAR");
+        };
+    }
+
+    const btnGlobalWar = document.getElementById("btn-global-go-war");
+    if (btnGlobalWar) {
+        btnGlobalWar.onclick = function() {
+            window.triggerPlayerTurnDecision("READY_WAR");
         };
     }
 
@@ -470,14 +560,14 @@ function setupDashboardEvents() {
     const btnMpReadyYear = document.getElementById("btn-mp-ready-year");
     if (btnMpReadyYear) {
         btnMpReadyYear.onclick = function() {
-            if (window.NetworkEngine) window.NetworkEngine.submitDecision("READY_YEAR");
+            window.triggerPlayerTurnDecision("READY_YEAR");
         };
     }
 
     const btnMpReadyWar = document.getElementById("btn-mp-ready-war");
     if (btnMpReadyWar) {
         btnMpReadyWar.onclick = function() {
-            if (window.NetworkEngine) window.NetworkEngine.submitDecision("READY_WAR");
+            window.triggerPlayerTurnDecision("READY_WAR");
         };
     }
 
@@ -1305,9 +1395,15 @@ function renderNationsTable() {
             window.NetworkEngine.getCountryOwnerInfo(c.id) :
             { isMine: true, isClaimed: true, ownerName: null };
 
+        if (window.MilitaryEngine && typeof window.MilitaryEngine.refreshMilitaryStats === "function") {
+            window.MilitaryEngine.refreshMilitaryStats(c);
+        }
         const milPower = (c.military && typeof c.military.totalPower === "number") ?
             c.military.totalPower :
             (Number(c.militaryPower) || 0);
+        const milUnits = (c.military && typeof c.military.totalUnits === "number") ?
+            c.military.totalUnits :
+            (window.WarEngine ? window.WarEngine.getStandingArmyCount(c) : 0);
 
         let ownershipBadgeHtml = '<span class="badge badge-gold" style="font-size:0.68rem; padding:2px 7px;">👑 دولتي</span>';
         let footerActionText = '🏛️ دخول العاصمة 3D والبناء المباشر ➔';
@@ -1356,8 +1452,8 @@ function renderNationsTable() {
                     <span class="stat-val text-cyan">${Number(c.generalIndex || 0).toLocaleString()}</span>
                 </div>
                 <div class="nation-card-stat">
-                    <span class="stat-label">⚔️ القوة:</span>
-                    <span class="stat-val text-green">${Number(milPower).toLocaleString()}</span>
+                    <span class="stat-label">⚔️ الجيش والقوة:</span>
+                    <span class="stat-val text-green">${Number(milPower).toLocaleString()} (${milUnits} وحدة)</span>
                 </div>
             </div>
 
