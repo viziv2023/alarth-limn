@@ -1370,6 +1370,8 @@ class WeaponForgeEngine {
     this.renderExportMarket();
     this.switchTab("export");
 
+    if (window.MilitaryEngine && typeof window.MilitaryEngine.syncCountryWithMilitary === "function") window.MilitaryEngine.syncCountryWithMilitary(country);
+    if (window.NetworkEngine && window.NetworkEngine.getRoomId()) window.NetworkEngine.syncCountryChanges(country);
     if (window.MilitaryView && typeof window.MilitaryView.render === "function") window.MilitaryView.render();
   }
 
@@ -1465,9 +1467,13 @@ class WeaponForgeEngine {
     alert(`✅ تمت صفقة بيع السلاح بنجاح وتحويل $${totalDealPrice.toLocaleString()} إلى خزينة [${seller.name}]!`);
     this.renderExportMarket();
 
-    if (window.MilitaryEngine && typeof window.MilitaryEngine.refreshMilitaryStats === "function") {
-      window.MilitaryEngine.refreshMilitaryStats(seller);
-      window.MilitaryEngine.refreshMilitaryStats(buyer);
+    if (window.MilitaryEngine && typeof window.MilitaryEngine.syncCountryWithMilitary === "function") {
+      window.MilitaryEngine.syncCountryWithMilitary(seller);
+      window.MilitaryEngine.syncCountryWithMilitary(buyer);
+    }
+    if (window.NetworkEngine && window.NetworkEngine.getRoomId()) {
+      window.NetworkEngine.syncCountryChanges(seller);
+      window.NetworkEngine.syncCountryChanges(buyer);
     }
   }
 
