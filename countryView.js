@@ -79,6 +79,24 @@ class CountryViewController {
             };
         }
 
+        const btnDetailNextYear = document.getElementById("btn-detail-next-year");
+        if (btnDetailNextYear) {
+            btnDetailNextYear.onclick = function() {
+                if (typeof window.triggerPlayerTurnDecision === "function") {
+                    window.triggerPlayerTurnDecision("READY_YEAR");
+                }
+            };
+        }
+
+        const btnDetailGoWar = document.getElementById("btn-detail-go-war");
+        if (btnDetailGoWar) {
+            btnDetailGoWar.onclick = function() {
+                if (typeof window.triggerPlayerTurnDecision === "function") {
+                    window.triggerPlayerTurnDecision("READY_WAR");
+                }
+            };
+        }
+
         // زر رؤية العاصمة ثلاثية الأبعاد Low-Poly
         const btnCapital = document.getElementById("btn-open-capital");
         if (btnCapital) {
@@ -498,11 +516,19 @@ class CountryViewController {
         const currentYear = (window.currentWorld && window.currentWorld.year) ? window.currentWorld.year : (country.year || 1);
         if (yearEl) yearEl.textContent = "السنة المالية: " + currentYear + "م";
 
-        const milPower = (country.military && typeof country.military.totalPower === "number") ?
-            country.military.totalPower :
-            (country.militaryPower || 0);
+        if (window.MilitaryEngine && typeof window.MilitaryEngine.syncCountryWithMilitary === "function") {
+            window.MilitaryEngine.syncCountryWithMilitary(country);
+        } else if (window.MilitaryEngine && typeof window.MilitaryEngine.refreshMilitaryStats === "function") {
+            window.MilitaryEngine.refreshMilitaryStats(country);
+        }
+
+        const mil = country.military || {};
+        const milPower = typeof mil.totalPower === "number" ? mil.totalPower : (country.militaryPower || 0);
+        const milUnits = typeof mil.totalUnits === "number" ? mil.totalUnits : (country.militaryUnitsCount || 0);
+        const milCrew = typeof mil.totalCrew === "number" ? mil.totalCrew : (country.militaryCrew || 0);
+
         const topMil = document.getElementById("top-military-power-badge");
-        if (topMil) topMil.textContent = "القوة: " + Number(milPower).toLocaleString();
+        if (topMil) topMil.textContent = `⚔️ القوة: ${Number(milPower).toLocaleString()} (${milUnits} وحدة)`;
 
         const withdrawAllBtn = document.getElementById("btn-action-withdraw-all");
         const withdrawPartBtn = document.getElementById("btn-action-withdraw-partial");
@@ -560,6 +586,7 @@ class CountryViewController {
 
         const pop = Number(country.population || 0);
         const emp = Number(country.employed || 0);
+        const civEmp = (country.civilianEmployed !== undefined) ? Number(country.civilianEmployed) : Math.max(0, emp - milCrew);
         const unemp = Math.max(0, pop - emp);
         country.unemployed = unemp;
 
@@ -567,10 +594,51 @@ class CountryViewController {
         if (popEl) popEl.textContent = pop.toLocaleString() + " نسمة";
 
         const empEl = document.getElementById("detail-employed");
-        if (empEl) empEl.textContent = emp.toLocaleString() + " فرد";
+        if (empEl) empEl.textContent = civEmp.toLocaleString() + " عامل";
+
+        const milCrewEl = document.getElementById("detail-military-crew");
+        if (milCrewEl) milCrewEl.textContent = milCrew.toLocaleString() + " جندي";
 
         const unempEl = document.getElementById("detail-unemployed");
         if (unempEl) unempEl.textContent = unemp.toLocaleString() + " فرد";
+
+        // تحديث بطاقة الجيش والترسانة المترابطة مع بيانات الدولة
+        const milUnitsBadge = document.getElementById("detail-mil-units-badge");
+        if (milUnitsBadge) milUnitsBadge.textContent = `${milUnits} وحدة (${milCrew} جندي)`;
+
+        const milTotPwrEl = document.getElementById("detail-mil-total-power");
+        if (milTotPwrEl) milTotPwrEl.textContent = `${Number(milPower).toLocaleString()} نقطة قوة`;
+
+        const bc = mil.branchCounts || { ground: 0, naval: 0, air: 0, defense: 0 };
+        const bp = mil.branchPower || { ground: 0, naval: 0, air: 0, defense: 0 };
+
+        const gEl = document.getElementById("detail-mil-ground");
+        if (gEl) gEl.textContent = `${bc.ground || 0} وحدة (قوة: ${bp.ground || 0})`;
+
+        const nEl = document.getElementById("detail-mil-naval");
+        if (nEl) nEl.textContent = `${bc.naval || 0} وحدة (قوة: ${bp.naval || 0})`;
+
+        const aEl = document.getElementById("detail-mil-air");
+        if (aEl) aEl.textContent = `${bc.air || 0} وحدة (قوة: ${bp.air || 0})`;
+
+        const dEl = document.getElementById("detail-mil-defense");
+        if (dEl) dEl.textContent = `${bc.defense || 0} وحدة (قوة: ${bp.defense || 0})`;
+
+        const ownedListEl = document.getElementById("detail-mil-owned-list");
+        if (ownedListEl) {
+            const inv = mil.inventory || {};
+            const items = [];
+            Object.keys(inv).forEach(function(uid) {
+                const cnt = Number(inv[uid] || 0);
+                if (cnt > 0) {
+                    const u = window.MilitaryData ? window.MilitaryData.getUnitById(uid) : null;
+                    items.push(`${u ? u.name : uid}: <strong style="color:#34d399;">×${cnt}</strong>`);
+                }
+            });
+            ownedListEl.innerHTML = items.length > 0
+                ? `<strong style="color:#fffbeb;">📋 الوحدات المتوفرة في جيش الدولة:</strong><br>` + items.join(" | ")
+                : `<span style="color:#94a3b8;">لا توجد وحدات مجندة حالياً — اضغط زر (🎖️ الجيش) لشراء وتجنيد القوات.</span>`;
+        }
 
         const unempRateEl = document.getElementById("detail-unemployment-rate");
         if (unempRateEl) {
