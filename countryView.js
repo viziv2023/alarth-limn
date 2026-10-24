@@ -467,7 +467,11 @@ class CountryViewController {
 
         // إذا لم يُطلب فتح الشاشة النصية التفصيلية صراحة، افتح مشهد العاصمة التفاعلي مباشرةً
         if (!forceDetailedScreen && window.CapitalView && typeof window.CapitalView.open === "function") {
-            this.render(country);
+            try {
+                this.render(country);
+            } catch (err) {
+                console.warn("CountryView render warning:", err);
+            }
             window.CapitalView.open(country);
             return;
         }
