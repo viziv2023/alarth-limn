@@ -49,9 +49,16 @@ class World {
                 if (window.BuildingsEngine && typeof window.BuildingsEngine.getTotalHousingCapacity === "function") {
                     housingCapacity = window.BuildingsEngine.getTotalHousingCapacity(country);
                 } else {
-                    const h1 = Number(country.buildings.house || 0);
-                    const h2 = Number(country.buildings.house_large || 0);
-                    housingCapacity = (h1 * 4) + (h2 * 6);
+                    const b = country.buildings;
+                    housingCapacity = (
+                        (Number(b.house || 0) * 4) +
+                        (Number(b.house_large || 0) * 6) +
+                        (Number(b.palace || 0) * 10) +
+                        (Number(b.apartments || 0) * 50) +
+                        (Number(b.hotel || 0) * 100) +
+                        (Number(b.residential_towers || 0) * 300) +
+                        (Number(b.skyscrapers || 0) * 800)
+                    );
                 }
 
                 if (housingCapacity > 0) {
@@ -86,7 +93,9 @@ class World {
                 window.EnergyEngine.processYearEnd(country);
             }
 
-            if (window.IndicatorsEngine && typeof window.IndicatorsEngine.refreshCountryIndicators === "function") {
+            if (window.MilitaryEngine && typeof window.MilitaryEngine.syncCountryWithMilitary === "function") {
+                window.MilitaryEngine.syncCountryWithMilitary(country);
+            } else if (window.IndicatorsEngine && typeof window.IndicatorsEngine.refreshCountryIndicators === "function") {
                 window.IndicatorsEngine.refreshCountryIndicators(country);
             }
         });
