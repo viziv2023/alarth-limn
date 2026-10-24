@@ -1462,15 +1462,16 @@ function renderNationsTable() {
             </div>
         `;
 
-        card.onclick = function() {
-            window.GameSFX.playClick();
-            if (isMpActive && !ownerInfo.isClaimed && !window.NetworkEngine.getMyCountryId()) {
+        card.onclick = function(e) {
+            if (e && typeof e.stopPropagation === "function") e.stopPropagation();
+            if (window.GameSFX) window.GameSFX.playClick();
+            if (isMpActive && !ownerInfo.isClaimed && window.NetworkEngine && !window.NetworkEngine.getMyCountryId()) {
                 window.NetworkEngine.claimCountry(c.id);
             }
-            if (window.CountryViewController) {
-                window.CountryViewController.open(c.id);
-            } else if (window.CapitalView) {
+            if (window.CapitalView && typeof window.CapitalView.open === "function") {
                 window.CapitalView.open(c);
+            } else if (window.CountryViewController && typeof window.CountryViewController.open === "function") {
+                window.CountryViewController.open(c);
             }
         };
 
