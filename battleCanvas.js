@@ -69,6 +69,7 @@ class BattleCanvasEngine {
         };
 
         this.timeScale = 1.0;
+        this.battleSeed = 123456789;
 
         this.attackerLosses = {};
         this.defenderLosses = {};
@@ -88,6 +89,18 @@ class BattleCanvasEngine {
 
     static lerp(a, b, t) {
         return a + (b - a) * t;
+    }
+
+    setSeed(seed) {
+        this.battleSeed = (Number(seed) || 123456789) >>> 0;
+        if (this.battleSeed === 0) this.battleSeed = 123456789;
+    }
+
+    _rng() {
+        let t = (this.battleSeed += 0x6D2B79F5);
+        t = Math.imul(t ^ (t >>> 15), t | 1);
+        t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
     }
 
     static parseHex(hex) {
@@ -513,7 +526,8 @@ class BattleCanvasEngine {
         });
     }
 
-    startCoalitionBattle(atkCoalition, defCoalition, onBattleEnd) {
+    startCoalitionBattle(atkCoalition, defCoalition, onBattleEnd, battleSeed) {
+        this.setSeed(battleSeed || Date.now());
         this.resizeCanvas();
         this.resetCamera();
         this.timeScale = 1.0;
@@ -780,20 +794,20 @@ class BattleCanvasEngine {
 
             for (let i = 0; i < numEntities; i++) {
                 let pctFromEdge = 0.24;
-                if (arch.echelon === "rear") pctFromEdge = 0.11 + Math.random() * 0.07;
-                else if (arch.echelon === "armor") pctFromEdge = 0.20 + Math.random() * 0.09;
-                else pctFromEdge = 0.30 + Math.random() * 0.09;
+                if (arch.echelon === "rear") pctFromEdge = 0.11 + this._rng() * 0.07;
+                else if (arch.echelon === "armor") pctFromEdge = 0.20 + this._rng() * 0.09;
+                else pctFromEdge = 0.30 + this._rng() * 0.09;
 
                 const offsetDist = this.width * pctFromEdge;
                 const x = isAttacker ? offsetDist : (this.width - offsetDist);
 
                 let y = 0;
                 if (domain === "naval") {
-                    y = 22 + ((i + 0.5) / numEntities) * (seaHeight - 44) + (Math.random() - 0.5) * 12;
+                    y = 22 + ((i + 0.5) / numEntities) * (seaHeight - 44) + (this._rng() - 0.5) * 12;
                 } else if (domain === "air") {
-                    y = 50 + ((i + 0.5) / numEntities) * (this.height - 105) + (Math.random() - 0.5) * 20;
+                    y = 50 + ((i + 0.5) / numEntities) * (this.height - 105) + (this._rng() - 0.5) * 20;
                 } else {
-                    y = seaHeight + 44 + ((i + 0.5) / numEntities) * (landHeight - 78) + (Math.random() - 0.5) * 16;
+                    y = seaHeight + 44 + ((i + 0.5) / numEntities) * (landHeight - 78) + (this._rng() - 0.5) * 16;
                 }
 
                 this.entities.push({
@@ -825,11 +839,11 @@ class BattleCanvasEngine {
                     maxHp: baseHp * unitsPerEntity,
                     damage: baseDmg * unitsPerEntity,
                     range: combatRange,
-                    cooldown: Math.floor(Math.random() * 12),
+                    cooldown: Math.floor(this._rng() * 12),
                     reloadTime: arch.reload,
                     recoil: 0,
                     isMoving: false,
-                    animSeed: Math.random() * Math.PI * 2
+                    animSeed: this._rng() * Math.PI * 2
                 });
             }
         });
@@ -953,14 +967,14 @@ class BattleCanvasEngine {
 
                     if (realDist <= e.range * 1.2 && e.cooldown <= 0) {
                         this.fireWeapon(e, nearestTarget);
-                        e.cooldown = e.reloadTime + Math.floor(Math.random() * 8);
+                        e.cooldown = e.reloadTime + Math.floor(this._rng() * 8);
                     }
                 } else if (realDist <= e.range) {
                     e.isMoving = false;
                     e.heading = aimAngle;
                     if (e.cooldown <= 0) {
                         this.fireWeapon(e, nearestTarget);
-                        e.cooldown = e.reloadTime + Math.floor(Math.random() * 8);
+                        e.cooldown = e.reloadTime + Math.floor(this._rng() * 8);
                     }
                 } else if (e.speed > 0) {
                     e.isMoving = true;
