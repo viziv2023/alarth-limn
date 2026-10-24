@@ -1109,18 +1109,30 @@ window.CapitalView = (function() {
             };
         });
 
-        // زر السنة التالية المباشر من شريط العاصمة العلوي
+        // أزرار الشريط العلوي بعد انتهاء الشراء: (الانتقال للسنة الجديدة) و(الانتقال للحرب)
         const btnNextYearCap = document.getElementById('btn-cap-next-year');
         if (btnNextYearCap) {
             btnNextYearCap.onclick = () => {
-                if (window.GameSFX) window.GameSFX.playClick();
-                const isMp = window.NetworkEngine && window.NetworkEngine.getRoomId();
-                if (isMp) {
-                    window.NetworkEngine.submitDecision("READY_YEAR");
-                } else {
-                    const modal = document.getElementById("modal-confirm-year");
-                    if (modal) modal.classList.add("active");
+                if (typeof window.triggerPlayerTurnDecision === "function") {
+                    window.triggerPlayerTurnDecision("READY_YEAR");
                 }
+            };
+        }
+
+        const btnGoWarCap = document.getElementById('btn-cap-go-war');
+        if (btnGoWarCap) {
+            btnGoWarCap.onclick = () => {
+                if (typeof window.triggerPlayerTurnDecision === "function") {
+                    window.triggerPlayerTurnDecision("READY_WAR");
+                }
+            };
+        }
+
+        const milPill = document.getElementById('cap-pill-mil');
+        if (milPill) {
+            milPill.onclick = () => {
+                if (window.GameSFX) window.GameSFX.playClick();
+                openMilitaryFromCapital();
             };
         }
 
@@ -3874,15 +3886,21 @@ window.CapitalView = (function() {
         const idxEl = document.getElementById('cap-val-index');
         if (idxEl) idxEl.textContent = `${Number(country.generalIndex || 0).toLocaleString()}`;
 
+        if (window.MilitaryEngine && typeof window.MilitaryEngine.refreshMilitaryStats === "function") {
+            window.MilitaryEngine.refreshMilitaryStats(country);
+        }
         const milPower = (country.military && typeof country.military.totalPower === "number") ?
             country.military.totalPower :
             (Number(country.militaryPower) || 0);
+        const milUnits = (country.military && typeof country.military.totalUnits === "number") ?
+            country.military.totalUnits :
+            (Number(country.militaryUnitsCount) || 0);
         const milEl = document.getElementById('cap-val-mil');
-        if (milEl) milEl.textContent = `${Number(milPower).toLocaleString()}`;
+        if (milEl) milEl.textContent = `${Number(milPower).toLocaleString()} (${milUnits} جيش)`;
 
-        const yrBtn = document.getElementById('btn-cap-next-year');
-        const currentYr = (window.currentWorld && window.currentWorld.year) ? window.currentWorld.year : 1;
-        if (yrBtn) yrBtn.innerHTML = `⏳ سنة ${currentYr}م ➔`;
+        if (typeof window.updateAllTurnDecisionButtons === "function") {
+            window.updateAllTurnDecisionButtons();
+        }
     }
 
     function refreshHUDAndMap() {
