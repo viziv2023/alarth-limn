@@ -1,7 +1,7 @@
 /**
  * War Engine - عصر الهيمنة
  * محرك الحروب الموحد والخيارات الثلاثة للمدافع (الاستسلام / دفع الجزية / الحرب)
- * ومصفوفة حسم ما بعد المعركة وترابط بيانات الجيوش والدول
+ * ومصفوفة حسم ما بعد المعركة وترابط بيانات الجيوش والدول (مع الالتزام التام بأعداد الوحدات القتالية 1:1)
  */
 
 class WarEngine {
@@ -10,6 +10,21 @@ class WarEngine {
     "#8b5cf6", "#06b6d4", "#ec4899", "#14b8a6",
     "#f97316", "#64748b"
   ];
+
+  /**
+   * التحقق مما إذا كانت الوحدة مقاتلة فعلية تدخل ساحة المعركة
+   * (يستثني المباني اللوجستية غير المقاتلة مثل مصانع الذخيرة والأسلحة والقواعد الثابتة ذات القوة 0)
+   */
+  static isCombatUnit(unitOrId) {
+    const u = (typeof unitOrId === "string")
+      ? (window.MilitaryData && typeof window.MilitaryData.getUnitById === "function"
+          ? window.MilitaryData.getUnitById(unitOrId)
+          : null)
+      : unitOrId;
+    if (!u) return false;
+    if (u.isCustom) return true;
+    return Number(u.power || 0) > 0;
+  }
 
   static getCountryMilitaryColor(country) {
     if (!country) return "#3b82f6";
@@ -51,7 +66,7 @@ class WarEngine {
     country.militaryColor = colorHex;
   }
 
-  // فحص إجمالي القطع العسكرية الفعلية المخزنة لدى الدولة
+  // فحص إجمالي الوحدات المقاتلة الفعلية لدى الدولة (يستثني المباني اللوجستية غير المقاتلة)
   static getStandingArmyCount(country) {
     if (!country) return 0;
     if (window.MilitaryEngine && typeof window.MilitaryEngine.refreshMilitaryStats === "function") {
@@ -61,7 +76,24 @@ class WarEngine {
     const inv = country.military.inventory || country.military.units || {};
     let total = 0;
     Object.keys(inv).forEach(uid => {
-      total += Math.max(0, Number(inv[uid] || 0));
+      const cnt = Math.max(0, Math.floor(Number(inv[uid] || 0)));
+      if (cnt > 0 && this.isCombatUnit(uid)) {
+        total += cnt;
+      }
+    });
+    return total;
+  }
+
+  // حساب إجمالي المنشآت والوحدات اللوجستية غير المقاتلة (مصانع، قواعد، ناقلات لوجستية)
+  static getLogisticsCount(country) {
+    if (!country || !country.military) return 0;
+    const inv = country.military.inventory || country.military.units || {};
+    let total = 0;
+    Object.keys(inv).forEach(uid => {
+      const cnt = Math.max(0, Math.floor(Number(inv[uid] || 0)));
+      if (cnt > 0 && !this.isCombatUnit(uid)) {
+        total += cnt;
+      }
     });
     return total;
   }
@@ -72,18 +104,28 @@ class WarEngine {
     if (window.MilitaryEngine && typeof window.MilitaryEngine.refreshMilitaryStats === "function") {
       window.MilitaryEngine.refreshMilitaryStats(country);
     }
-    return Number((country.military && country.military.totalPower) || country.militaryPower || 0);
+    if (!country.military) return 0;
+    const inv = country.military.inventory || country.military.units || {};
+    let power = 0;
+    Object.keys(inv).forEach(uid => {
+      const cnt = Math.max(0, Math.floor(Number(inv[uid] || 0)));
+      if (cnt > 0 && this.isCombatUnit(uid)) {
+        const u = window.MilitaryData ? window.MilitaryData.getUnitById(uid) : null;
+        if (u) power += (Number(u.power) || 0) * cnt;
+      }
+    });
+    return Number(power.toFixed(1));
   }
 
-  // حساب إحصائيات جيش محتشد (عدد الوحدات، إجمالي القوة، وإجمالي الأفراد)
+  // حساب إحصائيات جيش محتشد (عدد الوحدات المقاتلة الفعلي، إجمالي القوة، وإجمالي الأفراد)
   static calculateForcesSummary(forcesMap) {
     let totalUnits = 0;
     let totalPower = 0;
     let totalCrew = 0;
 
     Object.keys(forcesMap || {}).forEach(uid => {
-      const cnt = Math.max(0, Number(forcesMap[uid] || 0));
-      if (cnt > 0) {
+      const cnt = Math.max(0, Math.floor(Number(forcesMap[uid] || 0)));
+      if (cnt > 0 && this.isCombatUnit(uid)) {
         totalUnits += cnt;
         const u = window.MilitaryData ? window.MilitaryData.getUnitById(uid) : null;
         if (u) {
@@ -100,6 +142,25 @@ class WarEngine {
       totalPower: Number(totalPower.toFixed(1)),
       totalCrew
     };
+  }
+
+  // تنقية خريطة القوات المحتشدة بحيث تقتصر على الوحدات القتالية الفعلية وبأعداد صحيحة مطابقة للمخزون
+  static sanitizeMobilizedForces(country, rawForcesMap) {
+    const clean = {};
+    if (!country || !country.military) return clean;
+    const inv = country.military.inventory || country.military.units || {};
+
+    Object.keys(rawForcesMap || {}).forEach(uid => {
+      if (!this.isCombatUnit(uid)) return;
+      const available = Math.max(0, Math.floor(Number(inv[uid] || 0)));
+      const requested = Math.max(0, Math.floor(Number(rawForcesMap[uid] || 0)));
+      const finalCount = Math.min(available, requested);
+      if (finalCount > 0) {
+        clean[uid] = finalCount;
+      }
+    });
+
+    return clean;
   }
 
   // حساب قيمة الجزية المطلوبة من الدولة المدافعة لتجنب الحرب
@@ -276,6 +337,7 @@ class WarEngine {
     winningCoalition.forEach(member => {
       let memberPower = 0;
       Object.keys(member.forces || {}).forEach(uid => {
+        if (!this.isCombatUnit(uid)) return;
         const u = window.MilitaryData ? window.MilitaryData.getUnitById(uid) : null;
         memberPower += (u ? (u.power || 1) : 1) * Number(member.forces[uid] || 0);
       });
@@ -428,9 +490,10 @@ class WarEngine {
     let totalLostCrew = 0;
 
     Object.keys(lossesMap || {}).forEach(unitId => {
-      const lostCount = Math.max(0, Number(lossesMap[unitId] || 0));
+      if (!this.isCombatUnit(unitId)) return;
+      const lostCount = Math.max(0, Math.floor(Number(lossesMap[unitId] || 0)));
       if (lostCount > 0) {
-        const currentCount = Number(country.military.inventory[unitId] || 0);
+        const currentCount = Math.max(0, Math.floor(Number(country.military.inventory[unitId] || 0)));
         const actualDeduction = Math.min(currentCount, lostCount);
         country.military.inventory[unitId] = Math.max(0, currentCount - actualDeduction);
 
@@ -456,8 +519,8 @@ class WarEngine {
     return {
       totalLostUnits,
       totalLostCrew,
-      remainingUnits: Number(country.military?.totalUnits || 0),
-      remainingPower: Number(country.military?.totalPower || 0)
+      remainingUnits: this.getStandingArmyCount(country),
+      remainingPower: this.getStandingArmyPower(country)
     };
   }
 }
