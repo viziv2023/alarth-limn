@@ -1,29 +1,20 @@
 /**
  * ============================================================================
  * BattleCanvasEngine - محرك ساحة المعركة التكتيكي ثلاثي الأبعاد المُنخفض المضلعات
- * (True 3D Low-Poly Hexagonal Tactical Battlefield Engine - v4.6 Mobile)
+ * (True 3D Low-Poly Hexagonal Tactical Battlefield Engine - v5.0 Strict 1:1)
  * ============================================================================
  *
- * المزايا المعمارية والقتالية الشاملة:
- * 1. مسرح عمليات سداسي ثلاثي الأبعاد مطابق لجمالية العاصمة (True 3D Hexagonal Low-Poly):
- *    - شبكة خلايا سداسية ثلاثية الأبعاد (Hexagonal 3D Prisms) تملأ الميدان بالكامل:
- *      25% مسرح بحري هيدروديناميكي بمضلعات مائية متموجة وزبد شاطئ متحرك،
- *      و75% مسرح بري تكتيكي بتلال وجبال في الأفق، غابات صنوبر، خنادق رملية، وعوائق خرسانية.
- *    - قواعد قيادة أمامية حصينة على طرفي الميدان ترفرف فوقها الراية الوطنية الثلاثية الأبعاد لكل دولة.
- * 2. تمايز بصري كامل للجنود والآليات والأسلحة الـ 48 (Zero Confusion):
- *    - الجنود مصممون بتفاصيل ثلاثية الأبعاد واضحة (حذاء عسكري، بنطال، سترة درع صدري، خوذة قتالية بنظارات،
- *      حقيبة ظهر، وراية فصيل علوية) مع ألوان زي متباينة تماماً بين المهاجم والمدافع، وحركة أرجل عند الجري وركوع عند الرمي.
- *    - مجسمات 3D Low-Poly كبيرة ومفصلة لكل صنف من الأصناف الـ 48 (دروع المشاة، قاذفات الدروع، الشاحنات،
- *      المدافع المجرورة، المدرعات المدولبة، الدبابات الخفيفة والثقيلة ببرج دوار، راجمات الصواريخ، البوارج،
- *      حاملات الطائرات، الغواصات، المقاتلات النفاثة، طائرات الإسناد، ومنصات الصواريخ الاستراتيجية والنووية).
- *    - دعم كامل لرسم الأسلحة السيادية المصنعة في استوديو (WeaponForge CAD).
- * 3. فيزياء قتال ومقذوفات حية لكل سلاح ("روح القتال"):
- *    - اشتباك فوري ومكثف: رشقات رصاص متوهجة، قذائف دبابات خارقة مع لهب فوهة وارتداد سبطانة،
- *      قذائف مدفعية وصواريخ باليستية بمسارات قوسية ثلاثية الأبعاد (Parabolic 3D Arcs)،
- *      رشقات راجمات متعددة بدخان متصاعد، طوربيدات بحرية تفجر أعمدة مائية، وضربات استراتيجية بموجات صدمة واهتزاز كاميرا.
- * 4. تحكم كامل باللمس وشاشات الهواتف (Touch Controls & Camera):
- *    - تحريك وسحب الميدان باللمس، تقريب وتبعيد بالقرص (Pinch-to-zoom)، تدوير زاوية المعركة،
- *      والتحكم بسرعة المعركة (0.5x بطيء سينمائي / 1x طبيعي / 2x سريع).
+ * الإصلاحات الجذرية في الإصدار v5.0:
+ * 1. التزام صارم (1:1) بعدد الجنود والوحدات المقاتلة:
+ *    - جندي واحد (1) في جيش الدولة = مقاتل واحد فقط (1) يظهر في ساحة العراك (تم إلغاء رسم 3 جنود وهميين لكل جندي).
+ *    - جنديان (2) = مقاتلان اثنان منفصلان تماماً في الميدان، و3 جنود = 3 مقاتلين، وهكذا بدقة 100%.
+ *    - إلغاء التقريب الخاطئ (Math.ceil) الذي كان يضخم أعداد الجنود والخسائر، واستبعاد المباني اللوجستية غير المقاتلة (مصانع/قواعد قوتها 0).
+ * 2. منع تداخل وتكدس الجنود فوق بعضهم (Formation Grid + Separation Physics):
+ *    - توزيع جميع وحدات الجيش في شبكة انتشار تكتيكية موحدة لكل مجال (بري / بحري / جوي) بحيث لا يولد جنديان في نفس النقطة أبداً.
+ *    - فيزياء تباعد نشطة (Collision Avoidance) تمنع اندماج جنديين أو آليتين في شكل واحد أثناء السير نحو الهدف.
+ * 3. التزام كامل بشكل كل جندي ووحدة مقاتلة:
+ *    - تصميم مفصل وواضح للجندي الفردي: (مشاة دفاعية بدرع تكتيكي ثقيل وبندقية) و(مشاة هجومية ببندقية اقتحام وقاذف آر بي جي على الكتف).
+ *    - مجسمات ثلاثية الأبعاد متمايزة لكل صنف من الأصناف القتالية (دبابات خفيفة ومتوسطة، دبابات مضادة للسفن والطائرات، مدرعات، مدافع، راجمات، طرادات، مدمرات، فرقاطات، بوارج، حاملات، غواصات، درونات، مقاتلات، ومنصات صواريخ استراتيجية ونووية) مع شارة اسم واضحة فوق كل مقاتل.
  */
 
 class BattleCanvasEngine {
@@ -256,7 +247,6 @@ class BattleCanvasEngine {
             this.camera.targetZoom = BattleCanvasEngine.clamp(this.camera.targetZoom + delta, this.camera.minZoom, this.camera.maxZoom);
         }, { passive: false });
 
-        // دعم اللمس الكامل على الهواتف الذكية (Pinch-to-zoom & Mobile Pan)
         let touchStartDist = 0;
         let touchStartAngle = 0;
 
@@ -509,7 +499,7 @@ class BattleCanvasEngine {
     }
 
     // =========================================================================
-    // 4. بدء المعركة وتوليد التضاريس السداسية وإنزال الجيوش
+    // 4. بدء المعركة وتوليد التضاريس السداسية وإنزال الجيوش بدقة 1:1
     // =========================================================================
     startBattle(attacker, defender, attackerForces, defenderForces, onBattleEnd) {
         const atkCoalition = [{ country: attacker, forces: attackerForces }];
@@ -527,6 +517,12 @@ class BattleCanvasEngine {
     }
 
     startCoalitionBattle(atkCoalition, defCoalition, onBattleEnd, battleSeed) {
+        if (this.animationFrameId) {
+            cancelAnimationFrame(this.animationFrameId);
+            this.animationFrameId = null;
+        }
+        this.isRunning = false;
+
         this.setSeed(battleSeed || Date.now());
         this.resizeCanvas();
         this.resetCamera();
@@ -534,10 +530,10 @@ class BattleCanvasEngine {
         const speedBtn = document.getElementById("bat-speed-btn");
         if (speedBtn) speedBtn.textContent = "⚡ 1x";
 
-        this.attackerCoalition = atkCoalition;
-        this.defenderCoalition = defCoalition;
-        this.attacker = atkCoalition[0] ? atkCoalition[0].country : null;
-        this.defender = defCoalition[0] ? defCoalition[0].country : null;
+        this.attackerCoalition = Array.isArray(atkCoalition) ? atkCoalition : [];
+        this.defenderCoalition = Array.isArray(defCoalition) ? defCoalition : [];
+        this.attacker = this.attackerCoalition[0] ? this.attackerCoalition[0].country : null;
+        this.defender = this.defenderCoalition[0] ? this.defenderCoalition[0].country : null;
         this.onBattleEndCallback = onBattleEnd;
 
         let atkBaseColor = this.getCountrySovereignColor(this.attacker, "#10b981");
@@ -562,28 +558,20 @@ class BattleCanvasEngine {
         this.defenderLossesByCountry = {};
         this.animClock = 0;
 
-        atkCoalition.forEach((m) => {
-            this.attackerLossesByCountry[m.country.id] = {};
+        this.attackerCoalition.forEach((m) => {
+            if (m && m.country) this.attackerLossesByCountry[m.country.id] = {};
         });
-        defCoalition.forEach((m) => {
-            this.defenderLossesByCountry[m.country.id] = {};
+        this.defenderCoalition.forEach((m) => {
+            if (m && m.country) this.defenderLossesByCountry[m.country.id] = {};
         });
 
         this.generateBattlefieldTerrain();
 
-        atkCoalition.forEach((member, idx) => {
-            let col = this.getCountrySovereignColor(member.country, idx === 0 ? atkBaseColor : "#06b6d4");
-            this.spawnForces(member.forces, "attacker", member.country, col);
-        });
-
-        defCoalition.forEach((member, idx) => {
-            let col = this.getCountrySovereignColor(member.country, idx === 0 ? defBaseColor : "#f97316");
-            if (col.toLowerCase() === atkBaseColor.toLowerCase()) col = "#ef4444";
-            this.spawnForces(member.forces, "defender", member.country, col);
-        });
+        // إنزال جيوش المهاجم والمدافع في شبكة انتشار تكتيكية موحدة لمنع أي تراكب أو ازدواجية
+        this.spawnSideCoalitionForces(this.attackerCoalition, "attacker", atkBaseColor);
+        this.spawnSideCoalitionForces(this.defenderCoalition, "defender", defBaseColor);
 
         this.isRunning = true;
-        if (this.animationFrameId) cancelAnimationFrame(this.animationFrameId);
         this.loop();
     }
 
@@ -678,25 +666,30 @@ class BattleCanvasEngine {
         }
 
         const decor = [
-            { type: "mountain_peak", x: 65, y: landTop + 15 },
-            { type: "mountain_peak", x: this.width - 65, y: landTop + 15 },
-            { type: "pine_cluster", x: this.width * 0.26, y: landTop + landH * 0.14 },
-            { type: "pine_cluster", x: this.width * 0.74, y: landTop + landH * 0.16 },
-            { type: "pine_cluster", x: this.width * 0.24, y: landTop + landH * 0.86 },
+            { type: "mountain_peak", x: 55, y: landTop + 14 },
+            { type: "mountain_peak", x: this.width - 55, y: landTop + 14 },
+            { type: "pine_cluster", x: this.width * 0.26, y: landTop + landH * 0.12 },
+            { type: "pine_cluster", x: this.width * 0.74, y: landTop + landH * 0.14 },
+            { type: "pine_cluster", x: this.width * 0.24, y: landTop + landH * 0.88 },
             { type: "pine_cluster", x: this.width * 0.76, y: landTop + landH * 0.88 },
-            { type: "rock_outcrop", x: this.width * 0.36, y: landTop + landH * 0.22 },
-            { type: "rock_outcrop", x: this.width * 0.64, y: landTop + landH * 0.78 }
+            { type: "rock_outcrop", x: this.width * 0.36, y: landTop + landH * 0.18 },
+            { type: "rock_outcrop", x: this.width * 0.64, y: landTop + landH * 0.82 }
         ];
         for (let i = 0; i < decor.length; i++) {
             this.terrainFeatures.push(decor[i]);
         }
     }
 
+    /**
+     * تصنيف دقيق لكل وحدة مقاتلة من الأصناف في militaryData.js
+     * يضمن أن كل وحدة تأخذ مجسمها القتالي الحقيقي وأسلوب إطلاق النار الخاص بها
+     */
     classifyUnitArchetype(u) {
         const id = u.id || "";
         const branch = u.branch || "ground";
+        const customParts = u.componentsData || u.components || u.parts || u.shapes;
 
-        if (u.isCustom && Array.isArray(u.componentsData) && u.componentsData.length > 0) {
+        if (u.isCustom && Array.isArray(customParts) && customParts.length > 0) {
             return {
                 model: "custom_cad",
                 weaponStyle: branch === "air" ? "air_missile" : (branch === "naval" ? "naval_shell" : (branch === "defense" ? "ballistic" : "tank_shell")),
@@ -707,150 +700,247 @@ class BattleCanvasEngine {
             };
         }
 
+        // 1. القوات البرية المقاتلة
         if (id === "infantry_def") return { model: "infantry_def", weaponStyle: "rifle_burst", altitude: 0, speed: 1.35, reload: 20, echelon: "vanguard" };
-        if (id === "infantry_atk") return { model: "infantry_atk", weaponStyle: "assault_rpg", altitude: 0, speed: 1.75, reload: 18, echelon: "vanguard" };
-        if (id === "troop_carrier") return { model: "troop_truck", weaponStyle: "mg_tracer", altitude: 0, speed: 1.85, reload: 24, echelon: "vanguard" };
-        if (id === "cannon") return { model: "field_cannon", weaponStyle: "howitzer_arc", altitude: 0, speed: 0.75, reload: 46, echelon: "rear" };
-        if (id === "armored_carrier") return { model: "apc_wheeled", weaponStyle: "autocannon", altitude: 0, speed: 1.8, reload: 22, echelon: "armor" };
-        if (id === "auto_cannon") return { model: "spaag_wheeled", weaponStyle: "aa_flak", altitude: 0, speed: 1.5, reload: 15, echelon: "armor" };
+        if (id === "infantry_atk") return { model: "infantry_atk", weaponStyle: "assault_rpg", altitude: 0, speed: 1.70, reload: 18, echelon: "vanguard" };
+        if (id === "cannon") return { model: "field_cannon", weaponStyle: "howitzer_arc", altitude: 0, speed: 0.75, reload: 44, echelon: "rear" };
+        if (id === "armored_carrier") return { model: "apc_wheeled", weaponStyle: "autocannon", altitude: 0, speed: 1.80, reload: 22, echelon: "armor" };
+        if (id === "auto_cannon") return { model: "spaag_wheeled", weaponStyle: "aa_flak", altitude: 0, speed: 1.50, reload: 15, echelon: "armor" };
         if (id === "small_tank") return { model: "light_tank", weaponStyle: "tank_shell", altitude: 0, speed: 1.75, reload: 28, echelon: "vanguard" };
         if (id === "med_tank") return { model: "main_battle_tank", weaponStyle: "heavy_tank_shell", altitude: 0, speed: 1.45, reload: 34, echelon: "armor" };
-        if (id === "small_mlrs") return { model: "light_mlrs", weaponStyle: "rocket_salvo", altitude: 0, speed: 1.2, reload: 50, echelon: "rear" };
-        if (id === "aa_tank") return { model: "aa_tank", weaponStyle: "sam_interceptor", altitude: 0, speed: 1.3, reload: 22, echelon: "armor" };
-        if (id === "as_tank") return { model: "coastal_missile_tank", weaponStyle: "cruise_missile", altitude: 0, speed: 1.15, reload: 42, echelon: "rear" };
-        if (id === "rocket_launcher") return { model: "heavy_mlrs", weaponStyle: "heavy_rocket_salvo", altitude: 0, speed: 1.0, reload: 54, echelon: "rear" };
-        if (id === "anti_rocket_launcher") return { model: "cram_battery", weaponStyle: "sam_interceptor", altitude: 0, speed: 0.9, reload: 18, echelon: "rear" };
-        if (id === "military_base" || id === "arms_factory" || id === "ammo_factory") {
-            return { model: "fortified_base", weaponStyle: "autocannon", altitude: 0, speed: 0.0, reload: 32, echelon: "rear" };
-        }
+        if (id === "small_mlrs") return { model: "light_mlrs", weaponStyle: "rocket_salvo", altitude: 0, speed: 1.20, reload: 48, echelon: "rear" };
+        if (id === "aa_tank") return { model: "aa_tank", weaponStyle: "sam_interceptor", altitude: 0, speed: 1.30, reload: 22, echelon: "armor" };
+        if (id === "as_tank") return { model: "coastal_missile_tank", weaponStyle: "cruise_missile", altitude: 0, speed: 1.15, reload: 40, echelon: "rear" };
+        if (id === "rocket_launcher") return { model: "heavy_mlrs", weaponStyle: "heavy_rocket_salvo", altitude: 0, speed: 1.00, reload: 52, echelon: "rear" };
+        if (id === "anti_rocket_launcher") return { model: "cram_battery", weaponStyle: "sam_interceptor", altitude: 0, speed: 0.90, reload: 18, echelon: "rear" };
 
-        if (id === "naval_troop_carrier" || id === "naval_gear_carrier") {
-            return { model: "landing_ship", weaponStyle: "mg_tracer", altitude: 0, speed: 1.3, reload: 30, echelon: "vanguard" };
-        }
-        if (id === "war_corvette") return { model: "corvette", weaponStyle: "naval_shell", altitude: 0, speed: 1.6, reload: 24, echelon: "vanguard" };
-        if (id === "destroyer") return { model: "destroyer", weaponStyle: "naval_vls", altitude: 0, speed: 1.4, reload: 30, echelon: "armor" };
-        if (id === "frigate") return { model: "frigate", weaponStyle: "naval_shell", altitude: 0, speed: 1.35, reload: 28, echelon: "armor" };
-        if (id === "small_sub") return { model: "submarine", weaponStyle: "torpedo", altitude: 0, speed: 1.35, reload: 38, echelon: "vanguard" };
-        if (id === "aa_sub") return { model: "aa_submarine", weaponStyle: "sam_interceptor", altitude: 0, speed: 1.2, reload: 30, echelon: "armor" };
-        if (id === "missile_sub") return { model: "ssbn_submarine", weaponStyle: "ballistic", altitude: 0, speed: 1.0, reload: 48, echelon: "rear" };
-        if (id === "battleship") return { model: "battleship", weaponStyle: "broadside_salvo", altitude: 0, speed: 1.05, reload: 40, echelon: "armor" };
-        if (id === "carrier") return { model: "aircraft_carrier", weaponStyle: "carrier_strike", altitude: 0, speed: 0.9, reload: 44, echelon: "rear" };
+        // 2. القوات البحرية المقاتلة
+        if (id === "war_corvette") return { model: "corvette", weaponStyle: "naval_shell", altitude: 0, speed: 1.65, reload: 24, echelon: "vanguard" };
+        if (id === "destroyer") return { model: "destroyer", weaponStyle: "naval_vls", altitude: 0, speed: 1.40, reload: 28, echelon: "armor" };
+        if (id === "frigate") return { model: "frigate", weaponStyle: "naval_shell", altitude: 0, speed: 1.35, reload: 26, echelon: "armor" };
+        if (id === "small_sub") return { model: "submarine", weaponStyle: "torpedo", altitude: 0, speed: 1.35, reload: 36, echelon: "vanguard" };
+        if (id === "aa_sub") return { model: "aa_submarine", weaponStyle: "sam_interceptor", altitude: 0, speed: 1.20, reload: 28, echelon: "armor" };
+        if (id === "missile_sub") return { model: "ssbn_submarine", weaponStyle: "ballistic", altitude: 0, speed: 1.00, reload: 46, echelon: "rear" };
+        if (id === "battleship") return { model: "battleship", weaponStyle: "broadside_salvo", altitude: 0, speed: 1.05, reload: 38, echelon: "armor" };
+        if (id === "carrier") return { model: "aircraft_carrier", weaponStyle: "carrier_strike", altitude: 0, speed: 0.90, reload: 42, echelon: "rear" };
 
-        if (id === "uav_attack") return { model: "uav_drone", weaponStyle: "air_missile", altitude: 66, speed: 2.3, reload: 28, echelon: "vanguard" };
-        if (id === "a10_ground" || id === "su25_ground") return { model: "attack_jet_a10", weaponStyle: "gatling_brrrt", altitude: 70, speed: 2.5, reload: 20, echelon: "vanguard" };
-        if (id === "cargo_plane" || id === "c130_ground") return { model: "gunship_c130", weaponStyle: "howitzer_arc", altitude: 82, speed: 2.0, reload: 26, echelon: "armor" };
-        if (id === "f35_attack") return { model: "stealth_f35", weaponStyle: "air_missile", altitude: 88, speed: 3.0, reload: 24, echelon: "vanguard" };
-        if (id === "mirage_attack") return { model: "delta_mirage", weaponStyle: "air_missile", altitude: 80, speed: 2.8, reload: 25, echelon: "vanguard" };
-        if (branch === "air") return { model: "fighter_jet", weaponStyle: "air_missile", altitude: 78, speed: 2.7, reload: 25, echelon: "vanguard" };
+        // 3. القوات الجوية المقاتلة
+        if (id === "uav_attack") return { model: "uav_drone", weaponStyle: "air_missile", altitude: 66, speed: 2.30, reload: 26, echelon: "vanguard" };
+        if (id === "a10_ground") return { model: "attack_jet_a10", weaponStyle: "gatling_brrrt", altitude: 70, speed: 2.45, reload: 20, echelon: "vanguard" };
+        if (id === "su25_ground") return { model: "su25_frogfoot", weaponStyle: "air_missile", altitude: 72, speed: 2.55, reload: 22, echelon: "vanguard" };
+        if (id === "f15_attack") return { model: "f15_eagle", weaponStyle: "air_missile", altitude: 80, speed: 2.80, reload: 24, echelon: "vanguard" };
+        if (id === "f16_attack") return { model: "f16_falcon", weaponStyle: "air_missile", altitude: 78, speed: 2.85, reload: 23, echelon: "vanguard" };
+        if (id === "mig25_attack" || id === "mig31_attack") return { model: "mig_interceptor", weaponStyle: "air_missile", altitude: 84, speed: 3.05, reload: 24, echelon: "vanguard" };
+        if (id === "mirage_attack") return { model: "delta_mirage", weaponStyle: "air_missile", altitude: 80, speed: 2.85, reload: 24, echelon: "vanguard" };
+        if (id === "f35_attack") return { model: "stealth_f35", weaponStyle: "air_missile", altitude: 88, speed: 3.10, reload: 22, echelon: "vanguard" };
+        if (id === "c130_ground") return { model: "gunship_c130", weaponStyle: "howitzer_arc", altitude: 82, speed: 2.00, reload: 26, echelon: "armor" };
 
+        // 4. قوات الدفاع والصواريخ الاستراتيجية
+        if (id === "naval_defense") return { model: "coastal_defense_battery", weaponStyle: "cruise_missile", altitude: 0, speed: 0.65, reload: 34, echelon: "rear" };
+        if (id === "air_defense") return { model: "air_defense_battery", weaponStyle: "sam_interceptor", altitude: 0, speed: 0.65, reload: 24, echelon: "rear" };
+        if (id === "patriot_missile") return { model: "sam_patriot", weaponStyle: "sam_interceptor", altitude: 0, speed: 0.65, reload: 24, echelon: "rear" };
+        if (id === "anti_missile") return { model: "anti_missile_battery", weaponStyle: "sam_interceptor", altitude: 0, speed: 0.60, reload: 20, echelon: "rear" };
+        if (id === "scud_missile") return { model: "scud_tel", weaponStyle: "ballistic", altitude: 0, speed: 0.70, reload: 50, echelon: "rear" };
+        if (id === "cruise_missile") return { model: "cruise_launcher", weaponStyle: "cruise_missile", altitude: 0, speed: 0.75, reload: 42, echelon: "rear" };
+        if (id === "moab_bomb") return { model: "moab_launcher", weaponStyle: "moab_strike", altitude: 0, speed: 0.55, reload: 66, echelon: "rear" };
         if (id === "nuclear_missile" || id === "nuclear_bomb") {
-            return { model: "nuke_launcher", weaponStyle: "nuclear_strike", altitude: 0, speed: 0.5, reload: 80, echelon: "rear" };
+            return { model: "nuke_launcher", weaponStyle: "nuclear_strike", altitude: 0, speed: 0.50, reload: 78, echelon: "rear" };
         }
-        if (id === "moab_bomb") {
-            return { model: "scud_tel", weaponStyle: "moab_strike", altitude: 0, speed: 0.6, reload: 68, echelon: "rear" };
-        }
-        if (id === "scud_missile" || id === "cruise_missile") {
-            return { model: "scud_tel", weaponStyle: "ballistic", altitude: 0, speed: 0.7, reload: 52, echelon: "rear" };
-        }
-        return { model: "sam_patriot", weaponStyle: "sam_interceptor", altitude: 0, speed: 0.65, reload: 26, echelon: "rear" };
+
+        // احتياطي لأي وحدة مخصصة حسب فرعها
+        if (branch === "air") return { model: "f16_falcon", weaponStyle: "air_missile", altitude: 78, speed: 2.7, reload: 25, echelon: "vanguard" };
+        if (branch === "naval") return { model: "corvette", weaponStyle: "naval_shell", altitude: 0, speed: 1.5, reload: 26, echelon: "vanguard" };
+        if (branch === "defense") return { model: "sam_patriot", weaponStyle: "sam_interceptor", altitude: 0, speed: 0.65, reload: 26, echelon: "rear" };
+        return { model: "light_tank", weaponStyle: "tank_shell", altitude: 0, speed: 1.5, reload: 28, echelon: "armor" };
     }
 
-    spawnForces(forces, side, country, teamColor) {
+    /**
+     * إنزال جميع قوات الحلف (المهاجم أو المدافع) بتوزيع تكتيكي شبكي موحد
+     * يضمن الالتزام التام 1:1 بالعدد الحقيقي للجنود وعدم تراكب وحدتين في نفس الموقع
+     */
+    spawnSideCoalitionForces(coalition, side, primaryTeamColor) {
         const isAttacker = side === "attacker";
         const seaHeight = this.height * 0.25;
-        const landHeight = this.height * 0.75;
-        const countryId = country.id;
-        const countryName = country.name;
+        const landTop = seaHeight + 42;
+        const landBottom = this.height - 34;
+        const landSpan = Math.max(120, landBottom - landTop);
 
         const uniformCloth = isAttacker ? "#065f46" : "#1e1b4b";
         const helmetColor = isAttacker ? "#10b981" : "#f43f5e";
 
-        Object.keys(forces || {}).forEach((unitId) => {
-            const count = forces[unitId];
-            if (count <= 0) return;
+        // نجمع كافة الكيانات المراد إنزالها لهذا الطرف أولاً لتوزيعها هندسياً بدون تداخل
+        const pendingByDomain = {
+            ground: [],
+            naval: [],
+            air: []
+        };
 
-            const u = window.MilitaryData ? window.MilitaryData.getUnitById(unitId) : null;
-            if (!u) return;
+        const MAX_VISUAL_ENTITIES_PER_UNIT_TYPE = 50;
 
-            const arch = this.classifyUnitArchetype(u);
-            const baseHp = Math.max(18, Math.floor((u.price / 8) + ((u.power || 1) * 2.6)));
-            const baseDmg = Math.max(3, Math.floor((u.power || 1) * 1.55));
-
-            let domain = "ground";
-            if (u.branch === "naval") domain = "naval";
-            else if (u.branch === "air") domain = "air";
-
-            const targetDomains = (Array.isArray(u.targetDomains) && u.targetDomains.length > 0) ?
-                u.targetDomains.slice() : ["ground", "naval", "air"];
-
-            let combatRange = Number(u.combatRange || u.range) || 220;
-            combatRange = BattleCanvasEngine.clamp(combatRange * 0.78, 145, 460);
-            if (arch.weaponStyle === "rifle_burst" || arch.weaponStyle === "assault_rpg") {
-                combatRange = BattleCanvasEngine.clamp(combatRange, 135, 195);
+        (coalition || []).forEach((member, memberIdx) => {
+            if (!member || !member.country) return;
+            const country = member.country;
+            let teamColor = this.getCountrySovereignColor(country, memberIdx === 0 ? primaryTeamColor : (isAttacker ? "#06b6d4" : "#f97316"));
+            if (!isAttacker && teamColor.toLowerCase() === (this.attackerColor || "").toLowerCase()) {
+                teamColor = "#ef4444";
             }
 
-            const numEntities = Math.min(count, 10);
-            const unitsPerEntity = Math.ceil(count / numEntities);
+            const forces = member.forces || {};
+            Object.keys(forces).forEach((unitId) => {
+                const rawCount = Math.floor(Number(forces[unitId] || 0));
+                if (rawCount <= 0) return;
 
-            for (let i = 0; i < numEntities; i++) {
-                let pctFromEdge = 0.24;
-                if (arch.echelon === "rear") pctFromEdge = 0.11 + this._rng() * 0.07;
-                else if (arch.echelon === "armor") pctFromEdge = 0.20 + this._rng() * 0.09;
-                else pctFromEdge = 0.30 + this._rng() * 0.09;
+                const u = window.MilitaryData ? window.MilitaryData.getUnitById(unitId) : null;
+                if (!u) return;
 
-                const offsetDist = this.width * pctFromEdge;
+                // استبعاد المنشآت والمباني اللوجستية غير المقاتلة (مصانع/قواعد/ناقلات قوتها 0)
+                if (!u.isCustom && Number(u.power || 0) <= 0) return;
+
+                const arch = this.classifyUnitArchetype(u);
+                const singleUnitHp = Math.max(22, Math.floor((Number(u.price || 50) / 8) + ((Number(u.power || 1)) * 3.0)));
+                const singleUnitDmg = Math.max(3, Number(((Number(u.power || 1)) * 1.65).toFixed(2)));
+
+                let domain = "ground";
+                if (u.branch === "naval") domain = "naval";
+                else if (u.branch === "air") domain = "air";
+
+                const targetDomains = (Array.isArray(u.targetDomains) && u.targetDomains.length > 0)
+                    ? u.targetDomains.slice()
+                    : ["ground", "naval", "air"];
+
+                let combatRange = Number(u.combatRange || u.range) || 220;
+                combatRange = BattleCanvasEngine.clamp(combatRange * 0.78, 145, 460);
+                if (arch.weaponStyle === "rifle_burst" || arch.weaponStyle === "assault_rpg") {
+                    combatRange = BattleCanvasEngine.clamp(combatRange, 140, 195);
+                }
+
+                // التزام صارم 1:1: كل جندي أو آلية يظهر كمقاتل مستقل (وإذا تجاوز العدد 50 من نفس الصنف يتم التوزيع بالقسمة الصحيحة والباقي دون زيادة أي جندي وهمي)
+                const numEntities = Math.min(rawCount, MAX_VISUAL_ENTITIES_PER_UNIT_TYPE);
+                const baseRep = Math.floor(rawCount / numEntities);
+                const remainder = rawCount % numEntities;
+
+                for (let i = 0; i < numEntities; i++) {
+                    const unitsRepresented = i < remainder ? (baseRep + 1) : baseRep;
+                    pendingByDomain[domain].push({
+                        side: side,
+                        countryId: country.id,
+                        countryName: country.name,
+                        flag: country.flag,
+                        unitId: unitId,
+                        unitRef: u,
+                        name: u.name,
+                        model: arch.model,
+                        weaponStyle: arch.weaponStyle,
+                        echelon: arch.echelon,
+                        altitude: arch.altitude,
+                        speed: arch.speed,
+                        reloadTime: arch.reload,
+                        domain: domain,
+                        targetDomains: targetDomains,
+                        unitsRepresented: unitsRepresented,
+                        color: teamColor,
+                        uniformColor: uniformCloth,
+                        helmetColor: helmetColor,
+                        hp: singleUnitHp * unitsRepresented,
+                        maxHp: singleUnitHp * unitsRepresented,
+                        damage: singleUnitDmg * unitsRepresented,
+                        range: combatRange
+                    });
+                }
+            });
+        });
+
+        // توزيع الوحدات البرية في صفوف وأعمدة منتظمة حسب النسق التكتيكي (طليعة / دروع / مؤخرة)
+        const placeDomainEntities = (list, domainType) => {
+            const total = list.length;
+            if (total === 0) return;
+
+            // ترتيب الوحدات حسب النسق ليكون المشاة والدبابات الخفيفة في الأمام والمدفعية/الصواريخ في الخلف
+            const echelonOrder = { vanguard: 0, armor: 1, rear: 2 };
+            list.sort((a, b) => (echelonOrder[a.echelon] || 0) - (echelonOrder[b.echelon] || 0));
+
+            const maxPerCol = domainType === "naval" ? 4 : (domainType === "air" ? 6 : 7);
+            const numCols = Math.max(1, Math.ceil(total / maxPerCol));
+
+            list.forEach((item, idx) => {
+                const colIdx = Math.floor(idx / maxPerCol);
+                const rowIdx = idx % maxPerCol;
+                const itemsInThisCol = (colIdx === numCols - 1) ? (total - colIdx * maxPerCol) : maxPerCol;
+
+                let basePctFromEdge = 0.27;
+                if (item.echelon === "rear") basePctFromEdge = 0.14;
+                else if (item.echelon === "armor") basePctFromEdge = 0.21;
+                else basePctFromEdge = 0.28;
+
+                const colShiftPct = colIdx * 0.045;
+                const pctFromEdge = BattleCanvasEngine.clamp(basePctFromEdge - colShiftPct, 0.09, 0.36);
+                const offsetDist = this.width * pctFromEdge + ((rowIdx % 2 === 0 ? 1 : -1) * 6);
                 const x = isAttacker ? offsetDist : (this.width - offsetDist);
 
                 let y = 0;
-                if (domain === "naval") {
-                    y = 22 + ((i + 0.5) / numEntities) * (seaHeight - 44) + (this._rng() - 0.5) * 12;
-                } else if (domain === "air") {
-                    y = 50 + ((i + 0.5) / numEntities) * (this.height - 105) + (this._rng() - 0.5) * 20;
+                const verticalFraction = (rowIdx + 0.5) / Math.max(1, itemsInThisCol);
+                if (domainType === "naval") {
+                    const navTop = 22;
+                    const navSpan = Math.max(40, seaHeight - 42);
+                    y = navTop + verticalFraction * navSpan;
+                } else if (domainType === "air") {
+                    const airTop = 48;
+                    const airSpan = Math.max(100, this.height - 96);
+                    y = airTop + verticalFraction * airSpan;
                 } else {
-                    y = seaHeight + 44 + ((i + 0.5) / numEntities) * (landHeight - 78) + (this._rng() - 0.5) * 16;
+                    y = landTop + verticalFraction * landSpan;
                 }
 
                 this.entities.push({
-                    id: Math.random().toString(36).slice(2),
-                    side: side,
-                    countryId: countryId,
-                    countryName: countryName,
-                    flag: country.flag,
-                    unitId: unitId,
-                    unitRef: u,
-                    name: u.name,
-                    model: arch.model,
-                    weaponStyle: arch.weaponStyle,
-                    domain: domain,
-                    targetDomains: targetDomains,
-                    unitsRepresented: unitsPerEntity,
+                    id: Math.random().toString(36).slice(2) + "_" + idx,
+                    side: item.side,
+                    countryId: item.countryId,
+                    countryName: item.countryName,
+                    flag: item.flag,
+                    unitId: item.unitId,
+                    unitRef: item.unitRef,
+                    name: item.name,
+                    model: item.model,
+                    weaponStyle: item.weaponStyle,
+                    domain: item.domain,
+                    targetDomains: item.targetDomains,
+                    unitsRepresented: item.unitsRepresented,
                     x: x,
                     y: y,
-                    z: arch.altitude,
+                    z: item.altitude,
                     vx: 0,
                     vy: 0,
                     heading: isAttacker ? 0 : Math.PI,
                     turretAngle: isAttacker ? 0 : Math.PI,
-                    speed: arch.speed,
-                    color: teamColor,
-                    uniformColor: uniformCloth,
-                    helmetColor: helmetColor,
-                    hp: baseHp * unitsPerEntity,
-                    maxHp: baseHp * unitsPerEntity,
-                    damage: baseDmg * unitsPerEntity,
-                    range: combatRange,
-                    cooldown: Math.floor(this._rng() * 12),
-                    reloadTime: arch.reload,
+                    speed: item.speed,
+                    color: item.color,
+                    uniformColor: item.uniformColor,
+                    helmetColor: item.helmetColor,
+                    hp: item.hp,
+                    maxHp: item.maxHp,
+                    damage: item.damage,
+                    range: item.range,
+                    cooldown: Math.floor(this._rng() * 10),
+                    reloadTime: item.reloadTime,
                     recoil: 0,
                     isMoving: false,
                     animSeed: this._rng() * Math.PI * 2
                 });
-            }
-        });
+            });
+        };
+
+        placeDomainEntities(pendingByDomain.ground, "ground");
+        placeDomainEntities(pendingByDomain.naval, "naval");
+        placeDomainEntities(pendingByDomain.air, "air");
+    }
+
+    // دالة توافقية في حال تم استدعاء spawnForces مباشرة
+    spawnForces(forces, side, country, teamColor) {
+        this.spawnSideCoalitionForces([{ country: country, forces: forces }], side, teamColor);
     }
 
     // =========================================================================
-    // 5. حلقة التحديث والفيزياء (60 FPS)
+    // 5. حلقة التحديث والفيزياء ومنع تداخل الجنود (60 FPS)
     // =========================================================================
     loop() {
         if (!this.isRunning) return;
@@ -900,11 +990,12 @@ class BattleCanvasEngine {
     update() {
         const seaHeight = this.height * 0.25;
         const shoreYNaval = seaHeight - 18;
-        const shoreYGround = seaHeight + 30;
+        const shoreYGround = seaHeight + 34;
         const dt = this.timeScale;
 
-        this.entities.forEach((e) => {
-            if (e.hp <= 0) return;
+        for (let idx = 0; idx < this.entities.length; idx++) {
+            const e = this.entities[idx];
+            if (e.hp <= 0) continue;
 
             if (e.recoil > 0.05) e.recoil *= 0.82;
             else e.recoil = 0;
@@ -937,6 +1028,30 @@ class BattleCanvasEngine {
                 }
             }
 
+            // حساب قوة التباعد (Separation Force) لمنع تراكب جنديين أو آليتين في نفس النقطة أبداً
+            let sepX = 0;
+            let sepY = 0;
+            const minSepDist = e.domain === "naval" ? 42 : 30;
+            for (let j = 0; j < this.entities.length; j++) {
+                if (idx === j) continue;
+                const other = this.entities[j];
+                if (other.hp <= 0 || other.domain !== e.domain) continue;
+                const dxSep = e.x - other.x;
+                const dySep = e.y - other.y;
+                const distSep = Math.hypot(dxSep, dySep);
+                if (distSep < minSepDist) {
+                    if (distSep < 0.01) {
+                        const pushAngle = (idx * 1.7) + this.animClock;
+                        sepX += Math.cos(pushAngle) * 1.2;
+                        sepY += Math.sin(pushAngle) * 1.2;
+                    } else {
+                        const pushFactor = ((minSepDist - distSep) / minSepDist) * 1.15;
+                        sepX += (dxSep / distSep) * pushFactor;
+                        sepY += (dySep / distSep) * pushFactor;
+                    }
+                }
+            }
+
             if (nearestTarget) {
                 let targetX = nearestTarget.x;
                 let targetY = nearestTarget.y;
@@ -959,8 +1074,8 @@ class BattleCanvasEngine {
                     const dx = desiredX - e.x;
                     const dy = desiredY - e.y;
                     const dNorm = Math.hypot(dx, dy) || 1;
-                    e.vx = (dx / dNorm) * e.speed * dt;
-                    e.vy = (dy / dNorm) * e.speed * dt;
+                    e.vx = ((dx / dNorm) * e.speed + sepX * 0.7) * dt;
+                    e.vy = ((dy / dNorm) * e.speed + sepY * 0.7) * dt;
                     e.x += e.vx;
                     e.y += e.vy;
                     e.heading = Math.atan2(e.vy, e.vx);
@@ -972,6 +1087,9 @@ class BattleCanvasEngine {
                 } else if (realDist <= e.range) {
                     e.isMoving = false;
                     e.heading = aimAngle;
+                    // حتى عند التوقف للرمي، حافظ على التباعد حتى لا يندمج جنديان في شكل واحد
+                    e.x += sepX * 0.65 * dt;
+                    e.y += sepY * 0.65 * dt;
                     if (e.cooldown <= 0) {
                         this.fireWeapon(e, nearestTarget);
                         e.cooldown = e.reloadTime + Math.floor(this._rng() * 8);
@@ -981,13 +1099,13 @@ class BattleCanvasEngine {
                     const dx = targetX - e.x;
                     const dy = targetY - e.y;
                     const distToNav = Math.hypot(dx, dy) || 1;
-                    e.vx = (dx / distToNav) * e.speed * dt;
-                    e.vy = (dy / distToNav) * e.speed * dt;
+                    e.vx = ((dx / distToNav) * e.speed + sepX * 0.85) * dt;
+                    e.vy = ((dy / distToNav) * e.speed + sepY * 0.85) * dt;
                     e.x += e.vx;
                     e.y += e.vy;
                     e.heading = Math.atan2(e.vy, e.vx);
 
-                    if (e.domain === "ground" && Math.random() < 0.24 * dt && e.model !== "infantry_def" && e.model !== "infantry_atk") {
+                    if (e.domain === "ground" && Math.random() < 0.22 * dt && e.model !== "infantry_def" && e.model !== "infantry_atk") {
                         this.particles.push({
                             x: e.x - Math.cos(e.heading) * 12,
                             y: e.y - Math.sin(e.heading) * 6,
@@ -999,7 +1117,7 @@ class BattleCanvasEngine {
                             size: 3.2,
                             life: 0.55
                         });
-                    } else if (e.domain === "naval" && Math.random() < 0.38 * dt) {
+                    } else if (e.domain === "naval" && Math.random() < 0.35 * dt) {
                         this.particles.push({
                             x: e.x - Math.cos(e.heading) * 18,
                             y: e.y - Math.sin(e.heading) * 6,
@@ -1017,7 +1135,7 @@ class BattleCanvasEngine {
 
             if (e.cooldown > 0) e.cooldown -= dt;
 
-            e.x = BattleCanvasEngine.clamp(e.x, 38, this.width - 38);
+            e.x = BattleCanvasEngine.clamp(e.x, 42, this.width - 42);
             if (e.domain === "naval") {
                 e.y = BattleCanvasEngine.clamp(e.y, 18, shoreYNaval);
             } else if (e.domain === "ground") {
@@ -1025,7 +1143,7 @@ class BattleCanvasEngine {
             } else if (e.domain === "air") {
                 e.y = BattleCanvasEngine.clamp(e.y, 24, this.height - 34);
             }
-        });
+        }
 
         for (let i = this.projectiles.length - 1; i >= 0; i--) {
             const p = this.projectiles[i];
@@ -1314,40 +1432,40 @@ class BattleCanvasEngine {
     }
 
     renderForwardCommandBases(seaHeight) {
-        const midLandY = seaHeight + (this.height - seaHeight) * 0.52;
+        const flagLandY = seaHeight + 28;
 
         if (this.attacker) {
-            this.drawCommandOutpost3D(78, midLandY, this.attackerColor, this.attacker.flag, 1);
+            this.drawCommandOutpost3D(32, flagLandY, this.attackerColor, this.attacker.flag, 1);
         }
         if (this.defender) {
-            this.drawCommandOutpost3D(this.width - 78, midLandY, this.defenderColor, this.defender.flag, -1);
+            this.drawCommandOutpost3D(this.width - 32, flagLandY, this.defenderColor, this.defender.flag, -1);
         }
     }
 
+    // سارية العلم السيادي على أطراف الميدان دون مبنى ضخم يربك عدد الوحدات المقاتلة
     drawCommandOutpost3D(bx, by, sovColor, flagMatrix, dir) {
-        this.drawBox3D(bx, by, 7, 32, 42, 14, 0, "#334155", sovColor);
-        this.drawBox3D(bx - dir * 5, by, 21, 18, 22, 12, 0, "#475569", BattleCanvasEngine.adjustColor(sovColor, 0.18));
+        this.drawBox3D(bx, by, 7, 12, 12, 5, 0, "#334155", sovColor);
 
-        const poleBase = this.projectBattle3D(bx, by, 33);
-        const poleTop = this.projectBattle3D(bx, by, 64);
+        const poleBase = this.projectBattle3D(bx, by, 12);
+        const poleTop = this.projectBattle3D(bx, by, 48);
 
         this.ctx.save();
         this.ctx.strokeStyle = "#fde047";
-        this.ctx.lineWidth = 2.6 * poleBase.scale;
+        this.ctx.lineWidth = 2.4 * poleBase.scale;
         this.ctx.beginPath();
         this.ctx.moveTo(poleBase.x, poleBase.y);
         this.ctx.lineTo(poleTop.x, poleTop.y);
         this.ctx.stroke();
 
-        const fw = 30 * poleTop.scale;
-        const fh = 19 * poleTop.scale;
+        const fw = 28 * poleTop.scale;
+        const fh = 18 * poleTop.scale;
         const rows = 3,
             cols = 4;
         const cw = fw / cols,
             ch = fh / rows;
         for (let r = 0; r < rows; r++) {
             for (let c = 0; c < cols; c++) {
-                const wave = Math.sin(this.animClock * 4.2 + c * 0.8 + r * 0.3) * 2.2 * poleTop.scale;
+                const wave = Math.sin(this.animClock * 4.2 + c * 0.8 + r * 0.3) * 2.0 * poleTop.scale;
                 let col = sovColor;
                 if (Array.isArray(flagMatrix) && flagMatrix.length === 12) {
                     col = flagMatrix[r * cols + c] || sovColor;
@@ -1402,7 +1520,7 @@ class BattleCanvasEngine {
     }
 
     // =========================================================================
-    // 8. رسم المجسمات العسكرية ثلاثية الأبعاد للوحدات الـ 48
+    // 8. رسم المجسمات العسكرية ثلاثية الأبعاد للوحدات المقاتلة (التزام 100% بالشكل والعدد)
     // =========================================================================
     renderUnit3D(e) {
         const isAttacker = e.side === "attacker";
@@ -1422,12 +1540,15 @@ class BattleCanvasEngine {
 
         this.ctx.save();
 
+        // حلقة القاعدة التكتيكية تحت كل مقاتل لتمييز كل وحدة بوضوح تام
+        const ringRx = (e.model === "infantry_def" || e.model === "infantry_atk") ? 13 : 17;
+        const ringRy = (e.model === "infantry_def" || e.model === "infantry_atk") ? 6.0 : 7.5;
         this.ctx.save();
-        this.ctx.fillStyle = isAttacker ? "rgba(16, 185, 129, 0.28)" : "rgba(244, 63, 94, 0.28)";
+        this.ctx.fillStyle = isAttacker ? "rgba(16, 185, 129, 0.30)" : "rgba(244, 63, 94, 0.30)";
         this.ctx.strokeStyle = isAttacker ? "#10b981" : "#f43f5e";
         this.ctx.lineWidth = 2.0 * sc;
         this.ctx.beginPath();
-        this.ctx.ellipse(groundPt.x, groundPt.y, 17 * sc, 7.5 * sc, 0, 0, Math.PI * 2);
+        this.ctx.ellipse(groundPt.x, groundPt.y, ringRx * sc, ringRy * sc, 0, 0, Math.PI * 2);
         this.ctx.fill();
         this.ctx.stroke();
 
@@ -1452,9 +1573,6 @@ class BattleCanvasEngine {
             case "infantry_atk":
                 this.drawModelInfantrySquad(e, recX, recY, wz, dir, false);
                 break;
-            case "troop_truck":
-                this.drawModelTroopTruck(recX, recY, wz, e.heading, sovColor, e.uniformColor);
-                break;
             case "field_cannon":
                 this.drawModelFieldCannon(recX, recY, wz, e.turretAngle, sovColor, e.uniformColor);
                 break;
@@ -1466,32 +1584,35 @@ class BattleCanvasEngine {
                 this.drawModelTank3D(recX, recY, wz, e.heading, e.turretAngle, sovColor, 0.96, false);
                 break;
             case "main_battle_tank":
-                this.drawModelTank3D(recX, recY, wz, e.heading, e.turretAngle, sovColor, 1.25, true);
+                this.drawModelTank3D(recX, recY, wz, e.heading, e.turretAngle, sovColor, 1.26, true);
                 break;
             case "aa_tank":
                 this.drawModelAATank3D(recX, recY, wz, e.heading, e.turretAngle, sovColor);
                 break;
+            case "coastal_missile_tank":
+                this.drawModelCoastalMissileTank3D(recX, recY, wz, e.heading, e.turretAngle, sovColor);
+                break;
             case "light_mlrs":
             case "heavy_mlrs":
-            case "coastal_missile_tank":
                 this.drawModelMLRS3D(recX, recY, wz, e.heading, e.turretAngle, sovColor, e.model === "heavy_mlrs" ? 1.28 : 1.05);
                 break;
             case "cram_battery":
             case "sam_patriot":
-                this.drawModelSAMBattery3D(recX, recY, wz, e.turretAngle, sovColor);
+            case "air_defense_battery":
+            case "anti_missile_battery":
+            case "coastal_defense_battery":
+                this.drawModelSAMBattery3D(recX, recY, wz, e.turretAngle, sovColor, e.model);
                 break;
             case "scud_tel":
+            case "cruise_launcher":
+            case "moab_launcher":
             case "nuke_launcher":
-                this.drawModelBallisticLauncher3D(recX, recY, wz, e.heading, sovColor, e.model === "nuke_launcher");
+                this.drawModelBallisticLauncher3D(recX, recY, wz, e.heading, sovColor, e.model);
                 break;
-            case "fortified_base":
-                this.drawBox3D(recX, recY, wz, 25, 22, 14, 0, "#475569", sovColor);
-                break;
-            case "landing_ship":
             case "corvette":
             case "frigate":
             case "destroyer":
-                this.drawModelWarship3D(recX, recY, wz, e.heading, e.turretAngle, sovColor, e.model === "destroyer" ? 1.28 : 1.05);
+                this.drawModelWarship3D(recX, recY, wz, e.heading, e.turretAngle, sovColor, e.model === "destroyer" ? 1.28 : (e.model === "frigate" ? 1.15 : 0.96), e.model);
                 break;
             case "battleship":
                 this.drawModelBattleship3D(recX, recY, wz, e.heading, e.turretAngle, sovColor);
@@ -1502,7 +1623,7 @@ class BattleCanvasEngine {
             case "submarine":
             case "aa_submarine":
             case "ssbn_submarine":
-                this.drawModelSubmarine3D(recX, recY, wz, e.heading, sovColor, e.model === "ssbn_submarine" ? 1.3 : 1.05);
+                this.drawModelSubmarine3D(recX, recY, wz, e.heading, sovColor, e.model === "ssbn_submarine" ? 1.32 : 1.05, e.model === "aa_submarine");
                 break;
             case "uav_drone":
                 this.drawModelAircraft3D(unitPt, sc, e.heading, sovColor, "uav");
@@ -1510,19 +1631,29 @@ class BattleCanvasEngine {
             case "attack_jet_a10":
                 this.drawModelAircraft3D(unitPt, sc, e.heading, sovColor, "a10");
                 break;
+            case "su25_frogfoot":
+                this.drawModelAircraft3D(unitPt, sc, e.heading, sovColor, "su25");
+                break;
             case "gunship_c130":
                 this.drawModelAircraft3D(unitPt, sc, e.heading, sovColor, "c130");
                 break;
             case "stealth_f35":
-            case "delta_mirage":
                 this.drawModelAircraft3D(unitPt, sc, e.heading, sovColor, "stealth");
+                break;
+            case "delta_mirage":
+                this.drawModelAircraft3D(unitPt, sc, e.heading, sovColor, "delta");
+                break;
+            case "f15_eagle":
+            case "mig_interceptor":
+                this.drawModelAircraft3D(unitPt, sc, e.heading, sovColor, "twin_tail");
                 break;
             default:
                 this.drawModelAircraft3D(unitPt, sc, e.heading, sovColor, "fighter");
                 break;
         }
 
-        const hudOffset = e.domain === "air" ? -26 * sc : -30 * sc;
+        // شريط الصحة واسم الوحدة المقاتلة وعددها الدقيق
+        const hudOffset = e.domain === "air" ? -28 * sc : -32 * sc;
         const barW = 30 * sc;
         const barH = 4.2 * sc;
         const ratio = BattleCanvasEngine.clamp(e.hp / e.maxHp, 0, 1);
@@ -1538,47 +1669,84 @@ class BattleCanvasEngine {
         this.ctx.fillStyle = sovColor;
         this.ctx.fillRect(barX - 6 * sc, barY - 1, 5 * sc, barH + 2);
 
-        if (e.unitsRepresented > 1) {
-            this.ctx.font = "bold " + Math.max(9, Math.round(10.5 * sc)) + "px Cairo, sans-serif";
-            this.ctx.fillStyle = "#fde047";
-            this.ctx.textAlign = "center";
-            this.ctx.fillText("×" + e.unitsRepresented, unitPt.x, barY - 3 * sc);
-        }
+        // عرض اسم الصنف والعدد الحقيقي الممثل في هذا المجسم
+        const labelText = e.unitsRepresented > 1 ? (e.name + " ×" + e.unitsRepresented) : e.name;
+        this.ctx.font = "bold " + Math.max(8, Math.round(9.5 * sc)) + "px Cairo, sans-serif";
+        this.ctx.textAlign = "center";
+        this.ctx.fillStyle = "rgba(9, 13, 24, 0.78)";
+        const textW = this.ctx.measureText(labelText).width + 8 * sc;
+        this.ctx.fillRect(unitPt.x - textW * 0.5, barY - 14 * sc, textW, 11 * sc);
+        this.ctx.fillStyle = e.unitsRepresented > 1 ? "#fde047" : "#f8fafc";
+        this.ctx.fillText(labelText, unitPt.x, barY - 5 * sc);
 
         this.ctx.restore();
     }
 
+    /**
+     * رسم جندي المشاة الفردي بدقة 1:1
+     * عندما يكون unitsRepresented === 1 يرسم جندياً واحداً فقط بتفاصيله الكاملة وسلاحه المميز
+     */
     drawModelInfantrySquad(e, bx, by, bz, dir, hasShield) {
-        const offsets = [
-            [0, 0],
-            [-7.5 * dir, -7.5],
-            [-7.5 * dir, 7.5]
-        ];
+        const figureCount = Math.min(Math.max(1, e.unitsRepresented || 1), 3);
+        const offsets = figureCount === 1
+            ? [[0, 0]]
+            : (figureCount === 2
+                ? [[0, -5.5], [0, 5.5]]
+                : [[0, 0], [-8.0 * dir, -7.0], [-8.0 * dir, 7.0]]);
+
+        const s = figureCount === 1 ? 1.25 : 1.0;
 
         for (let i = 0; i < offsets.length; i++) {
             const sx = bx + offsets[i][0];
             const sy = by + offsets[i][1];
-            const stride = e.isMoving ? Math.sin(this.animClock * 8.5 + e.animSeed + i * 2) * 3.5 : 0;
-            const crouch = e.isMoving ? 0 : -1.8;
+            const stride = e.isMoving ? Math.sin(this.animClock * 8.5 + e.animSeed + i * 2) * 3.8 * s : 0;
+            const crouch = e.isMoving ? 0 : -1.2 * s;
 
-            this.drawBox3D(sx + stride * 0.45, sy - 1.8, bz, 3.0, 2.6, 5.5 + crouch * 0.3, 0, e.uniformColor, "#0f172a");
-            this.drawBox3D(sx - stride * 0.45, sy + 1.8, bz, 3.0, 2.6, 5.5 + crouch * 0.3, 0, e.uniformColor, "#0f172a");
+            // 1. الحذاء العسكري والأرجل المتحركة
+            this.drawBox3D(sx + stride * 0.45, sy - 2.1 * s, bz, 3.2 * s, 2.8 * s, 6.2 * s + crouch * 0.3, 0, e.uniformColor, "#0f172a");
+            this.drawBox3D(sx - stride * 0.45, sy + 2.1 * s, bz, 3.2 * s, 2.8 * s, 6.2 * s + crouch * 0.3, 0, e.uniformColor, "#0f172a");
 
-            const torsoZ = bz + 5.5 + crouch * 0.3;
-            this.drawBox3D(sx, sy, torsoZ, 5.4, 6.0, 6.8, e.turretAngle, e.uniformColor, e.color);
-            this.drawBox3D(sx, sy, torsoZ + 6.8, 4.2, 4.2, 3.6, e.turretAngle, "#fde68a", e.helmetColor);
+            // 2. الجذع والسترة الواقية باللون السيادي للدولة + حقيبة الظهر التكتيكية
+            const torsoZ = bz + 6.2 * s + crouch * 0.3;
+            this.drawBox3D(sx, sy, torsoZ, 6.0 * s, 6.8 * s, 7.6 * s, e.turretAngle, e.uniformColor, e.color);
+            this.drawBox3D(
+                sx - Math.cos(e.turretAngle) * 3.4 * s,
+                sy - Math.sin(e.turretAngle) * 3.4 * s,
+                torsoZ + 1.0 * s,
+                3.0 * s, 5.0 * s, 5.5 * s,
+                e.turretAngle,
+                "#1e293b",
+                "#334155"
+            );
 
+            // 3. الأكتاف والذراعان الممسكتان بالسلاح
+            this.drawBox3D(
+                sx + Math.cos(e.turretAngle) * 2.2 * s,
+                sy + Math.sin(e.turretAngle) * 2.2 * s,
+                torsoZ + 3.8 * s,
+                5.5 * s, 7.8 * s, 2.6 * s,
+                e.turretAngle,
+                e.uniformColor,
+                e.color
+            );
+
+            // 4. الرأس والخوذة القتالية ونظارة الرؤية
+            const headZ = torsoZ + 7.6 * s;
+            this.drawBox3D(sx, sy, headZ, 4.4 * s, 4.4 * s, 3.4 * s, e.turretAngle, "#fcd34d", "#fde68a");
+            this.drawBox3D(sx, sy, headZ + 2.2 * s, 5.2 * s, 5.2 * s, 2.8 * s, e.turretAngle, e.helmetColor, BattleCanvasEngine.adjustColor(e.helmetColor, 0.18));
+
+            // 5. راية الفصيل الصغيرة فوق حقيبة الظهر
             if (i === 0) {
-                const pBase = this.projectBattle3D(sx - dir * 2, sy, torsoZ + 6);
-                const pTop = this.projectBattle3D(sx - dir * 2, sy, torsoZ + 18);
+                const pBase = this.projectBattle3D(sx - dir * 2.2 * s, sy, torsoZ + 6.5 * s);
+                const pTop = this.projectBattle3D(sx - dir * 2.2 * s, sy, torsoZ + 18.5 * s);
                 this.ctx.strokeStyle = "#fde047";
-                this.ctx.lineWidth = 1.5 * pBase.scale;
+                this.ctx.lineWidth = 1.6 * pBase.scale;
                 this.ctx.beginPath();
                 this.ctx.moveTo(pBase.x, pBase.y);
                 this.ctx.lineTo(pTop.x, pTop.y);
                 this.ctx.stroke();
 
-                this.ctx.fillStyle = e.helmetColor;
+                this.ctx.fillStyle = e.color;
                 this.ctx.beginPath();
                 this.ctx.moveTo(pTop.x, pTop.y);
                 this.ctx.lineTo(pTop.x - dir * 9 * pTop.scale, pTop.y + 3 * pTop.scale);
@@ -1587,26 +1755,62 @@ class BattleCanvasEngine {
                 this.ctx.fill();
             }
 
+            // 6. التمييز البصري الواضح بين (مشاة دفاعية بدرع تكتيكي ثقيل) و(مشاة هجومية بقاذف RPG وبندقية اقتحام)
             if (hasShield) {
+                // درع تكتيكي مدرع في مقدمة الجندي الدفاعي مع نافذة رؤية زجاجية
+                const shX = sx + Math.cos(e.turretAngle) * 5.4 * s;
+                const shY = sy + Math.sin(e.turretAngle) * 5.4 * s;
                 this.drawBox3D(
-                    sx + Math.cos(e.turretAngle) * 4.6,
-                    sy + Math.sin(e.turretAngle) * 4.6,
-                    bz + 2,
-                    2.2, 6.8, 10.0,
+                    shX, shY,
+                    bz + 2.2 * s,
+                    2.4 * s, 8.2 * s, 11.2 * s,
                     e.turretAngle,
                     "#1e293b",
                     e.color
                 );
+                this.drawBox3D(
+                    shX + Math.cos(e.turretAngle) * 0.6 * s,
+                    shY + Math.sin(e.turretAngle) * 0.6 * s,
+                    bz + 9.5 * s,
+                    1.5 * s, 5.2 * s, 2.2 * s,
+                    e.turretAngle,
+                    "#38bdf8",
+                    "#bae6fd"
+                );
+            } else {
+                // قاذف صواريخ RPG محمول على كتف الجندي الهجومي برأس حربي مخروطي
+                const rpgStart = this.projectBattle3D(
+                    sx - Math.cos(e.turretAngle) * 4.5 * s,
+                    sy - Math.sin(e.turretAngle) * 4.5 * s + 2.5 * s,
+                    torsoZ + 7.2 * s
+                );
+                const rpgEnd = this.projectBattle3D(
+                    sx + Math.cos(e.turretAngle) * 10.5 * s,
+                    sy + Math.sin(e.turretAngle) * 10.5 * s + 2.5 * s,
+                    torsoZ + 8.5 * s
+                );
+                this.ctx.strokeStyle = "#4d7c0f";
+                this.ctx.lineWidth = 3.2 * rpgStart.scale;
+                this.ctx.beginPath();
+                this.ctx.moveTo(rpgStart.x, rpgStart.y);
+                this.ctx.lineTo(rpgEnd.x, rpgEnd.y);
+                this.ctx.stroke();
+
+                this.ctx.fillStyle = "#f97316";
+                this.ctx.beginPath();
+                this.ctx.arc(rpgEnd.x, rpgEnd.y, 2.6 * rpgEnd.scale, 0, Math.PI * 2);
+                this.ctx.fill();
             }
 
-            const gunStart = this.projectBattle3D(sx, sy, torsoZ + 4.2);
+            // السلاح الناري الرئيسي المصوب نحو الهدف
+            const gunStart = this.projectBattle3D(sx, sy, torsoZ + 4.8 * s);
             const gunEnd = this.projectBattle3D(
-                sx + Math.cos(e.turretAngle) * 11.5,
-                sy + Math.sin(e.turretAngle) * 11.5,
-                torsoZ + 4.6
+                sx + Math.cos(e.turretAngle) * 13.0 * s,
+                sy + Math.sin(e.turretAngle) * 13.0 * s,
+                torsoZ + 5.2 * s
             );
             this.ctx.strokeStyle = "#0f172a";
-            this.ctx.lineWidth = 2.6 * gunStart.scale;
+            this.ctx.lineWidth = 2.8 * gunStart.scale;
             this.ctx.beginPath();
             this.ctx.moveTo(gunStart.x, gunStart.y);
             this.ctx.lineTo(gunEnd.x, gunEnd.y);
@@ -1632,6 +1836,14 @@ class BattleCanvasEngine {
         this.ctx.stroke();
     }
 
+    drawModelCoastalMissileTank3D(bx, by, bz, hullAngle, turretAngle, sovColor) {
+        this.drawBox3D(bx, by, bz, 26, 16, 5.2, hullAngle, "#1e293b", "#334155");
+        this.drawBox3D(bx, by, bz + 5.2, 23, 14, 4.5, hullAngle, BattleCanvasEngine.adjustColor(sovColor, -0.2), sovColor);
+        // حاويتا صواريخ مضادة للسفن مائلتان فوق البرج المجنزر
+        this.drawBox3D(bx, by - 3.2, bz + 9.7, 15, 4.5, 6.5, turretAngle, "#334155", "#f97316");
+        this.drawBox3D(bx, by + 3.2, bz + 9.7, 15, 4.5, 6.5, turretAngle, "#334155", "#f97316");
+    }
+
     drawModelWheeledAPC(bx, by, bz, hullAngle, turretAngle, sovColor, isAA) {
         this.drawBox3D(bx, by, bz, 24, 13.5, 4.5, hullAngle, "#0f172a", "#334155");
         this.drawBox3D(bx, by, bz + 4.5, 22, 12.5, 5.5, hullAngle, "#475569", sovColor);
@@ -1644,17 +1856,11 @@ class BattleCanvasEngine {
             bz + (isAA ? 18 : 12.5)
         );
         this.ctx.strokeStyle = "#0f172a";
-        this.ctx.lineWidth = 2.6 * bStart.scale;
+        this.ctx.lineWidth = (isAA ? 3.4 : 2.6) * bStart.scale;
         this.ctx.beginPath();
         this.ctx.moveTo(bStart.x, bStart.y);
         this.ctx.lineTo(bEnd.x, bEnd.y);
         this.ctx.stroke();
-    }
-
-    drawModelTroopTruck(bx, by, bz, angle, sovColor, clothColor) {
-        this.drawBox3D(bx, by, bz, 24, 12.5, 4.0, angle, "#1e293b", "#334155");
-        this.drawBox3D(bx - Math.cos(angle) * 3.5, by - Math.sin(angle) * 3.5, bz + 4.0, 15, 12, 7.2, angle, clothColor, BattleCanvasEngine.adjustColor(clothColor, 0.16));
-        this.drawBox3D(bx + Math.cos(angle) * 7.5, by + Math.sin(angle) * 7.5, bz + 4.0, 7.5, 11.5, 6.0, angle, sovColor, "#38bdf8");
     }
 
     drawModelFieldCannon(bx, by, bz, aimAngle, sovColor, clothColor) {
@@ -1699,20 +1905,25 @@ class BattleCanvasEngine {
         this.drawBox3D(bx - Math.cos(hullAngle) * 4.5 * s, by - Math.sin(hullAngle) * 4.5 * s, bz + 7.0 * s, 14 * s, 11 * s, 7.0 * s, aimAngle, "#334155", "#f59e0b");
     }
 
-    drawModelSAMBattery3D(bx, by, bz, aimAngle, sovColor) {
+    drawModelSAMBattery3D(bx, by, bz, aimAngle, sovColor, modelType) {
         this.drawBox3D(bx, by, bz, 20, 17, 4.5, 0, "#334155", "#475569");
-        this.drawBox3D(bx, by, bz + 4.5, 12.5, 10, 9.5, aimAngle, sovColor, "#e2e8f0");
+        const topCol = modelType === "coastal_defense_battery" ? "#f97316" : (modelType === "anti_missile_battery" ? "#38bdf8" : "#e2e8f0");
+        this.drawBox3D(bx, by, bz + 4.5, 13, 10.5, 10.0, aimAngle, sovColor, topCol);
     }
 
-    drawModelBallisticLauncher3D(bx, by, bz, hullAngle, sovColor, isNuke) {
+    drawModelBallisticLauncher3D(bx, by, bz, hullAngle, sovColor, modelType) {
+        const isNuke = modelType === "nuke_launcher";
+        const isMoab = modelType === "moab_launcher";
         this.drawBox3D(bx, by, bz, 30, 14, 5.5, hullAngle, "#1e293b", "#334155");
-        this.drawBox3D(bx, by, bz + 5.5, 8, 8, isNuke ? 25 : 19, hullAngle, isNuke ? "#fbbf24" : "#f8fafc", "#ef4444");
+        const missileH = isNuke ? 26 : (isMoab ? 22 : 19);
+        const bodyCol = isNuke ? "#fbbf24" : (isMoab ? "#f97316" : "#f8fafc");
+        this.drawBox3D(bx, by, bz + 5.5, 8.5, 8.5, missileH, hullAngle, bodyCol, "#ef4444");
     }
 
-    drawModelWarship3D(bx, by, bz, angle, turretAngle, sovColor, scale) {
+    drawModelWarship3D(bx, by, bz, angle, turretAngle, sovColor, scale, modelType) {
         const s = scale || 1.0;
         this.drawBox3D(bx, by, bz, 36 * s, 12 * s, 6.0 * s, angle, "#334155", "#64748b");
-        this.drawBox3D(bx - Math.cos(angle) * 3 * s, by - Math.sin(angle) * 3 * s, bz + 6.0 * s, 13 * s, 8.5 * s, 7.0 * s, angle, sovColor, "#f8fafc");
+        this.drawBox3D(bx - Math.cos(angle) * 3 * s, by - Math.sin(angle) * 3 * s, bz + 6.0 * s, 13 * s, 8.5 * s, 7.0 * s, angle, sovColor, modelType === "destroyer" ? "#38bdf8" : "#f8fafc");
         const bStart = this.projectBattle3D(bx + Math.cos(angle) * 11 * s, by + Math.sin(angle) * 11 * s, bz + 7.0 * s);
         const bEnd = this.projectBattle3D(bx + Math.cos(turretAngle) * 21 * s, by + Math.sin(turretAngle) * 21 * s, bz + 9.0 * s);
         this.ctx.strokeStyle = "#0f172a";
@@ -1735,10 +1946,10 @@ class BattleCanvasEngine {
         this.drawBox3D(bx - Math.sin(angle) * 6.5, by + Math.cos(angle) * 6.5, bz + 8.5, 13, 5.5, 9.5, angle, sovColor, "#38bdf8");
     }
 
-    drawModelSubmarine3D(bx, by, bz, angle, sovColor, scale) {
+    drawModelSubmarine3D(bx, by, bz, angle, sovColor, scale, isAA) {
         const s = scale || 1.0;
         this.drawBox3D(bx, by, bz, 32 * s, 9.5 * s, 4.5 * s, angle, "#0f172a", "#1e293b");
-        this.drawBox3D(bx + Math.cos(angle) * 2 * s, by + Math.sin(angle) * 2 * s, bz + 4.5 * s, 8 * s, 5.5 * s, 6.5 * s, angle, sovColor, "#334155");
+        this.drawBox3D(bx + Math.cos(angle) * 2 * s, by + Math.sin(angle) * 2 * s, bz + 4.5 * s, 8 * s, 5.5 * s, 6.5 * s, angle, sovColor, isAA ? "#38bdf8" : "#334155");
     }
 
     drawModelAircraft3D(unitPt, sc, heading, sovColor, style) {
@@ -1767,7 +1978,7 @@ class BattleCanvasEngine {
             this.ctx.fillRect(-16, -4.5, 32, 9);
             this.ctx.fillStyle = sovColor;
             this.ctx.fillRect(-16, -3, 10, 6);
-        } else if (style === "a10") {
+        } else if (style === "a10" || style === "su25") {
             this.ctx.fillStyle = sovColor;
             this.ctx.fillRect(-3, -15, 7, 30);
             this.ctx.fillStyle = "#334155";
@@ -1780,8 +1991,21 @@ class BattleCanvasEngine {
             this.ctx.fillRect(-2, -14, 4, 28);
             this.ctx.fillStyle = "#cbd5e1";
             this.ctx.fillRect(-10, -2, 20, 4);
-        } else {
+        } else if (style === "delta") {
+            // جناح دلتا مثلثي لطائرة الميراج
             this.ctx.fillStyle = sovColor;
+            this.ctx.beginPath();
+            this.ctx.moveTo(18, 0);
+            this.ctx.lineTo(-12, -14);
+            this.ctx.lineTo(-12, 14);
+            this.ctx.closePath();
+            this.ctx.fill();
+            this.ctx.fillStyle = "#38bdf8";
+            this.ctx.beginPath();
+            this.ctx.ellipse(4, 0, 4.2, 1.8, 0, 0, Math.PI * 2);
+            this.ctx.fill();
+        } else {
+            this.ctx.fillStyle = style === "stealth" ? "#1e293b" : sovColor;
             this.ctx.beginPath();
             this.ctx.moveTo(16, 0);
             this.ctx.lineTo(-11, -13);
@@ -1808,10 +2032,11 @@ class BattleCanvasEngine {
     }
 
     drawModelCustomCAD(e, unitPt, sc, dir) {
-        if (window.WeaponForge && typeof window.WeaponForge.drawComponents === "function" && e.unitRef && Array.isArray(e.unitRef.componentsData)) {
+        const customParts = e.unitRef ? (e.unitRef.componentsData || e.unitRef.components || e.unitRef.parts || e.unitRef.shapes) : null;
+        if (window.WeaponForge && typeof window.WeaponForge.drawComponents === "function" && Array.isArray(customParts)) {
             this.ctx.save();
             this.ctx.translate(unitPt.x, unitPt.y);
-            window.WeaponForge.drawComponents(this.ctx, e.unitRef.componentsData, {
+            window.WeaponForge.drawComponents(this.ctx, customParts, {
                 dir: dir,
                 targetW: 48 * sc,
                 targetH: 36 * sc
@@ -1908,7 +2133,7 @@ class BattleCanvasEngine {
 
             this.ctx.fillStyle = "#fde68a";
             this.ctx.font = "bold 10px Cairo, sans-serif";
-            this.ctx.fillText("المقاتلون: " + atkAliveCount, 12 + hudW * 0.5, 43);
+            this.ctx.fillText("المقاتلون بالميدان: " + atkAliveCount, 12 + hudW * 0.5, 43);
         }
 
         if (this.defender) {
@@ -1926,7 +2151,7 @@ class BattleCanvasEngine {
 
             this.ctx.fillStyle = "#fde68a";
             this.ctx.font = "bold 10px Cairo, sans-serif";
-            this.ctx.fillText("الصامدون: " + defAliveCount, rx + hudW * 0.5, 43);
+            this.ctx.fillText("الصامدون بالميدان: " + defAliveCount, rx + hudW * 0.5, 43);
         }
 
         this.ctx.restore();
