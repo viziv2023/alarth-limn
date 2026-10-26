@@ -1,13 +1,14 @@
 /**
  * ============================================================================
- * warView.js - مركز الحرب والقتال الموحد وإدارة المعارك المتزامنة (v6.0)
+ * warView.js - مركز الحرب والقتال الموحد وإدارة المعارك المتزامنة (v6.1)
  * ============================================================================
  *
  * الآلية المتسلسلة الكاملة حسب طلب المستخدم:
  * 1. بعد انتهاء اللاعبين من الشراء والضغط على (الانتقال للحرب)، تنتقل شاشات جميع اللاعبين
  *    في الغرفة إلى مركز الحرب والقتال.
  * 2. اللاعب الذي طلب القتال يختار الدولة المستهدفة، ثم يختار الجنود الذين يريد الغزو بهم
- *    مع رؤية واضحة للأعداد والقوة المتوفرة، ثم يضغط على (الانتقال للحرب).
+ *    مع رؤية واضحة للأعداد والقوة المتوفرة (التزام صارم 1:1 بالوحدات المقاتلة الفعلية فقط)،
+ *    ثم يضغط على (الانتقال للحرب).
  * 3. تظهر للاعب المستهدف (الذي وقعت عليه الحرب) رسالة تنبيه وتحذير بقدوم الجيش المهاجم
  *    وتفاصيل أعداده وقوته، ويختار أحد الخيارات الثلاثة:
  *    - (1) الاستسلام
@@ -43,6 +44,17 @@ class WarView {
     this._isInitialized = true;
   }
 
+  static isCombatUnit(unitOrId) {
+    if (window.WarEngine && typeof window.WarEngine.isCombatUnit === "function") {
+      return window.WarEngine.isCombatUnit(unitOrId);
+    }
+    const u = (typeof unitOrId === "string")
+      ? (window.MilitaryData ? window.MilitaryData.getUnitById(unitOrId) : null)
+      : unitOrId;
+    if (!u) return false;
+    return !!u.isCustom || Number(u.power || 0) > 0;
+  }
+
   static notify(msg, icon) {
     if (typeof window.showGameToast === "function") {
       window.showGameToast(msg, icon || "⚔️");
@@ -76,7 +88,9 @@ class WarView {
 
     let totalMobilized = 0;
     Object.keys(mobilizedForces || {}).forEach(uid => {
-      totalMobilized += Math.max(0, Number(mobilizedForces[uid] || 0));
+      if (this.isCombatUnit(uid)) {
+        totalMobilized += Math.max(0, Math.floor(Number(mobilizedForces[uid] || 0)));
+      }
     });
 
     if (totalMobilized === 0) return "NO_ARMY";
@@ -85,11 +99,20 @@ class WarView {
   }
 
   static serializeCoalition(coalition) {
-    return (coalition || []).map(member => ({
-      countryId: member.country ? member.country.id : member.countryId,
-      countryName: member.country ? member.country.name : (member.countryName || ""),
-      forces: Object.assign({}, member.forces || {})
-    }));
+    return (coalition || []).map(member => {
+      const cleanForces = {};
+      Object.keys(member.forces || {}).forEach(uid => {
+        const cnt = Math.max(0, Math.floor(Number(member.forces[uid] || 0)));
+        if (cnt > 0 && this.isCombatUnit(uid)) {
+          cleanForces[uid] = cnt;
+        }
+      });
+      return {
+        countryId: member.country ? member.country.id : member.countryId,
+        countryName: member.country ? member.country.name : (member.countryName || ""),
+        forces: cleanForces
+      };
+    });
   }
 
   static deserializeCoalition(serializedList, world) {
@@ -99,9 +122,12 @@ class WarView {
     (serializedList || []).forEach(item => {
       const c = countries.find(x => String(x.id) === String(item.countryId));
       if (c) {
+        const cleanForces = (window.WarEngine && typeof window.WarEngine.sanitizeMobilizedForces === "function")
+          ? window.WarEngine.sanitizeMobilizedForces(c, item.forces || {})
+          : Object.assign({}, item.forces || {});
         result.push({
           country: c,
-          forces: Object.assign({}, item.forces || {})
+          forces: cleanForces
         });
       }
     });
@@ -274,7 +300,7 @@ class WarView {
 
     rival.population = 80;
     rival.buildings = rival.buildings || {};
-    rival.buildings.house = 20; // 20 بيتاً = 80 نسمة مترابطة مع السكان
+    rival.buildings.house = 20;
     rival.bank = 500;
     rival.worldBankFund = 200;
     rival.disposableRevenue = 450;
@@ -461,7 +487,7 @@ class WarView {
           <span style="font-size:1.5rem;">⚔️</span>
           <div>
             <h3 style="color:#fde047; margin:0; font-size:0.98rem;">مركز الحرب والقتال — البيانات العسكرية المترابطة لكافة الدول</h3>
-            <p style="color:#cbd5e1; margin:0; font-size:0.76rem;">يعرض الأعداد الحقيقية للجنود والآليات والقوة القتالية لكل دولة، ومن هنا يختار المهاجم الدولة المستهدفة وجنود الغزو.</p>
+            <p style="color:#cbd5e1; margin:0; font-size:0.76rem;">يعرض الأعداد الحقيقية للجنود والآليات القتالية (1:1) لكل دولة، ومن هنا يختار المهاجم الدولة المستهدفة وجنود الغزو.</p>
           </div>
         </div>
         <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
@@ -480,9 +506,7 @@ class WarView {
         window.MilitaryEngine.refreshMilitaryStats(c);
       }
 
-      const mil = c.military || {};
-      const milPower = Number(mil.totalPower || c.militaryPower || 0);
-      const totalCrew = Number(mil.totalCrew || c.militaryCrew || 0);
+      const milPower = window.WarEngine ? window.WarEngine.getStandingArmyPower(c) : Number(c.military?.totalPower || 0);
       const armyColor = window.WarEngine ? window.WarEngine.getCountryMilitaryColor(c) : (c.militaryColor || "#3182ce");
       const totalStandingUnits = window.WarEngine ? window.WarEngine.getStandingArmyCount(c) : 0;
 
@@ -494,8 +518,9 @@ class WarView {
       const canControlThis = !isMp || (window.NetworkEngine && window.NetworkEngine.canControlCountry(c.id));
       const isHighlightedAttacker = state.phase === "SELECTING_ATTACK" && String(state.attackerCountryId) === String(c.id);
 
-      // بناء ملخص نصي سريع للوحدات الفعلية المتوفرة لدى الدولة لإزالة أي ضبابية
       const ownedUnitsSummary = this.getOwnedUnitsSummaryList(c);
+      let combatCrewCount = 0;
+      ownedUnitsSummary.forEach(item => { combatCrewCount += item.crewTotal; });
 
       html += `
         <div class="war-country-card" style="background:linear-gradient(180deg, #24193d 0%, #160f29 100%); border:${isHighlightedAttacker ? '2.5px solid #fb7185' : '1.5px solid #4a3b6e'}; border-top:4px solid ${armyColor}; border-radius:14px; padding:12px; box-shadow:${isHighlightedAttacker ? '0 0 20px rgba(244,63,94,0.35)' : '0 6px 14px rgba(0,0,0,0.4)'};">
@@ -508,12 +533,12 @@ class WarView {
                   ${isHighlightedAttacker ? `<span class="badge badge-danger" style="font-size:0.65rem; padding:1px 6px;">⚔️ طالب القتال</span>` : ''}
                 </strong>
                 <span style="font-size:0.74rem; font-weight:800; color:${totalStandingUnits > 0 ? '#34d399' : '#fb7185'};">
-                  ${totalStandingUnits > 0 ? `✅ الجيش: ${totalStandingUnits} وحدة (${totalCrew} جندي)` : '⚠️ لا تمتلك جيشاً مجنداً بعد'}
+                  ${totalStandingUnits > 0 ? `✅ الوحدات المقاتلة: ${totalStandingUnits} (${combatCrewCount} جندي مقاتل)` : '⚠️ لا تمتلك وحدات مقاتلة بعد'}
                 </span>
               </div>
             </div>
             <div style="text-align:center; border:1.5px solid ${armyColor}; padding:3px 8px; border-radius:8px; background:rgba(15,10,28,0.65);">
-              <span style="font-size:0.66rem; color:#fde68a; display:block;">القوة الإجمالية</span>
+              <span style="font-size:0.66rem; color:#fde68a; display:block;">القوة القتالية</span>
               <strong style="color:${armyColor}; font-size:0.95rem;">${milPower.toLocaleString()}</strong>
             </div>
           </div>
@@ -535,15 +560,15 @@ class WarView {
 
           <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-bottom:8px;">
             <div style="background:rgba(15,10,28,0.55); padding:5px 8px; border-radius:7px; border:1px solid #352659; display:flex; justify-content:space-between; font-size:0.76rem;">
-              <span style="color:#cbd5e0;">🛡️ قوات برية</span>
+              <span style="color:#cbd5e0;">🛡️ مقاتلات برية</span>
               <strong style="color:#38bdf8;">${groundCount}</strong>
             </div>
             <div style="background:rgba(15,10,28,0.55); padding:5px 8px; border-radius:7px; border:1px solid #352659; display:flex; justify-content:space-between; font-size:0.76rem;">
-              <span style="color:#cbd5e0;">⚓ قوات بحرية</span>
+              <span style="color:#cbd5e0;">⚓ مقاتلات بحرية</span>
               <strong style="color:#38bdf8;">${navalCount}</strong>
             </div>
             <div style="background:rgba(15,10,28,0.55); padding:5px 8px; border-radius:7px; border:1px solid #352659; display:flex; justify-content:space-between; font-size:0.76rem;">
-              <span style="color:#cbd5e0;">✈️ قوات جوية</span>
+              <span style="color:#cbd5e0;">✈️ مقاتلات جوية</span>
               <strong style="color:#38bdf8;">${airCount}</strong>
             </div>
             <div style="background:rgba(15,10,28,0.55); padding:5px 8px; border-radius:7px; border:1px solid #352659; display:flex; justify-content:space-between; font-size:0.76rem;">
@@ -554,8 +579,8 @@ class WarView {
 
           <div style="background:rgba(9,6,18,0.55); border:1px solid #2e214d; border-radius:8px; padding:6px 8px; margin-bottom:10px; min-height:36px; max-height:66px; overflow-y:auto; font-size:0.72rem; color:#fde68a;">
             ${ownedUnitsSummary.length > 0
-              ? `<strong style="color:#cbd5e1;">📋 المتوفر بالجيش:</strong> ` + ownedUnitsSummary.map(item => `<span style="display:inline-block; background:#1e293b; border:1px solid #334155; border-radius:5px; padding:1px 6px; margin:1px; color:#fffbeb;">${item.name}: <strong style="color:#34d399;">${item.count}</strong> (قوة ${item.power})</span>`).join(" ")
-              : `<span style="color:#94a3b8;">لا توجد وحدات قتالية في المخزون حالياً — اضغط (🎖️ تسليح) لشراء الجنود والأسلحة.</span>`
+              ? `<strong style="color:#cbd5e1;">📋 الوحدات المقاتلة:</strong> ` + ownedUnitsSummary.map(item => `<span style="display:inline-block; background:#1e293b; border:1px solid #334155; border-radius:5px; padding:1px 6px; margin:1px; color:#fffbeb;">${item.name}: <strong style="color:#34d399;">${item.count}</strong> (قوة ${item.power})</span>`).join(" ")
+              : `<span style="color:#94a3b8;">لا توجد وحدات مقاتلة في المخزون حالياً — اضغط (🎖️ تسليح) لشراء الجنود والأسلحة.</span>`
             }
           </div>
 
@@ -688,14 +713,15 @@ class WarView {
     if (!country || !country.military || !country.military.inventory) return list;
     const inv = country.military.inventory;
     Object.keys(inv).forEach(uid => {
-      const cnt = Number(inv[uid] || 0);
-      if (cnt > 0) {
+      const cnt = Math.max(0, Math.floor(Number(inv[uid] || 0)));
+      if (cnt > 0 && this.isCombatUnit(uid)) {
         const u = window.MilitaryData ? window.MilitaryData.getUnitById(uid) : null;
         if (u) {
           list.push({
             id: uid,
             name: u.name,
             count: cnt,
+            crewTotal: (Number(u.crew) || 0) * cnt,
             power: Number(((u.power || 0) * cnt).toFixed(1))
           });
         }
@@ -712,7 +738,9 @@ class WarView {
     if (window.MilitaryData && typeof window.MilitaryData.getUnitsByBranch === "function") {
       const units = window.MilitaryData.getUnitsByBranch(branch) || [];
       units.forEach(u => {
-        sum += Number(inv[u.id] || 0);
+        if (this.isCombatUnit(u)) {
+          sum += Math.max(0, Math.floor(Number(inv[u.id] || 0)));
+        }
       });
     }
     return sum;
@@ -746,10 +774,10 @@ class WarView {
       } else {
         otherCountries.forEach((c, idx) => {
           if (window.MilitaryEngine) window.MilitaryEngine.refreshMilitaryStats(c);
-          const milPower = (c.military && c.military.totalPower) || c.militaryPower || 0;
+          const milPower = window.WarEngine ? window.WarEngine.getStandingArmyPower(c) : ((c.military && c.military.totalPower) || 0);
           const standing = window.WarEngine ? window.WarEngine.getStandingArmyCount(c) : 0;
           const selectedAttr = idx === 0 ? "selected" : "";
-          defenderSelect.innerHTML += `<option value="${c.id}" ${selectedAttr}>🎯 ${c.name} — (الجيش المتوفر: ${standing} وحدة | القوة: ${milPower})</option>`;
+          defenderSelect.innerHTML += `<option value="${c.id}" ${selectedAttr}>🎯 ${c.name} — (الجيش المقاتل: ${standing} وحدة | القوة: ${milPower})</option>`;
         });
       }
     }
@@ -808,6 +836,7 @@ class WarView {
 
   /**
    * جدول اختيار الجنود والوحدات القتالية (للمهاجم أو المدافع) مع شريط حساب لحظي للأعداد والقوة
+   * يعرض فقط الوحدات المقاتلة الفعلية (ويستثني المصانع والقواعد اللوجستية غير المقاتلة)
    */
   static renderUnitsSelectorTable(containerId, country, inputClass, defaultFullMobilize = true) {
     const listBody = document.getElementById(containerId);
@@ -819,9 +848,9 @@ class WarView {
     }
 
     const branches = [
-      { id: "ground", name: "🛡️ القوات البرية" },
-      { id: "naval", name: "⚓ القوات البحرية" },
-      { id: "air", name: "✈️ القوات الجوية" },
+      { id: "ground", name: "🛡️ القوات البرية المقاتلة" },
+      { id: "naval", name: "⚓ القوات البحرية المقاتلة" },
+      { id: "air", name: "✈️ القوات الجوية المقاتلة" },
       { id: "defense", name: "🚀 الدفاع والصواريخ" }
     ];
 
@@ -845,7 +874,7 @@ class WarView {
         const uid = inp.getAttribute("data-id");
         const maxVal = parseInt(inp.getAttribute("max"), 10) || 0;
         const val = Math.min(maxVal, Math.max(0, parseInt(inp.value, 10) || 0));
-        if (val > 0) {
+        if (val > 0 && this.isCombatUnit(uid)) {
           selectedUnits += val;
           const u = window.MilitaryData ? window.MilitaryData.getUnitById(uid) : null;
           if (u) {
@@ -856,15 +885,15 @@ class WarView {
       });
 
       const modeText = (selectedUnits >= totalOwnedUnits && totalOwnedUnits > 0)
-        ? `<span class="badge badge-gold" style="font-size:0.7rem;">🔥 الجيش بالكامل (حشد كلي)</span>`
+        ? `<span class="badge badge-gold" style="font-size:0.7rem;">🔥 الجيش المقاتل بالكامل (${selectedUnits})</span>`
         : (selectedUnits > 0
-          ? `<span class="badge badge-purple" style="font-size:0.7rem;">⚡ جيش مختار (حشد جزئي)</span>`
+          ? `<span class="badge badge-purple" style="font-size:0.7rem;">⚡ قوة مختارة (${selectedUnits})</span>`
           : `<span class="badge badge-danger" style="font-size:0.7rem;">⚠️ لم يتم اختيار جنود (0)</span>`);
 
       liveSummaryBar.innerHTML = `
         <div>
-          <strong style="color:#fde047;">📊 القوات المختارة للقتال:</strong>
-          <span style="color:#34d399; font-weight:900; margin:0 4px;">${selectedUnits}</span> من أصل <strong>${totalOwnedUnits}</strong> وحدة متوفرة
+          <strong style="color:#fde047;">📊 المقاتلون المشاركون بالميدان:</strong>
+          <span style="color:#34d399; font-weight:900; margin:0 4px;">${selectedUnits}</span> من أصل <strong>${totalOwnedUnits}</strong> وحدة مقاتلة
           <span style="color:#cbd5e1; font-size:0.74rem;">(${selectedCrew} جندي)</span>
         </div>
         <div style="display:flex; align-items:center; gap:8px;">
@@ -877,7 +906,8 @@ class WarView {
     branches.forEach(br => {
       if (!window.MilitaryData || typeof window.MilitaryData.getUnitsByBranch !== "function") return;
       const units = window.MilitaryData.getUnitsByBranch(br.id) || [];
-      const owned = units.filter(u => (Number(inv[u.id]) || 0) > 0);
+      // فلترة صارمة: إظهار الوحدات المقاتلة الفعلية فقط واستبعاد المصانع والمنشآت اللوجستية غير المقاتلة
+      const owned = units.filter(u => this.isCombatUnit(u) && Math.floor(Number(inv[u.id] || 0)) > 0);
 
       if (owned.length > 0) {
         hasAnyUnit = true;
@@ -893,10 +923,10 @@ class WarView {
         table.innerHTML = `
           <thead>
             <tr style="background:#131c2e; color:#cbd5e1;">
-              <th style="padding:4px 6px; text-align:right;">الجندي / السلاح</th>
+              <th style="padding:4px 6px; text-align:right;">الجندي / السلاح المقاتل</th>
               <th style="padding:4px 6px; text-align:center;">قوة الوحدة</th>
               <th style="padding:4px 6px; text-align:center;">المتوفر بجيشك</th>
-              <th style="padding:4px 6px; text-align:center;">العدد المشارك بالمعركة</th>
+              <th style="padding:4px 6px; text-align:center;">العدد المشارك بالمعركة (1:1)</th>
             </tr>
           </thead>
           <tbody></tbody>
@@ -905,7 +935,7 @@ class WarView {
         const tbody = table.querySelector("tbody");
 
         owned.forEach(u => {
-          const available = Number(inv[u.id] || 0);
+          const available = Math.max(0, Math.floor(Number(inv[u.id] || 0)));
           const initialVal = defaultFullMobilize ? available : 0;
           const tr = document.createElement("tr");
           tr.style.cssText = "border-bottom:1px solid #1e293b;";
@@ -938,13 +968,13 @@ class WarView {
       emptyBox.style.cssText = "text-align:center; padding:14px; color:#fef3c7; background:rgba(136, 19, 55, 0.28); border:1.5px dashed #fb7185; border-radius:10px; margin:4px 0;";
       emptyBox.innerHTML = `
         <div style="font-size:1.5rem; margin-bottom:4px;">⚠️</div>
-        <strong style="color:#fda4af; display:block; margin-bottom:4px; font-size:0.88rem;">دولة [${country.name}] لا تمتلك أي جنود أو وحدات عسكرية في مخزونها حالياً!</strong>
+        <strong style="color:#fda4af; display:block; margin-bottom:4px; font-size:0.88rem;">دولة [${country.name}] لا تمتلك أي جنود أو وحدات مقاتلة في مخزونها حالياً!</strong>
         <p style="font-size:0.75rem; color:#e2e8f0; margin-bottom:10px;">
           السيولة المتاحة لديك: <strong style="color:#34d399;">$${Number(country.disposableRevenue || 0).toLocaleString()}</strong> | السكان المتاحون للتجنيد: <strong style="color:#c084fc;">${Math.max(0, Number(country.population || 0) - Number(country.employed || 0))} فرد</strong>
         </p>
         <div style="display:flex; gap:8px; justify-content:center; flex-wrap:wrap;">
           <button type="button" id="btn-quick-emergency-garrison" class="btn btn-military btn-sm">
-            ⚡ تجنيد كتيبة طوارئ سريعة فوراً
+            ⚡ تجنيد جندي مشاة دفاعية واحد فوراً
           </button>
           <button type="button" id="btn-go-to-military-from-war" class="btn btn-accent btn-sm">
             🎖️ فتح وزارة الدفاع لشراء الجنود والأسلحة
@@ -960,16 +990,14 @@ class WarView {
             country.military = window.MilitaryEngine ? window.MilitaryEngine.createDefaultMilitary() : { inventory: {} };
           }
           if (!country.military.inventory) country.military.inventory = {};
-          country.military.inventory["infantry_def"] = (country.military.inventory["infantry_def"] || 0) + 3;
-          country.military.inventory["infantry_atk"] = (country.military.inventory["infantry_atk"] || 0) + 2;
-          country.military.inventory["small_tank"] = (country.military.inventory["small_tank"] || 0) + 1;
+          country.military.inventory["infantry_def"] = (country.military.inventory["infantry_def"] || 0) + 1;
           if (window.MilitaryEngine && typeof window.MilitaryEngine.syncCountryWithMilitary === "function") {
             window.MilitaryEngine.syncCountryWithMilitary(country);
           }
           if (window.NetworkEngine && window.NetworkEngine.getRoomId()) {
             window.NetworkEngine.syncCountryChanges(country);
           }
-          this.notify("تم تجهيز كتيبة قتالية لدولة [" + country.name + "] بنجاح!", "🎖️");
+          this.notify("تم تجنيد جندي مشاة دفاعية (1) لدولة [" + country.name + "] بنجاح!", "🎖️");
           this.renderUnitsSelectorTable(containerId, country, inputClass, true);
           this.render(window.currentWorld);
         };
@@ -1085,7 +1113,6 @@ class WarView {
     this.render(world);
     this.playWarSiren();
 
-    // التحقق مما إذا كان هذا الجهاز هو المعني بالرد على الهجوم (صاحب الدولة المدافعة أو إذا كانت الدولة غير مملوكة للاعب آخر متصل)
     const isMp = !!(window.NetworkEngine && window.NetworkEngine.getRoomId());
     let shouldOpenDefenderModalHere = true;
 
@@ -1095,7 +1122,6 @@ class WarView {
       if (defOwnerInfo && defOwnerInfo.isClaimed) {
         shouldOpenDefenderModalHere = defOwnerInfo.isMine;
       } else {
-        // إذا كانت الدولة المدافعة AI أو غير مملوكة للاعب آخر، يظهر القرار لدى المهاجم/المضيف
         shouldOpenDefenderModalHere = (String(data.attackerPlayerId) === String(myPid));
       }
     }
@@ -1131,8 +1157,8 @@ class WarView {
 
     atkCoalition.forEach(member => {
       Object.keys(member.forces || {}).forEach(uid => {
-        const cnt = Number(member.forces[uid] || 0);
-        if (cnt > 0) {
+        const cnt = Math.max(0, Math.floor(Number(member.forces[uid] || 0)));
+        if (cnt > 0 && this.isCombatUnit(uid)) {
           totalAtkUnits += cnt;
           const u = window.MilitaryData ? window.MilitaryData.getUnitById(uid) : null;
           const uPwr = (u ? (u.power || 1) : 1) * cnt;
@@ -1153,24 +1179,22 @@ class WarView {
 
     const countBadge = document.getElementById("war-attacker-units-count-badge");
     if (countBadge) {
-      countBadge.textContent = `${totalAtkUnits} وحدة قتالية (إجمالي القوة: ${Number(totalAtkPower.toFixed(1)).toLocaleString()})`;
+      countBadge.textContent = `${totalAtkUnits} وحدة مقاتلة (إجمالي القوة: ${Number(totalAtkPower.toFixed(1)).toLocaleString()})`;
     }
 
-    // صندوق تفاصيل الجيش القادم والخيارات الثلاثة للمدافع
     const incomingDetailsEl = document.getElementById("defender-incoming-army-details");
     if (incomingDetailsEl) {
       incomingDetailsEl.innerHTML = `
         <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px; margin-bottom:4px;">
           <span>🚩 <strong>الجيش المهاجم القادم:</strong> دولة <strong style="color:#fde047;">${atkCoalition.map(m => m.country.name).join(" + ")}</strong></span>
-          <span>🛡️ <strong>جيشك المتوفر حالياً:</strong> <strong style="color:#38bdf8;">${standingDefUnits} وحدة (قوة: ${standingDefPower.toLocaleString()})</strong></span>
+          <span>🛡️ <strong>جيشك المقاتل المتوفر:</strong> <strong style="color:#38bdf8;">${standingDefUnits} وحدة (قوة: ${standingDefPower.toLocaleString()})</strong></span>
         </div>
         <div style="font-size:0.74rem; color:#cbd5e1; background:rgba(9,13,24,0.65); padding:5px 8px; border-radius:6px; border:1px solid #334155;">
-          <strong>تفاصيل القوات الغازية القادمة:</strong> ${incomingUnitsBreakdown.join(" ، ") || "قوة غزو عسكرية"}
+          <strong>تفاصيل القوات الغازية القادمة (1:1):</strong> ${incomingUnitsBreakdown.join(" ، ") || "قوة غزو عسكرية"}
         </div>
       `;
     }
 
-    // تحديث المبالغ التوضيحية على أزرار الاستسلام ودفع الجزية
     const tribAmount = window.WarEngine ? window.WarEngine.calculateTributeOfferAmount(primaryDef) : 0;
     const surrenderSavings = Math.max(0, Number(primaryDef.bank || 0)) + Math.max(0, Number(primaryDef.worldBankFund || 0));
 
@@ -1184,7 +1208,6 @@ class WarView {
       btnPayTribute.innerHTML = `💰 2. دفع الجزية <small style="display:block; font-size:0.68rem; font-weight:700; opacity:0.9;">(دفع $${tribAmount.toLocaleString()} + جزية 20% وإيقاف الغزو فوراً)</small>`;
     }
 
-    // تجهيز قائمة اختيار جيش المدافع (يختار من جيشه أو كله)
     let defAlliesBox = document.getElementById("war-defender-allies-container");
     if (!defAlliesBox) {
       defAlliesBox = document.createElement("div");
@@ -1374,21 +1397,29 @@ class WarView {
     let totalAtkOwned = 0, totalAtkMob = 0;
     atkCoalition.forEach(m => {
       totalAtkOwned += window.WarEngine.getStandingArmyCount(m.country);
-      Object.values(m.forces || {}).forEach(v => totalAtkMob += Number(v || 0));
+      Object.keys(m.forces || {}).forEach(uid => {
+        if (this.isCombatUnit(uid)) {
+          totalAtkMob += Math.max(0, Math.floor(Number(m.forces[uid] || 0)));
+        }
+      });
     });
     this.attackerMobStatus = (totalAtkMob >= totalAtkOwned && totalAtkOwned > 0) ? "FULL" : "PARTIAL";
 
     let totalDefOwned = 0, totalDefMob = 0;
     defCoalition.forEach(m => {
       totalDefOwned += window.WarEngine.getStandingArmyCount(m.country);
-      Object.values(m.forces || {}).forEach(v => totalDefMob += Number(v || 0));
+      Object.keys(m.forces || {}).forEach(uid => {
+        if (this.isCombatUnit(uid)) {
+          totalDefMob += Math.max(0, Math.floor(Number(m.forces[uid] || 0)));
+        }
+      });
     });
     this.defenderMobStatus = (totalDefMob >= totalDefOwned && totalDefOwned > 0) ? "FULL" : "PARTIAL";
 
     const atkNameEl = document.getElementById("battle-attacker-name");
     const defNameEl = document.getElementById("battle-defender-name");
-    if (atkNameEl) atkNameEl.textContent = `${leadAtk.name} (${totalAtkMob} وحدة)`;
-    if (defNameEl) defNameEl.textContent = `${leadDef.name} (${totalDefMob} وحدة)`;
+    if (atkNameEl) atkNameEl.textContent = `${leadAtk.name} (${totalAtkMob} مقاتل)`;
+    if (defNameEl) defNameEl.textContent = `${leadDef.name} (${totalDefMob} مقاتل)`;
 
     const atkFlag = document.getElementById("battle-attacker-flag");
     const defFlag = document.getElementById("battle-defender-flag");
@@ -1505,7 +1536,6 @@ class WarView {
       }
     }
 
-    // مزامنة النتيجة النهائية الموحدة مع جميع اللاعبين في الغرفة
     if (!isFromNetworkSync && window.NetworkEngine && window.NetworkEngine.getRoomId()) {
       window.NetworkEngine.broadcastBattleFinishedSync({
         winner: result.winner,
@@ -1541,7 +1571,7 @@ class WarView {
         <strong style="color:#10b981;">🚩 خسائر جيش الهجوم (${leadAtk.name}):</strong><br>
         • الوحدات المدمرة بالميدان: <strong style="color:#fb7185;">${totalAtkLostUnits}</strong> وحدة<br>
         • الخسائر البشرية: <strong style="color:#fb7185;">${totalAtkLostCrew}</strong> جندي<br>
-        • المتبقي في جيش الدولة: <strong style="color:#34d399;">${remAtkUnits} وحدة (قوة: ${remAtkPower})</strong>
+        • المتبقي في جيش الدولة: <strong style="color:#34d399;">${remAtkUnits} وحدة مقاتلة (قوة: ${remAtkPower})</strong>
       `;
     }
 
@@ -1551,7 +1581,7 @@ class WarView {
         <strong style="color:#38bdf8;">🛡️ خسائر جيش الدفاع (${leadDef.name}):</strong><br>
         • الوحدات المدمرة بالميدان: <strong style="color:#fb7185;">${totalDefLostUnits}</strong> وحدة<br>
         • الخسائر البشرية: <strong style="color:#fb7185;">${totalDefLostCrew}</strong> جندي<br>
-        • المتبقي في جيش الدولة: <strong style="color:#38bdf8;">${remDefUnits} وحدة (قوة: ${remDefPower})</strong>
+        • المتبقي في جيش الدولة: <strong style="color:#38bdf8;">${remDefUnits} وحدة مقاتلة (قوة: ${remDefPower})</strong>
       `;
     }
 
@@ -1559,7 +1589,6 @@ class WarView {
   }
 
   static bindGlobalEvents() {
-    // أزرار المهاجم لتحديد كل الجيش أو تصفيره
     const btnAttackerAllOut = document.getElementById("btn-attacker-all-out");
     if (btnAttackerAllOut) {
       btnAttackerAllOut.onclick = () => {
@@ -1600,20 +1629,25 @@ class WarView {
           return;
         }
 
-        const forces = {};
-        let totalCount = 0;
-
+        const rawForces = {};
         document.querySelectorAll("#war-mobilize-units-list .w-unit-input").forEach(inp => {
+          const uid = inp.getAttribute("data-id");
           const maxVal = parseInt(inp.getAttribute("max"), 10) || 0;
           const val = Math.min(maxVal, Math.max(0, parseInt(inp.value, 10) || 0));
-          if (val > 0) {
-            forces[inp.getAttribute("data-id")] = val;
-            totalCount += val;
+          if (val > 0 && this.isCombatUnit(uid)) {
+            rawForces[uid] = val;
           }
         });
 
+        const forces = (window.WarEngine && typeof window.WarEngine.sanitizeMobilizedForces === "function")
+          ? window.WarEngine.sanitizeMobilizedForces(this.primaryAttacker, rawForces)
+          : rawForces;
+
+        let totalCount = 0;
+        Object.values(forces).forEach(v => { totalCount += Number(v || 0); });
+
         if (totalCount === 0) {
-          this.notify("يرجى اختيار الجنود والوحدات التي تريد الغزو بها أولاً!", "⚠️");
+          this.notify("يرجى اختيار جندي أو وحدة مقاتلة واحدة على الأقل للغزو بها!", "⚠️");
           return;
         }
 
@@ -1626,10 +1660,13 @@ class WarView {
             const allyForces = {};
             const inv = allyCountry.military?.inventory || {};
             Object.keys(inv).forEach(uid => {
-              const cnt = Math.ceil((inv[uid] || 0) * 0.5);
+              if (!this.isCombatUnit(uid)) return;
+              const cnt = Math.ceil(Math.floor(Number(inv[uid] || 0)) * 0.5);
               if (cnt > 0) allyForces[uid] = cnt;
             });
-            atkCoalition.push({ country: allyCountry, forces: allyForces });
+            if (Object.keys(allyForces).length > 0) {
+              atkCoalition.push({ country: allyCountry, forces: allyForces });
+            }
           }
         });
 
@@ -1662,7 +1699,6 @@ class WarView {
       };
     }
 
-    // الخيارات الثلاثة للاعب المدافع الذي وقعت عليه الحرب:
     // الخيار 1: الاستسلام
     const btnSurrender = document.getElementById("btn-defender-surrender");
     if (btnSurrender) {
@@ -1681,7 +1717,6 @@ class WarView {
       };
     }
 
-    // أزرار المدافع لاختيار كامل الجيش أو جزء منه عند اختيار الحرب
     const btnAllOut = document.getElementById("btn-defender-all-out");
     if (btnAllOut) {
       btnAllOut.onclick = () => {
@@ -1709,20 +1744,26 @@ class WarView {
     if (btnConfront) {
       btnConfront.onclick = () => {
         if (window.GameSFX) window.GameSFX.playClick();
-        const defForces = {};
-        let count = 0;
+        const rawDefForces = {};
 
         document.querySelectorAll("#defender-mobilize-units-list .w-def-unit-input").forEach(inp => {
+          const uid = inp.getAttribute("data-id");
           const maxVal = parseInt(inp.getAttribute("max"), 10) || 0;
           const val = Math.min(maxVal, Math.max(0, parseInt(inp.value, 10) || 0));
-          if (val > 0) {
-            defForces[inp.getAttribute("data-id")] = val;
-            count += val;
+          if (val > 0 && this.isCombatUnit(uid)) {
+            rawDefForces[uid] = val;
           }
         });
 
+        const defForces = (window.WarEngine && typeof window.WarEngine.sanitizeMobilizedForces === "function")
+          ? window.WarEngine.sanitizeMobilizedForces(this.primaryDefender, rawDefForces)
+          : rawDefForces;
+
+        let count = 0;
+        Object.values(defForces).forEach(v => { count += Number(v || 0); });
+
         if (count === 0) {
-          this.notify("للقتال، اختر وحدة عسكرية واحدة على الأقل من جيشك أو اضغط (تعبئة كامل الجيش)، أو اختر الاستسلام أو دفع الجزية!", "⚠️");
+          this.notify("للقتال، اختر جندياً أو وحدة مقاتلة واحدة على الأقل من جيشك أو اضغط (تعبئة كامل الجيش)، أو اختر الاستسلام أو دفع الجزية!", "⚠️");
           return;
         }
 
@@ -1735,10 +1776,13 @@ class WarView {
             const allyForces = {};
             const inv = allyCountry.military?.inventory || {};
             Object.keys(inv).forEach(uid => {
-              const cnt = Math.ceil((inv[uid] || 0) * 0.5);
+              if (!this.isCombatUnit(uid)) return;
+              const cnt = Math.ceil(Math.floor(Number(inv[uid] || 0)) * 0.5);
               if (cnt > 0) allyForces[uid] = cnt;
             });
-            defCoalition.push({ country: allyCountry, forces: allyForces });
+            if (Object.keys(allyForces).length > 0) {
+              defCoalition.push({ country: allyCountry, forces: allyForces });
+            }
           }
         });
 
@@ -1786,7 +1830,6 @@ class WarView {
         document.getElementById("battle-screen")?.classList.remove("active");
         document.getElementById("game-dashboard")?.classList.add("active");
 
-        // إزالة المهاجم الحالي من طابور طالبي الحرب والانتقال للتالي أو للسنة الجديدة
         if (this.warRequestersQueue && this.warRequestersQueue.length > 0) {
           this.warRequestersQueue.shift();
         }
