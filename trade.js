@@ -612,15 +612,19 @@ class TradeManager {
       const duration = durationInput.value;
 
       if (!expId || !impId || !secKey) {
-        alert("يرجى إكمال تحديد كافة أطراف الاتفاقية!");
+        if (window.showGameToast) window.showGameToast("يرجى إكمال تحديد كافة أطراف الاتفاقية!", "⚠️");
         return;
       }
 
       const res = this.createDeal(world, expId, impId, secKey, points, duration, currentUnitPrice);
-      alert(res.msg);
+      if (window.showGameToast) window.showGameToast(res.msg, res.success ? "🚢" : "⚠️"); else alert(res.msg);
       if (res.success) {
         this.render(world);
-        if (window.renderNationsTable) window.renderNationsTable();
+        if (window.NetworkEngine && typeof window.NetworkEngine.syncWorldState === "function") {
+          window.NetworkEngine.syncWorldState();
+        } else if (window.renderNationsTable) {
+          window.renderNationsTable();
+        }
       }
     });
 
@@ -630,9 +634,13 @@ class TradeManager {
         const dealId = btn.getAttribute("data-id");
         if (confirm("هل أنت متأكد من فسخ هذا العقد التجاري واسترجاع النقاط لمصدرها؟")) {
           this.cancelDeal(world, dealId);
-          alert("تم فسخ العقد واسترجاع النقاط فورياً.");
+          if (window.showGameToast) window.showGameToast("تم فسخ العقد واسترجاع النقاط فورياً.", "🚢");
           this.render(world);
-          if (window.renderNationsTable) window.renderNationsTable();
+          if (window.NetworkEngine && typeof window.NetworkEngine.syncWorldState === "function") {
+            window.NetworkEngine.syncWorldState();
+          } else if (window.renderNationsTable) {
+            window.renderNationsTable();
+          }
         }
       });
     });

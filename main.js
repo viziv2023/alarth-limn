@@ -141,11 +141,7 @@ window.updateAllTurnDecisionButtons = function(myReadiness, readyCount, totalAct
             btn.textContent = "✅ جاهز للسنة الجديدة" + progressSuffix;
         } else {
             btn.classList.remove("active-decision");
-            if (id === "btn-cap-next-year") {
-                btn.textContent = `🌟 الانتقال للسنة الجديدة (${currentYr + 1}م)`;
-            } else {
-                btn.textContent = "🌟 الانتقال للسنة الجديدة";
-            }
+            btn.textContent = `🌟 السنة الجديدة (${currentYr + 1}م)`;
         }
     });
 
@@ -157,7 +153,7 @@ window.updateAllTurnDecisionButtons = function(myReadiness, readyCount, totalAct
             btn.textContent = "🚨 طلبت الحرب" + progressSuffix;
         } else {
             btn.classList.remove("active-decision");
-            btn.textContent = "⚔️ الانتقال للحرب";
+            btn.textContent = "⚔️ الحرب";
         }
     });
 };
@@ -952,10 +948,14 @@ function setupTabSwitching() {
         } else if (targetKey === "charts") {
             renderChartsAndRaceTab(window.currentWorld, window.activeChartFilter || "all");
         } else if (targetKey === "chronicle") {
-            if (window.ChronicleManager && typeof window.ChronicleManager.render === "function") {
-                try { window.ChronicleManager.render(window.currentWorld); } catch (e) {}
+            if (window.ChronicleManager) {
+                if (typeof window.ChronicleManager.clearUnread === "function") {
+                    window.ChronicleManager.clearUnread();
+                }
+                if (typeof window.ChronicleManager.render === "function") {
+                    try { window.ChronicleManager.render(window.currentWorld); } catch (e) {}
+                }
             }
-            enhanceAndSanitizeTabDOM("chronicle-tables-wrapper", "chronicle", window.currentWorld);
         } else if (targetKey === "analytics") {
             if (window.AnalyticsManager && typeof window.AnalyticsManager.render === "function") {
                 try { window.AnalyticsManager.render(window.currentWorld); } catch (e) {}

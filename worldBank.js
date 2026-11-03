@@ -666,10 +666,14 @@ class WorldBankManager {
         const years = document.getElementById("sov-years-select").value;
 
         const res = this.issueSovereignLoan(world, lenderId, borrowerId, amount, years, source);
-        alert(res.msg);
+        if (window.showGameToast) window.showGameToast(res.msg, res.success ? "🏦" : "⚠️"); else alert(res.msg);
         if (res.success) {
           this.render(world);
-          if (window.renderNationsTable) window.renderNationsTable();
+          if (window.NetworkEngine && typeof window.NetworkEngine.syncWorldState === "function") {
+            window.NetworkEngine.syncWorldState();
+          } else if (window.renderNationsTable) {
+            window.renderNationsTable();
+          }
         }
       });
     }
@@ -689,10 +693,14 @@ class WorldBankManager {
         }
 
         const res = this.repaySovereignLoanEarly(world, loanId, src);
-        alert(res.msg);
+        if (window.showGameToast) window.showGameToast(res.msg, res.success ? "🏦" : "⚠️"); else alert(res.msg);
         if (res.success) {
           this.render(world);
-          if (window.renderNationsTable) window.renderNationsTable();
+          if (window.NetworkEngine && typeof window.NetworkEngine.syncWorldState === "function") {
+            window.NetworkEngine.syncWorldState();
+          } else if (window.renderNationsTable) {
+            window.renderNationsTable();
+          }
         }
       });
     });
@@ -707,15 +715,19 @@ class WorldBankManager {
         const amt = amountInput.value;
 
         if (!cId) {
-          alert("يرجى اختيار الدولة أولاً!");
+          if (window.showGameToast) window.showGameToast("يرجى اختيار الدولة أولاً!", "⚠️");
           return;
         }
 
         const res = this.issueLoan(world, cId, amt);
-        alert(res.msg);
+        if (window.showGameToast) window.showGameToast(res.msg, res.success ? "🏦" : "⚠️"); else alert(res.msg);
         if (res.success) {
           this.render(world);
-          if (window.renderNationsTable) window.renderNationsTable();
+          if (window.NetworkEngine && typeof window.NetworkEngine.syncWorldState === "function") {
+            window.NetworkEngine.syncWorldState();
+          } else if (window.renderNationsTable) {
+            window.renderNationsTable();
+          }
         }
       });
     }
@@ -730,15 +742,19 @@ class WorldBankManager {
         const src = sourceSelect.value;
 
         if (!cId) {
-          alert("يرجى اختيار الدولة المدينة أولاً!");
+          if (window.showGameToast) window.showGameToast("يرجى اختيار الدولة المدينة أولاً!", "⚠️");
           return;
         }
 
         const res = this.repayFullDebt(world, cId, src);
-        alert(res.msg);
+        if (window.showGameToast) window.showGameToast(res.msg, res.success ? "🏦" : "⚠️"); else alert(res.msg);
         if (res.success) {
           this.render(world);
-          if (window.renderNationsTable) window.renderNationsTable();
+          if (window.NetworkEngine && typeof window.NetworkEngine.syncWorldState === "function") {
+            window.NetworkEngine.syncWorldState();
+          } else if (window.renderNationsTable) {
+            window.renderNationsTable();
+          }
         }
       });
     }
@@ -758,10 +774,14 @@ class WorldBankManager {
         }
 
         const res = this.repayFullDebt(world, cId, src);
-        alert(res.msg);
+        if (window.showGameToast) window.showGameToast(res.msg, res.success ? "🏦" : "⚠️"); else alert(res.msg);
         if (res.success) {
           this.render(world);
-          if (window.renderNationsTable) window.renderNationsTable();
+          if (window.NetworkEngine && typeof window.NetworkEngine.syncWorldState === "function") {
+            window.NetworkEngine.syncWorldState();
+          } else if (window.renderNationsTable) {
+            window.renderNationsTable();
+          }
         }
       });
     });

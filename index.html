@@ -37,19 +37,7 @@
     <!-- حاوية الإشعارات والاحتفالات العائمة داخل اللعبة -->
     <div id="game-toast-container"></div>
 
-    <!-- شريط الجاهزية واتخاذ القرار العلوي المتزامن للغرف والهواتف ومؤقت الـ 60 ثانية -->
-    <div id="multiplayer-status-bar" style="display:none;">
-        <div class="mp-bar-info">
-            <span id="mp-room-code-label" class="mp-badge-room">روم: --</span>
-            <span id="mp-players-count" class="mp-badge-count">👥 1/10</span>
-            <span id="mp-status-details" class="mp-status-text">متصل بالروم الموحد</span>
-        </div>
-        <div class="mp-bar-actions">
-            <button id="btn-mp-ready-year" class="btn btn-sm btn-primary">🌟 الانتقال للسنة الجديدة</button>
-            <button id="btn-mp-ready-war" class="btn btn-sm btn-danger">⚔️ الانتقال للحرب</button>
-            <button id="btn-mp-open-lobby" class="btn btn-sm btn-secondary" title="إدارة الروم">⚙️</button>
-        </div>
-    </div>
+    <!-- تم دمج شريط الروم والجاهزية في الشريط العلوي الموحد -->
 
     <!-- 1. القائمة الرئيسية (شاشة الترحيب الملكية المبهجة - مصممة للوضع الأفقي) -->
     <div id="main-menu" class="screen active">
@@ -119,7 +107,7 @@
                     <button id="btn-view-worldbank" class="view-tab-btn"><span class="tab-ico">🏦</span> البنك الدولي</button>
                     <button id="btn-view-charts" class="view-tab-btn"><span class="tab-ico">📊</span> السباق</button>
                     <button id="btn-view-analytics" class="view-tab-btn"><span class="tab-ico">🔭</span> الكشاف</button>
-                    <button id="btn-view-chronicle" class="view-tab-btn"><span class="tab-ico">📜</span> التاريخ</button>
+                    <button id="btn-view-chronicle" class="view-tab-btn"><span class="tab-ico">💬</span> محادثات الروم <span class="chat-unread-badge" style="display:none;">0</span></button>
                 </div>
             </div>
 
@@ -197,9 +185,10 @@
                 <span class="mob-nav-ico">🔭</span>
                 <span class="mob-nav-lbl">التحليل</span>
             </button>
-            <button class="mob-nav-btn" data-target="chronicle">
-                <span class="mob-nav-ico">📜</span>
-                <span class="mob-nav-lbl">التاريخ</span>
+            <button class="mob-nav-btn" data-target="chronicle" style="position:relative;">
+                <span class="mob-nav-ico">💬</span>
+                <span class="mob-nav-lbl">المحادثات</span>
+                <span class="chat-unread-badge" style="display:none; position:absolute; top:2px; left:6px;">0</span>
             </button>
         </nav>
     </div>
@@ -217,8 +206,6 @@
             <div class="top-bar-actions">
                 <button id="btn-detail-next-year" class="btn btn-primary btn-sm">🌟 الانتقال للسنة الجديدة</button>
                 <button id="btn-detail-go-war" class="btn btn-danger btn-sm">⚔️ الانتقال للحرب</button>
-                <button id="btn-open-capital" class="btn btn-accent btn-sm">🏛️ العاصمة 3D</button>
-                <button id="btn-open-military-hq" class="btn btn-military btn-sm">🎖️ الجيش</button>
             </div>
         </header>
 
@@ -349,46 +336,20 @@
                 <div class="dossier-card theme-development" id="dossier-buildings">
                     <div class="card-header-flex">
                         <div>
-                            <h3>🏗️ سجل المنشآت الوطنية (72 منشأة)</h3>
+                            <h3>🏗️ مركز التشييد والمشتريات الموحد</h3>
                         </div>
                         <span id="bldg-total-revenue-badge" class="badge badge-gold">💎 عوائد المنشآت: $0 / سنة</span>
                     </div>
-
-                    <div class="bldg-stage-bar">
+                    <div class="bldg-stage-bar" style="margin-bottom:0;">
                         <div class="bldg-stage-info">
-                            <span class="bldg-stage-title" id="bldg-stage-progress-text">🏆 المرحلة 1</span>
+                            <span class="bldg-stage-title" id="bldg-stage-progress-text">🏆 المرحلة 1 — تم توحيد جميع عمليات شراء المنشآت والوحدات في متجر العاصمة الموحد لمنع التكرار وتسهيل اللعب</span>
                         </div>
-                        <button id="btn-upgrade-stage" class="btn btn-secondary" disabled>🔒 الترقية للعصر التالي</button>
+                        <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                            <button id="btn-upgrade-stage" class="btn btn-secondary btn-sm" disabled>🔒 الترقية للعصر التالي</button>
+                            <button type="button" class="btn btn-primary btn-sm" onclick="if(window.CapitalView && window.currentViewingCountry){ window.CapitalView.open(window.currentViewingCountry); setTimeout(function(){ window.CapitalView.openDrawer('cap-drawer-build'); }, 120); }">🛒 فتح متجر الشراء الموحد ➔</button>
+                        </div>
                     </div>
-
-                    <div class="bldg-tabs-nav">
-                        <button id="btn-tab-stage1" class="btn btn-sm btn-primary active">🏕️ المرحلة 1</button>
-                        <button id="btn-tab-stage2" class="btn btn-sm btn-secondary">🏘️ المرحلة 2</button>
-                        <button id="btn-tab-stage3" class="btn btn-sm btn-secondary">🏭 المرحلة 3</button>
-                        <button id="btn-tab-stage4" class="btn btn-sm btn-secondary">🏙️ المرحلة 4</button>
-                        <button id="btn-tab-stage5" class="btn btn-sm btn-secondary">🚀 المرحلة 5</button>
-                        <button id="btn-tab-clean-energy" class="btn btn-sm btn-secondary" style="border-color:#34d399; color:#6ee7b7;">🌱 طاقة نظيفة</button>
-                    </div>
-
-                    <div class="bldg-table-wrap">
-                        <table class="bldg-table">
-                            <thead>
-                                <tr>
-                                    <th>المنشأة</th>
-                                    <th style="text-align:center;">التكلفة</th>
-                                    <th style="text-align:center;">العائد</th>
-                                    <th style="text-align:center;">السكان</th>
-                                    <th style="text-align:center;">⚡ / 💧</th>
-                                    <th style="text-align:center;">التغذية</th>
-                                    <th style="text-align:center;">السعة</th>
-                                    <th style="text-align:center;">الشرط</th>
-                                    <th style="text-align:center;">المملوك</th>
-                                    <th style="text-align:center;">بناء</th>
-                                </tr>
-                            </thead>
-                            <tbody id="buildings-tbody"></tbody>
-                        </table>
-                    </div>
+                    <tbody id="buildings-tbody" style="display:none;"></tbody>
                 </div>
 
                 <div class="dossier-card theme-energy">
@@ -585,8 +546,10 @@
             </div>
 
             <div class="cap-top-actions">
-                <button id="btn-cap-next-year" class="btn btn-primary btn-sm" title="إنهاء الشراء والانتقال للسنة الجديدة">🌟 الانتقال للسنة الجديدة</button>
-                <button id="btn-cap-go-war" class="btn btn-danger btn-sm" title="إنهاء الشراء والانتقال للحرب">⚔️ الانتقال للحرب</button>
+                <button id="btn-cap-next-year" class="btn btn-primary btn-sm" title="إنهاء الشراء والانتقال للسنة الجديدة">🌟 السنة الجديدة</button>
+                <button id="btn-cap-go-war" class="btn btn-danger btn-sm" title="إنهاء الشراء والانتقال للحرب">⚔️ الحرب</button>
+                <button id="btn-cap-room-pill" type="button" class="btn btn-secondary btn-sm" title="إدارة الروم الموحد">🌐 الروم</button>
+                <button id="btn-cap-chat-pill" type="button" class="btn btn-secondary btn-sm" title="محادثات الروم النصية" style="position:relative;">💬 الشات <span class="chat-unread-badge" style="display:none;">0</span></button>
                 <button id="btn-back-from-capital" class="btn btn-secondary btn-sm" title="الانتقال إلى خريطة العالم ومجلس الأمم">🌍 العالم</button>
                 <button id="btn-toggle-cap-topbar" type="button" class="btn btn-secondary btn-sm" title="إخفاء الشريط العلوي لتوسيع الخريطة">🔼</button>
             </div>
@@ -651,35 +614,31 @@
                 <div id="cap-economy-drawer-content" class="cap-drawer-body"></div>
             </div>
 
-            <!-- شريط الأيقونات السفلي الثابت (Mobile Game Dock) -->
+            <!-- شريط الأيقونات السفلي الموحد والمبسط (Unified Action & Shop Dock) -->
             <nav id="cap-bottom-dock" class="cap-bottom-dock">
                 <button type="button" class="cap-dock-btn" data-dock-action="build">
-                    <span class="dock-ico">🏗️</span>
-                    <span class="dock-lbl">البناء</span>
-                </button>
-                <button type="button" class="cap-dock-btn" data-dock-action="sectors">
-                    <span class="dock-ico">🎯</span>
-                    <span class="dock-lbl">القطاعات</span>
-                </button>
-                <button type="button" class="cap-dock-btn" data-dock-action="economy">
-                    <span class="dock-ico">⚡</span>
-                    <span class="dock-lbl">البنك والطاقة</span>
+                    <span class="dock-ico">🛒</span>
+                    <span class="dock-lbl">متجر البناء</span>
                 </button>
                 <button type="button" class="cap-dock-btn" data-dock-action="military">
                     <span class="dock-ico">🎖️</span>
-                    <span class="dock-lbl">الجيش</span>
+                    <span class="dock-lbl">تسليح الجيش</span>
                 </button>
-                <button type="button" class="cap-dock-btn dock-btn-war" data-dock-action="war">
-                    <span class="dock-ico">⚔️</span>
-                    <span class="dock-lbl">الحرب</span>
+                <button type="button" class="cap-dock-btn" data-dock-action="economy">
+                    <span class="dock-ico">🏦</span>
+                    <span class="dock-lbl">البنك والطاقة</span>
+                </button>
+                <button type="button" class="cap-dock-btn" data-dock-action="sectors">
+                    <span class="dock-ico">🎯</span>
+                    <span class="dock-lbl">القطاعات (16)</span>
+                </button>
+                <button type="button" class="cap-dock-btn" data-dock-action="chat">
+                    <span class="dock-ico">💬</span>
+                    <span class="dock-lbl">شات الروم</span>
                 </button>
                 <button type="button" class="cap-dock-btn" data-dock-action="world">
                     <span class="dock-ico">🌍</span>
-                    <span class="dock-lbl">العالم</span>
-                </button>
-                <button type="button" class="cap-dock-btn" data-dock-action="dossier" title="عرض السجل الرقمي المفصل">
-                    <span class="dock-ico">📋</span>
-                    <span class="dock-lbl">السجل</span>
+                    <span class="dock-lbl">المجلس العالمي</span>
                 </button>
             </nav>
         </div>

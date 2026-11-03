@@ -1,20 +1,14 @@
 /**
  * ============================================================================
- * world.js - محرك العالم الموحد وتدوير السنوات المالية (عصر الهيمنة - v4.6)
+ * world.js - محرك العالم الموحد وتدوير السنوات المالية والمحادثات (عصر الهيمنة - v6.6)
  * ============================================================================
- * 
- * المزايا البرمجية:
- * 1. تدوير السنة المالية العالمية وتحديث السكان والتشغيل تلقائياً.
- * 2. ترحيل الفوائض واقتطاعات البنك الدولي (5%) وتسوية عوائد المنشآت الـ 72.
- * 3. تسوية عقود الدية العسكرية الخمسية، والبنك الدولي، والتبادل التجاري.
- * 4. دعم التسلسل الكامل للبيانات (toJSON / fromJSON) للمزامنة اللحظية في شبكة P2P.
- * 5. الحفظ التلقائي الشامل في LocalStorage مع نهاية كل عام مالي.
  */
 
 class World {
     constructor() {
         this.countries = [];
         this.history = [];
+        this.chatMessages = []; // سجل المحادثات النصية بين اللاعبين في الروم الواحد
         this.year = 1;
         this.worldBankTreasury = 0;
         this.tradeDeals = [];
@@ -38,7 +32,12 @@ class World {
     }
 
     advanceYear() {
-        this.year += 1;
+        this.year = (Number(this.year) || 1) + 1;
+
+        // تحديث إجماليات الصادرات والواردات قبل تدوير السنة المالية
+        if (window.TradeManager && typeof window.TradeManager.recalculateCountriesTrade === "function") {
+            window.TradeManager.recalculateCountriesTrade(this);
+        }
 
         this.countries.forEach(country => {
             country.year = this.year;
@@ -62,30 +61,23 @@ class World {
                 }
 
                 if (housingCapacity > 0) {
-                    // يعود إجمالي سكان الدولة كاملاً لسعة السكن الحقيقية القائمة
                     country.population = housingCapacity;
-                    // العاطلون الجدد = إجمالي السكان - العاملين المتبقين في الجيش والمنشآت
                     country.unemployed = Math.max(0, country.population - (Number(country.employed) || 0));
                     country.unemploymentRate = country.population > 0 ? Math.round((country.unemployed / country.population) * 100) : 0;
                 }
             }
 
             // 2. تدوير النظام المالي وعوائد المنشآت
-            if (window.EconomyEngine) {
-                if (typeof window.EconomyEngine.advanceFinancialYear === "function") {
-                    window.EconomyEngine.advanceFinancialYear(country);
-                } else if (typeof window.EconomyEngine.advanceYear === "function") {
-                    window.EconomyEngine.advanceYear(country);
-                } else if (typeof window.EconomyEngine.processYearEnd === "function") {
-                    window.EconomyEngine.processYearEnd(country);
-                } else {
-                    const rev = window.BuildingsEngine ? window.BuildingsEngine.calculateTotalRevenue(country) : 0;
-                    country.bank = (Number(country.bank) || 0) + (Number(country.disposableRevenue) || 0);
-                    country.budget = rev;
-                    const deduction = country.year > 1 ? Math.floor(country.budget * 0.05) : 0;
-                    country.lastWbCut = deduction;
-                    country.disposableRevenue = country.budget - deduction;
-                }
+            if (window.EconomyEngine && typeof window.EconomyEngine.advanceFinancialYear === "function") {
+                window.EconomyEngine.advanceFinancialYear(country);
+            } else {
+                const rev = window.BuildingsEngine ? window.BuildingsEngine.calculateTotalRevenue(country) : 0;
+                country.bank = (Number(country.bank) || 0) + (Number(country.disposableRevenue) || 0);
+                country.budget = rev;
+                const deduction = (country.year > 1 && country.budget > 0) ? Math.floor(country.budget * 0.05) : 0;
+                country.lastWbCut = deduction;
+                country.worldBankFund = Math.max(0, (Number(country.worldBankFund) || 0) + deduction);
+                country.disposableRevenue = Math.max(0, country.budget - deduction);
             }
 
             // 3. تدوير الطاقة والمؤشرات
@@ -113,11 +105,12 @@ class World {
             window.TradeManager.processAnnualCycle(this);
         }
 
-        this.addHistoryEvent(
-            "economic",
-            `بدء السنة المالية العالمية ${this.year}م وتجديد سكان البيوت وإعادة الإعمار وترحيل الفوائض السنوية`,
-            this.year
-        );
+        // إعادة تحديث المؤشرات بعد تسويات البنك والتجارة
+        this.countries.forEach(country => {
+            if (window.IndicatorsEngine && typeof window.IndicatorsEngine.refreshCountryIndicators === "function") {
+                window.IndicatorsEngine.refreshCountryIndicators(country);
+            }
+        });
 
         // 5. حفظ تلقائي فوري لكافة بيانات وإحصائيات الدول مع نهاية كل سنة مالية
         if (window.StorageManager && typeof window.StorageManager.autoSave === "function") {
@@ -127,45 +120,65 @@ class World {
         return this.year;
     }
 
+    // تم الإبقاء على الدالة فارغة للتوافق البرمجي دون كتابة سجلات تاريخية
     addHistoryEvent(category, text, year, key = null) {
-        if (key && this.history.some(h => h.key === key)) return;
+        return;
+    }
 
-        this.history.push({
-            id: "evt_" + Date.now() + "_" + Math.floor(Math.random() * 1000),
-            category: category,
-            text: text,
-            year: year || this.year,
-            key: key || null,
-            timestamp: Date.now()
-        });
+    addChatMessage(msgObj) {
+        if (!msgObj || !msgObj.text) return null;
+        if (!Array.isArray(this.chatMessages)) this.chatMessages = [];
+        const id = msgObj.id || ("msg_" + Date.now() + "_" + Math.floor(Math.random() * 10000));
+        if (this.chatMessages.some(m => m.id === id)) return null;
+
+        const cleanMsg = {
+            id: id,
+            senderId: msgObj.senderId || "local",
+            senderName: msgObj.senderName || "قائد سيادي",
+            countryId: msgObj.countryId || null,
+            countryName: msgObj.countryName || "",
+            flag: msgObj.flag || null,
+            text: String(msgObj.text).trim().substring(0, 400),
+            year: msgObj.year || this.year || 1,
+            isSystem: !!msgObj.isSystem,
+            timestamp: msgObj.timestamp || Date.now()
+        };
+
+        this.chatMessages.push(cleanMsg);
+        if (this.chatMessages.length > 150) {
+            this.chatMessages = this.chatMessages.slice(-150);
+        }
+        return cleanMsg;
     }
 
     toJSON() {
         return {
-            version: "1.2",
+            version: "1.4",
             savedAt: new Date().toISOString(),
             year: this.year,
             worldBankTreasury: this.worldBankTreasury,
-            tradeDeals: this.tradeDeals,
-            tributes: this.tributes,
+            tradeDeals: this.tradeDeals || [],
+            tributes: this.tributes || [],
             sovereignLoans: this.sovereignLoans || [],
+            chatMessages: this.chatMessages || [],
             countries: this.countries.map(c => {
                 if (c && typeof c.toJSON === "function") {
                     return c.toJSON();
                 }
                 return c;
             }),
-            history: this.history
+            history: []
         };
     }
 
     static fromJSON(data) {
         const world = new World();
         world.year = (data && data.year) ? Number(data.year) : 1;
-        world.worldBankTreasury = (data && data.worldBankTreasury) ? Number(data.worldBankTreasury) : 0;
+        world.worldBankTreasury = (data && data.worldBankTreasury !== undefined) ? Number(data.worldBankTreasury) : 0;
         world.tradeDeals = (data && Array.isArray(data.tradeDeals)) ? data.tradeDeals : [];
         world.tributes = (data && Array.isArray(data.tributes)) ? data.tributes : [];
         world.sovereignLoans = (data && Array.isArray(data.sovereignLoans)) ? data.sovereignLoans : [];
+        world.chatMessages = (data && Array.isArray(data.chatMessages)) ? data.chatMessages : [];
 
         if (data && Array.isArray(data.countries)) {
             world.countries = data.countries.map(cData => {
@@ -177,9 +190,6 @@ class World {
                 cData.year = world.year;
                 return cData;
             });
-        }
-        if (data && Array.isArray(data.history)) {
-            world.history = data.history;
         }
         return world;
     }

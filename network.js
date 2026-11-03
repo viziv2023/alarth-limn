@@ -1,14 +1,16 @@
 /**
  * ============================================================================
- * network.js - محرك الروم السحابي الموحد بالأرقام ومزامنة الحروب الجماعية (v6.5)
+ * network.js - محرك الروم السحابي الموحد بالأرقام ومزامنة الاقتصاد والحروب والدردشة (v6.6)
  * ============================================================================
  *
- * المزايا المحدثة (v6.5):
- * 1. مزامنة فورية لبيانات الدولة والجيش عند الضغط على (الانتقال للسنة الجديدة) أو (الانتقال للحرب).
- * 2. انتقال جماعي لجميع شاشات اللاعبين في الروم إلى مركز الحرب والقتال عند طلب أحد اللاعبين للحرب.
- * 3. إرسال تنبيه وتحذير الهجوم للاعب المدافع المستهدف وعرض الخيارات الثلاثة (الاستسلام / دفع الجزية / الحرب).
- * 4. بث حي وموحد لساحة المعركة (Battle Screen) لجميع شاشات اللاعبين في الروم في نفس اللحظة.
- * 5. إعلان النتيجة والخسائر للجميع ثم الانتقال التلقائي للسنة الجديدة واستكمال اللعب.
+ * الإصلاحات الجوهرية في (v6.6):
+ * 1. إصلاح شامل لمشكلة الأموال وتحديثها بعد دورة أو دورتين سنوية عبر:
+ *    - منع الكتابة فوق السنة المالية المتقدمة بلقطات (Retained Snapshots) قديمة.
+ *    - مزامنة شاملة لخزينة البنك الدولي، القروض السيادية، عقود التجارة، والجزية.
+ *    - اختيار منسق وحيد (Deterministic Turn Coordinator) لتنفيذ تدوير السنة المالية
+ *      ثم بث النتيجة الموحدة لجميع اللاعبين في الروم لمنع تضارب أو تصفير الأرصدة.
+ * 2. دعم كامل للمحادثات النصية المباشرة بين اللاعبين في الروم الواحد (CHAT_MESSAGE).
+ * 3. دمج معلومات الروم والجاهزية في الشريط العلوي الموحد لكل شاشة دون تكرار الشريط العلوي.
  */
 
 window.NetworkEngine = (function() {
@@ -25,6 +27,7 @@ window.NetworkEngine = (function() {
     let autoTurnTimer = null;
     let autoTurnSeconds = 60;
     let timerTargetPlayerId = null;
+    let lastProcessedYearAdvance = 0;
 
     let roomState = {
         roomId: null,
@@ -95,15 +98,42 @@ window.NetworkEngine = (function() {
         if (rawData.ownerPlayerId) inst.ownerPlayerId = rawData.ownerPlayerId;
         if (rawData.ownerPlayerName) inst.ownerPlayerName = rawData.ownerPlayerName;
         if (rawData.militaryColor) inst.militaryColor = rawData.militaryColor;
-        if (window.MilitaryEngine && typeof window.MilitaryEngine.refreshMilitaryStats === "function") {
+
+        // ضمان إعادة احتساب عوائد المنشآت والميزانية والقطاعات والمؤشرات بدقة
+        if (window.BuildingsEngine && typeof window.BuildingsEngine.calculateTotalRevenue === "function") {
+            inst.sectorRevenues = window.BuildingsEngine.calculateTotalRevenue(inst);
+            inst.budget = inst.sectorRevenues;
+        }
+        if (window.MilitaryEngine && typeof window.MilitaryEngine.syncCountryWithMilitary === "function") {
+            window.MilitaryEngine.syncCountryWithMilitary(inst);
+        } else if (window.MilitaryEngine && typeof window.MilitaryEngine.refreshMilitaryStats === "function") {
             window.MilitaryEngine.refreshMilitaryStats(inst);
         }
         return inst;
     }
 
-    function upsertCountryInWorld(rawCountry) {
+    function upsertCountryInWorld(rawCountry, allowOverwriteMyCountry = true) {
         if (!rawCountry || !window.currentWorld) return null;
+        const incomingYear = Number(rawCountry.year || 1);
+        const currentWorldYear = Number(window.currentWorld.year || 1);
+
+        // تجاهل بيانات الدولة إذا كانت من سنة مالية أقدم من سنة العالم الحالية لمنع إرجاع الأموال للخلف
+        if (incomingYear < currentWorldYear) {
+            return window.currentWorld.countries.find(function(c) {
+                return String(c.id) === String(rawCountry.id);
+            }) || null;
+        }
+
+        const isMine = myCountryId && String(rawCountry.id) === String(myCountryId);
+        if (isMine && !allowOverwriteMyCountry && incomingYear === currentWorldYear) {
+            return window.currentWorld.countries.find(function(c) {
+                return String(c.id) === String(rawCountry.id);
+            }) || null;
+        }
+
         const countryInst = ensureCountryInstance(rawCountry);
+        countryInst.year = Math.max(incomingYear, currentWorldYear);
+
         if (!Array.isArray(window.currentWorld.countries)) {
             window.currentWorld.countries = [];
         }
@@ -113,8 +143,12 @@ window.NetworkEngine = (function() {
         if (idx >= 0) {
             const existing = window.currentWorld.countries[idx];
             Object.assign(existing, countryInst);
-            if (window.MilitaryEngine && typeof window.MilitaryEngine.refreshMilitaryStats === "function") {
-                window.MilitaryEngine.refreshMilitaryStats(existing);
+            if (window.BuildingsEngine && typeof window.BuildingsEngine.calculateTotalRevenue === "function") {
+                existing.sectorRevenues = window.BuildingsEngine.calculateTotalRevenue(existing);
+                existing.budget = existing.sectorRevenues;
+            }
+            if (window.MilitaryEngine && typeof window.MilitaryEngine.syncCountryWithMilitary === "function") {
+                window.MilitaryEngine.syncCountryWithMilitary(existing);
             }
             return existing;
         } else {
@@ -123,29 +157,75 @@ window.NetworkEngine = (function() {
         }
     }
 
-    function mergeWorldDataFromCloud(incomingWorldData) {
+    function mergeWorldDataFromCloud(incomingWorldData, forceReplaceAll = false) {
         if (!incomingWorldData) return;
         if (!window.currentWorld && window.World) {
             window.currentWorld = new window.World();
         }
         if (!window.currentWorld) return;
 
-        if (incomingWorldData.year && Number(incomingWorldData.year) > Number(window.currentWorld.year || 1)) {
-            window.currentWorld.year = Number(incomingWorldData.year);
+        const incomingYear = Number(incomingWorldData.year || 1);
+        const localYear = Number(window.currentWorld.year || 1);
+
+        // حماية حاسمة: إذا كانت اللقطة الواردة من سنة مالية أقدم من سنتنا الحالية، نتجاهل بياناتها المالية
+        // ونحتفظ فقط بدمج أي رسائل دردشة لم تكن لدينا
+        if (incomingYear < localYear && !forceReplaceAll) {
+            if (Array.isArray(incomingWorldData.chatMessages)) {
+                incomingWorldData.chatMessages.forEach(function(m) {
+                    if (typeof window.currentWorld.addChatMessage === "function") {
+                        window.currentWorld.addChatMessage(m);
+                    }
+                });
+            }
+            return;
+        }
+
+        const isNewerYear = incomingYear > localYear;
+        if (isNewerYear || forceReplaceAll) {
+            window.currentWorld.year = incomingYear;
+        }
+
+        if (incomingWorldData.worldBankTreasury !== undefined) {
+            if (isNewerYear || forceReplaceAll || Number(incomingWorldData.worldBankTreasury) !== Number(window.currentWorld.worldBankTreasury || 0)) {
+                window.currentWorld.worldBankTreasury = Number(incomingWorldData.worldBankTreasury);
+            }
+        }
+
+        if (Array.isArray(incomingWorldData.tradeDeals)) {
+            window.currentWorld.tradeDeals = incomingWorldData.tradeDeals;
         }
 
         if (Array.isArray(incomingWorldData.tributes)) {
             window.currentWorld.tributes = incomingWorldData.tributes;
         }
 
-        if (Array.isArray(incomingWorldData.history) && incomingWorldData.history.length > (window.currentWorld.history ? window.currentWorld.history.length : 0)) {
-            window.currentWorld.history = incomingWorldData.history;
+        if (Array.isArray(incomingWorldData.sovereignLoans)) {
+            window.currentWorld.sovereignLoans = incomingWorldData.sovereignLoans;
+        }
+
+        if (Array.isArray(incomingWorldData.chatMessages)) {
+            if (!Array.isArray(window.currentWorld.chatMessages)) {
+                window.currentWorld.chatMessages = [];
+            }
+            incomingWorldData.chatMessages.forEach(function(msg) {
+                if (typeof window.currentWorld.addChatMessage === "function") {
+                    window.currentWorld.addChatMessage(msg);
+                } else if (!window.currentWorld.chatMessages.some(function(x) { return x.id === msg.id; })) {
+                    window.currentWorld.chatMessages.push(msg);
+                }
+            });
         }
 
         if (Array.isArray(incomingWorldData.countries)) {
             incomingWorldData.countries.forEach(function(rawC) {
-                upsertCountryInWorld(rawC);
+                rawC.year = Math.max(Number(rawC.year || 1), window.currentWorld.year);
+                // نسمح باستبدال بيانات دولتي فقط إذا كانت الحزمة من تدوير سنة جديدة أو فرض شامل
+                upsertCountryInWorld(rawC, isNewerYear || forceReplaceAll);
             });
+        }
+
+        if (window.TradeManager && typeof window.TradeManager.recalculateCountriesTrade === "function") {
+            window.TradeManager.recalculateCountriesTrade(window.currentWorld);
         }
     }
 
@@ -176,7 +256,7 @@ window.NetworkEngine = (function() {
 
             const saved = JSON.parse(savedRaw);
             if (saved && saved.worldData) {
-                mergeWorldDataFromCloud(saved.worldData);
+                mergeWorldDataFromCloud(saved.worldData, true);
                 if (saved.players) {
                     roomState.players = Object.assign({}, saved.players, roomState.players);
                 }
@@ -188,6 +268,17 @@ window.NetworkEngine = (function() {
 
     function refreshAllGameViews() {
         try {
+            if (window.currentWorld && Array.isArray(window.currentWorld.countries)) {
+                if (myCountryId) {
+                    const mine = window.currentWorld.countries.find(function(c) {
+                        return String(c.id) === String(myCountryId);
+                    });
+                    if (mine && (!window.currentViewingCountry || String(window.currentViewingCountry.id) === String(mine.id))) {
+                        window.currentViewingCountry = mine;
+                    }
+                }
+            }
+
             if (typeof window.renderNationsTable === "function") {
                 window.renderNationsTable();
             }
@@ -210,7 +301,7 @@ window.NetworkEngine = (function() {
                 window.ChartsManager.render(window.currentWorld);
             }
             if (window.ChronicleManager && typeof window.ChronicleManager.render === "function") {
-                window.ChronicleManager.render(window.currentWorld);
+                window.ChronicleManager.render(window.currentWorld, true);
             }
             if (window.CountryViewController && window.currentViewingCountry && window.currentWorld) {
                 const refreshed = window.currentWorld.countries.find(function(c) {
@@ -235,6 +326,14 @@ window.NetworkEngine = (function() {
             if (window.CapitalView && typeof window.CapitalView.refreshHUDAndMap === "function") {
                 const capScreen = document.getElementById("capital-screen");
                 if (capScreen && capScreen.classList.contains("active")) {
+                    if (window.currentViewingCountry && window.currentWorld) {
+                        const updatedCapCountry = window.currentWorld.countries.find(function(c) {
+                            return String(c.id) === String(window.currentViewingCountry.id);
+                        });
+                        if (updatedCapCountry && typeof window.CapitalView.setCurrentCountry === "function") {
+                            window.CapitalView.setCurrentCountry(updatedCapCountry);
+                        }
+                    }
                     window.CapitalView.refreshHUDAndMap();
                 }
             }
@@ -475,6 +574,10 @@ window.NetworkEngine = (function() {
             return String(item.id) === String(myCountryId);
         });
         if (!c) return null;
+        if (window.BuildingsEngine && typeof window.BuildingsEngine.calculateTotalRevenue === "function") {
+            c.sectorRevenues = window.BuildingsEngine.calculateTotalRevenue(c);
+            c.budget = c.sectorRevenues;
+        }
         if (window.MilitaryEngine && typeof window.MilitaryEngine.syncCountryWithMilitary === "function") {
             window.MilitaryEngine.syncCountryWithMilitary(c);
         }
@@ -486,7 +589,7 @@ window.NetworkEngine = (function() {
     }
 
     // =========================================================================
-    // 4. معالجة الرسائل المتزامنة في الروم الموحد (شاملة مراحل الحرب والقتال)
+    // 4. معالجة الرسائل المتزامنة في الروم الموحد (شاملة الاقتصاد، الحرب، والدردشة)
     // =========================================================================
     function handleIncomingPacket(data) {
         if (!data || !data.type) return;
@@ -501,7 +604,7 @@ window.NetworkEngine = (function() {
                 });
             }
             if (data.worldData) {
-                mergeWorldDataFromCloud(data.worldData);
+                mergeWorldDataFromCloud(data.worldData, false);
             }
             syncCountryOwnersFromRoomState();
             saveRoomPersistence();
@@ -526,7 +629,7 @@ window.NetworkEngine = (function() {
                     };
 
                     if (data.myCountryData) {
-                        upsertCountryInWorld(data.myCountryData);
+                        upsertCountryInWorld(data.myCountryData, true);
                     }
 
                     syncCountryOwnersFromRoomState();
@@ -558,7 +661,7 @@ window.NetworkEngine = (function() {
                         });
                     }
                     if (data.worldData) {
-                        mergeWorldDataFromCloud(data.worldData);
+                        mergeWorldDataFromCloud(data.worldData, !!data.forceSync);
                     }
                     syncCountryOwnersFromRoomState();
                     saveRoomPersistence();
@@ -567,14 +670,23 @@ window.NetworkEngine = (function() {
                     break;
                 }
 
+            case "CHAT_MESSAGE":
+                {
+                    if (data.message && window.ChronicleManager && typeof window.ChronicleManager.onIncomingNetworkMessage === "function") {
+                        window.ChronicleManager.onIncomingNetworkMessage(data.message);
+                        saveRoomPersistence();
+                    }
+                    break;
+                }
+
             case "NATION_CREATED":
                 {
                     if (data.countryData) {
                         if (data.ownerPlayerId) data.countryData.ownerPlayerId = data.ownerPlayerId;
                         if (data.ownerPlayerName) data.countryData.ownerPlayerName = data.ownerPlayerName;
-                        const added = upsertCountryInWorld(data.countryData);
+                        const added = upsertCountryInWorld(data.countryData, true);
 
-                        if (data.ownerPlayerId) {
+                        if (data.ownerPlayerId && added) {
                             if (!roomState.players[data.ownerPlayerId]) {
                                 roomState.players[data.ownerPlayerId] = {
                                     name: data.ownerPlayerName || "قائد",
@@ -592,7 +704,7 @@ window.NetworkEngine = (function() {
                         updateTopReadinessBar();
                         refreshAllGameViews();
 
-                        if (window.showGameToast) {
+                        if (window.showGameToast && added) {
                             window.showGameToast("أسس القائد [" + (data.ownerPlayerName || "متحالف") + "] دولة [" + added.name + "]!", "🏰");
                         }
                     }
@@ -627,7 +739,7 @@ window.NetworkEngine = (function() {
             case "COUNTRY_UPDATED":
                 {
                     if (data.countryData) {
-                        upsertCountryInWorld(data.countryData);
+                        upsertCountryInWorld(data.countryData, true);
                         syncCountryOwnersFromRoomState();
                         saveRoomPersistence();
                         refreshAllGameViews();
@@ -639,7 +751,7 @@ window.NetworkEngine = (function() {
                 {
                     const pId = data.playerId;
                     if (data.countryData) {
-                        upsertCountryInWorld(data.countryData);
+                        upsertCountryInWorld(data.countryData, true);
                     }
                     if (pId && roomState.players[pId]) {
                         roomState.players[pId].readyState = data.decision;
@@ -655,17 +767,28 @@ window.NetworkEngine = (function() {
                     syncCountryOwnersFromRoomState();
                     saveRoomPersistence();
                     updateTopReadinessBar();
-                    checkAllPlayersReady();
+                    checkAllPlayersReady(false);
                     break;
                 }
 
             case "ADVANCE_YEAR_TRIGGER":
                 {
                     if (data.worldData) {
-                        if (window.World && typeof window.World.fromJSON === "function") {
-                            window.currentWorld = window.World.fromJSON(data.worldData);
-                        } else {
-                            window.currentWorld = data.worldData;
+                        const incomingYr = Number(data.worldData.year || 1);
+                        const currentYr = Number((window.currentWorld && window.currentWorld.year) || 1);
+                        if (incomingYr >= currentYr) {
+                            lastProcessedYearAdvance = incomingYr;
+                            if (window.World && typeof window.World.fromJSON === "function") {
+                                const prevChats = (window.currentWorld && Array.isArray(window.currentWorld.chatMessages))
+                                    ? window.currentWorld.chatMessages
+                                    : [];
+                                window.currentWorld = window.World.fromJSON(data.worldData);
+                                prevChats.forEach(function(m) {
+                                    window.currentWorld.addChatMessage(m);
+                                });
+                            } else {
+                                mergeWorldDataFromCloud(data.worldData, true);
+                            }
                         }
                     }
                     Object.keys(roomState.players).forEach(function(k) {
@@ -681,7 +804,7 @@ window.NetworkEngine = (function() {
 
                     if (window.GameSFX && typeof window.GameSFX.newYear === "function") window.GameSFX.newYear();
                     if (window.showGameToast) {
-                        window.showGameToast("🌟 انطلقت السنة المالية " + ((window.currentWorld && window.currentWorld.year) || 1) + "م لجميع اللاعبين!", "💰");
+                        window.showGameToast("🌟 انطلقت السنة المالية " + ((window.currentWorld && window.currentWorld.year) || 1) + "م وتم إيداع العوائد لجميع اللاعبين!", "💰");
                     }
                     break;
                 }
@@ -689,7 +812,7 @@ window.NetworkEngine = (function() {
             case "WAR_TRIGGER":
                 {
                     if (data.worldData) {
-                        mergeWorldDataFromCloud(data.worldData);
+                        mergeWorldDataFromCloud(data.worldData, true);
                     }
                     Object.keys(roomState.players).forEach(function(k) {
                         if (roomState.players[k]) roomState.players[k].readyState = "WAITING";
@@ -719,7 +842,7 @@ window.NetworkEngine = (function() {
             case "WAR_ULTIMATUM_SENT":
                 {
                     if (data.worldData) {
-                        mergeWorldDataFromCloud(data.worldData);
+                        mergeWorldDataFromCloud(data.worldData, true);
                     }
                     syncCountryOwnersFromRoomState();
                     saveRoomPersistence();
@@ -732,11 +855,7 @@ window.NetworkEngine = (function() {
             case "WAR_RESOLUTION_BROADCAST":
                 {
                     if (data.worldData) {
-                        if (window.World && typeof window.World.fromJSON === "function") {
-                            window.currentWorld = window.World.fromJSON(data.worldData);
-                        } else {
-                            mergeWorldDataFromCloud(data.worldData);
-                        }
+                        mergeWorldDataFromCloud(data.worldData, true);
                     }
                     syncCountryOwnersFromRoomState();
                     saveRoomPersistence();
@@ -750,7 +869,7 @@ window.NetworkEngine = (function() {
             case "WAR_BATTLE_START_BROADCAST":
                 {
                     if (data.worldData) {
-                        mergeWorldDataFromCloud(data.worldData);
+                        mergeWorldDataFromCloud(data.worldData, true);
                     }
                     syncCountryOwnersFromRoomState();
                     saveRoomPersistence();
@@ -763,11 +882,7 @@ window.NetworkEngine = (function() {
             case "WAR_BATTLE_FINISHED_SYNC":
                 {
                     if (data.worldData) {
-                        if (window.World && typeof window.World.fromJSON === "function") {
-                            window.currentWorld = window.World.fromJSON(data.worldData);
-                        } else {
-                            mergeWorldDataFromCloud(data.worldData);
-                        }
+                        mergeWorldDataFromCloud(data.worldData, true);
                     }
                     syncCountryOwnersFromRoomState();
                     saveRoomPersistence();
@@ -787,6 +902,7 @@ window.NetworkEngine = (function() {
                     if (window.World) window.currentWorld = new window.World();
                     myCountryId = null;
                     myReadiness = "WAITING";
+                    lastProcessedYearAdvance = 0;
                     Object.keys(roomState.players).forEach(function(k) {
                         if (roomState.players[k]) {
                             roomState.players[k].countryId = null;
@@ -837,6 +953,12 @@ window.NetworkEngine = (function() {
     function executeAutoTurnProgression() {
         if (!window.currentWorld) return;
 
+        const nextTargetYr = (Number(window.currentWorld.year) || 1) + 1;
+        if (lastProcessedYearAdvance >= nextTargetYr) {
+            return;
+        }
+        lastProcessedYearAdvance = nextTargetYr;
+
         Object.keys(roomState.players).forEach(function(k) {
             if (roomState.players[k]) roomState.players[k].readyState = "WAITING";
         });
@@ -860,11 +982,11 @@ window.NetworkEngine = (function() {
         refreshAllGameViews();
         if (window.GameSFX && typeof window.GameSFX.newYear === "function") window.GameSFX.newYear();
         if (window.showGameToast) {
-            window.showGameToast("🌟 انطلقت السنة المالية " + (window.currentWorld.year || 1) + "م لجميع اللاعبين!", "💰");
+            window.showGameToast("🌟 انطلقت السنة المالية " + (window.currentWorld.year || 1) + "م وتم إيداع العوائد لجميع اللاعبين!", "💰");
         }
     }
 
-    function checkAllPlayersReady() {
+    function checkAllPlayersReady(isTriggeredByLocalClick = false) {
         const playerKeys = Object.keys(roomState.players || {});
         const activePlayers = [];
         for (let i = 0; i < playerKeys.length; i++) {
@@ -882,6 +1004,15 @@ window.NetworkEngine = (function() {
 
         if (readyPlayers.length === activePlayers.length) {
             stopAutoTurnCountdown();
+
+            // لمنع حساب السنة مرتين من جهازين مختلفين في نفس اللحظة:
+            // يتولى اللاعب الذي ضغط أخيراً أو صاحب المعرف الأصغر أبجدياً عملية الحساب وبث النتيجة للجميع
+            activePlayers.sort(function(a, b) { return String(a.id).localeCompare(String(b.id)); });
+            const coordinatorId = activePlayers[0].id;
+            const shouldCoordinate = isTriggeredByLocalClick || (String(localPlayerId) === String(coordinatorId));
+
+            if (!shouldCoordinate) return;
+
             const warRequesters = activePlayers
                 .filter(function(item) { return item.data.readyState === "READY_WAR"; })
                 .map(function(item) {
@@ -912,7 +1043,6 @@ window.NetworkEngine = (function() {
         }
     }
 
-    // دوال بث أحداث الحرب بين المهاجم والمدافع وبقية اللاعبين في الروم
     function sendWarUltimatum(payload) {
         const packet = Object.assign({
             type: "WAR_ULTIMATUM_SENT",
@@ -960,6 +1090,32 @@ window.NetworkEngine = (function() {
         executeAutoTurnProgression();
     }
 
+    function sendChatMessage(messageObj) {
+        if (!messageObj) return;
+        saveRoomPersistence();
+        if (!roomId) return;
+        publishMessage({
+            type: "CHAT_MESSAGE",
+            message: messageObj
+        }, true);
+    }
+
+    function syncWorldState() {
+        if (!window.currentWorld) return;
+        saveRoomPersistence();
+        if (roomId) {
+            publishMessage({
+                type: "WORLD_STATE_SYNC",
+                forceSync: true,
+                roomState: roomState,
+                worldData: (typeof window.currentWorld.toJSON === "function")
+                    ? window.currentWorld.toJSON()
+                    : window.currentWorld
+            }, true);
+        }
+        refreshAllGameViews();
+    }
+
     function createRoom(desiredCode, playerName, callback) {
         const numCode = normalizeRoomCode(desiredCode) || generateRoomCode();
         connectToUnifiedRoom(numCode, playerName, callback);
@@ -980,6 +1136,7 @@ window.NetworkEngine = (function() {
         if (window.World) window.currentWorld = new window.World();
         myCountryId = null;
         myReadiness = "WAITING";
+        lastProcessedYearAdvance = 0;
         Object.keys(roomState.players).forEach(function(k) {
             if (roomState.players[k]) {
                 roomState.players[k].countryId = null;
@@ -1002,7 +1159,7 @@ window.NetworkEngine = (function() {
         countryData.ownerPlayerName = myPlayerName;
         myCountryId = countryData.id;
 
-        const cInst = upsertCountryInWorld(countryData);
+        const cInst = upsertCountryInWorld(countryData, true);
 
         if (!roomState.players[localPlayerId]) {
             roomState.players[localPlayerId] = {
@@ -1185,7 +1342,6 @@ window.NetworkEngine = (function() {
             decision: decision
         }, true);
 
-        // إشعار اللاعب بحالة الانتظار إن كان هناك لاعبون آخرون لم يضغطوا بعد
         const playerKeys = Object.keys(roomState.players || {});
         const activePlayers = playerKeys.filter(function(k) {
             const p = roomState.players[k];
@@ -1201,7 +1357,7 @@ window.NetworkEngine = (function() {
             window.showGameToast(`تم تسجيل اختيارك (${actionName})! بانتظار إنهاء بقية اللاعبين للشراء (${readyPlayers.length}/${activePlayers.length})...`, "⏳");
         }
 
-        checkAllPlayersReady();
+        checkAllPlayersReady(true);
     }
 
     function canControlCountry(targetCountryId) {
@@ -1221,8 +1377,12 @@ window.NetworkEngine = (function() {
 
     function syncCountryChanges(country) {
         if (!country) return;
-        if (window.MilitaryEngine && typeof window.MilitaryEngine.refreshMilitaryStats === "function") {
-            window.MilitaryEngine.refreshMilitaryStats(country);
+        if (window.BuildingsEngine && typeof window.BuildingsEngine.calculateTotalRevenue === "function") {
+            country.sectorRevenues = window.BuildingsEngine.calculateTotalRevenue(country);
+            country.budget = country.sectorRevenues;
+        }
+        if (window.MilitaryEngine && typeof window.MilitaryEngine.syncCountryWithMilitary === "function") {
+            window.MilitaryEngine.syncCountryWithMilitary(country);
         }
         if (!roomId) {
             refreshAllGameViews();
@@ -1248,32 +1408,18 @@ window.NetworkEngine = (function() {
             navigator.clipboard.writeText(textToCopy).then(function() {
                 if (window.showGameToast) window.showGameToast("تم نسخ رقم الروم: " + textToCopy, "📋");
             }).catch(function() {
-                prompt("انسخ رقم الروم:", textToCopy);
+                if (window.showGameToast) window.showGameToast("رقم الروم الحالي: " + textToCopy, "🔢");
             });
         } else {
-            prompt("انسخ رقم الروم:", textToCopy);
+            if (window.showGameToast) window.showGameToast("رقم الروم الحالي: " + textToCopy, "🔢");
         }
     }
 
+    // تحديث شارات الروم والجاهزية المدمجة داخل الشريط العلوي الموحد (دون إنشاء شريط علوي ثانٍ)
     function updateTopReadinessBar() {
-        const bar = document.getElementById("multiplayer-status-bar");
-        if (bar) {
-            if (!roomId) {
-                bar.style.display = "none";
-            } else {
-                bar.style.display = "flex";
-            }
-        }
-
-        const roomCodeLabel = document.getElementById("mp-room-code-label");
-        const countLabel = document.getElementById("mp-players-count");
-        const statusDetails = document.getElementById("mp-status-details");
-
-        if (roomCodeLabel && roomId) {
-            roomCodeLabel.textContent = "روم رقم: " + roomId + " 📋";
-            roomCodeLabel.title = "اضغط لنسخ رقم الروم";
-            roomCodeLabel.style.cursor = "pointer";
-            roomCodeLabel.onclick = copyRoomCode;
+        const legacyBar = document.getElementById("multiplayer-status-bar");
+        if (legacyBar) {
+            legacyBar.style.display = "none";
         }
 
         const playerKeys = Object.keys(roomState.players || {});
@@ -1289,15 +1435,22 @@ window.NetworkEngine = (function() {
         }
 
         const totalActive = Math.max(1, playersArr.length);
-        if (countLabel) countLabel.textContent = "👥 " + totalActive + "/10";
 
-        if (statusDetails) {
-            if (!myCountryId) {
-                statusDetails.innerHTML = '<span style="color:#38bdf8; font-weight:900;">🏰 أسس دولتك أو اختر دولة</span>';
+        // تحديث أزرار وشارات الروم المدمجة في الشريط العلوي الموحد
+        const roomBtns = [
+            document.getElementById("btn-open-rooms-modal"),
+            document.getElementById("btn-cap-room-pill")
+        ];
+        roomBtns.forEach(function(btn) {
+            if (!btn) return;
+            if (roomId) {
+                btn.innerHTML = `${isConnectedToCloud ? "🟢" : "🟡"} روم ${roomId} (${readyCount}/${totalActive})`;
+                btn.title = "اضغط لإدارة الروم أو نسخ رقم الروم (" + roomId + ")";
             } else {
-                statusDetails.textContent = (isConnectedToCloud ? "🟢 متصل | " : "🟡 محلي | ") + "الجاهزية بعد الشراء: " + readyCount + "/" + totalActive;
+                btn.innerHTML = `🌐 الروم`;
+                btn.title = "دخول أو إنشاء روم مشترك بالأرقام";
             }
-        }
+        });
 
         if (typeof window.updateAllTurnDecisionButtons === "function") {
             window.updateAllTurnDecisionButtons(myReadiness, readyCount, totalActive, !!roomId);
@@ -1321,6 +1474,8 @@ window.NetworkEngine = (function() {
         broadcastBattleStart: broadcastBattleStart,
         broadcastBattleFinishedSync: broadcastBattleFinishedSync,
         completeWarPhaseToNewYear: completeWarPhaseToNewYear,
+        sendChatMessage: sendChatMessage,
+        syncWorldState: syncWorldState,
         canControlCountry: canControlCountry,
         isMyCountry: isMyCountry,
         syncCountryChanges: syncCountryChanges,
