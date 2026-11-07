@@ -17,10 +17,11 @@ class WorldBankManager {
     if (!flagMatrix || !Array.isArray(flagMatrix) || flagMatrix.length === 0) {
       return `<span style="display:inline-block; width:16px; height:12px; background:#475569; border-radius:2px; vertical-align:middle; margin-left:6px;"></span>`;
     }
+    const flat = Array.isArray(flagMatrix[0]) ? flagMatrix.flat() : flagMatrix;
     let dots = "";
     for (let r = 0; r < 3; r++) {
       for (let c = 0; c < 4; c++) {
-        const color = (flagMatrix[r] && flagMatrix[r][c]) ? flagMatrix[r][c] : "#ffffff";
+        const color = flat[r * 4 + c] || "#ffffff";
         dots += `<span style="background-color:${color}; display:block; width:4px; height:3px;"></span>`;
       }
     }
@@ -619,13 +620,13 @@ class WorldBankManager {
     html += `
           </tbody>
           <tfoot>
-            <tr style="background:#edf2f7; font-weight:bold; border-top:2px solid #cbd5e0;">
+            <tr style="background:#241840; color:#fde047; font-weight:bold; border-top:2px solid #f59e0b;">
               <td colspan="2" style="text-align:center;">المجموع العام والمتوسطات</td>
               <td class="text-blue">$${totalSavings.toLocaleString()} (متوسط: $${avgSavings.toLocaleString()})</td>
               <td>$${totalYearlyCuts.toLocaleString()}</td>
               <td>-</td>
               <td style="color:#e53e3e;">إجمالي الديون: $${totalDebts.toLocaleString()}</td>
-              <td colspan="3" style="text-align:center; color:#4a5568;">تتم تسوية كافة الأقساط سنوياً وتلقائياً عبر النظام المالي</td>
+              <td colspan="3" style="text-align:center; color:#cbd5e1;">تتم تسوية كافة الأقساط سنوياً وتلقائياً عبر النظام المالي</td>
             </tr>
           </tfoot>
         </table>

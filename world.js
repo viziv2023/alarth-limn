@@ -32,6 +32,11 @@ class World {
     }
 
     advanceYear() {
+        // تنفيذ مشتريات وقرارات الذكاء الاصطناعي لما تبقى من سيولة قبل إغلاق السنة المالية
+        if (window.AIEngine && typeof window.AIEngine.runPreYearEndAITurns === "function") {
+            try { window.AIEngine.runPreYearEndAITurns(this); } catch (e) { console.error(e); }
+        }
+
         this.year = (Number(this.year) || 1) + 1;
 
         // تحديث إجماليات الصادرات والواردات قبل تدوير السنة المالية
@@ -111,6 +116,11 @@ class World {
                 window.IndicatorsEngine.refreshCountryIndicators(country);
             }
         });
+
+        // تنفيذ جولة الذكاء الاصطناعي للسنة الجديدة (بناء المنشآت، الترقية، التسليح، التجارة، والبنك الدولي)
+        if (window.AIEngine && typeof window.AIEngine.runPostYearStartAITurns === "function") {
+            try { window.AIEngine.runPostYearStartAITurns(this); } catch (e) { console.error(e); }
+        }
 
         // 5. حفظ تلقائي فوري لكافة بيانات وإحصائيات الدول مع نهاية كل سنة مالية
         if (window.StorageManager && typeof window.StorageManager.autoSave === "function") {

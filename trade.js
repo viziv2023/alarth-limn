@@ -297,7 +297,7 @@ class TradeManager {
 
     let html = `
       <!-- 1) المؤشرات التنازلية المزدوجة للصادرات والواردات -->
-      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:16px; margin-bottom:20px;">
+      <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(310px, 1fr)); gap:12px; margin-bottom:16px;">
         <div class="analytics-card" style="border-top:3px solid #38a169;">
           <div class="analytics-card-header" style="background:#162720;">
             <h3 style="color:#48bb78;">📦 مؤشر كبار المصدرين (إجمالي الصادرات النشطة)</h3>
@@ -462,12 +462,12 @@ class TradeManager {
     html += `
           </tbody>
           <tfoot>
-            <tr style="background:#edf2f7; font-weight:bold; border-top:2px solid #cbd5e0;">
+            <tr style="background:#241840; color:#fde047; font-weight:bold; border-top:2px solid #f59e0b;">
               <td colspan="4" style="text-align:center;">إجمالي عقود التبادل التجاري السارية</td>
               <td style="text-align:center;">${deals.reduce((s, d) => s + Number(d.points || 0), 0)} نقطة</td>
               <td style="text-align:center;">-</td>
               <td style="text-align:center; color:#276a3c;">$${deals.reduce((s, d) => s + Number(d.totalValue || 0), 0).toLocaleString()}</td>
-              <td colspan="2" style="text-align:center; color:#4a5568;">تعود النقاط تلقائياً بانتهاء المدة</td>
+              <td colspan="2" style="text-align:center; color:#cbd5e1;">تعود النقاط تلقائياً بانتهاء المدة</td>
             </tr>
           </tfoot>
         </table>

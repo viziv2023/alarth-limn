@@ -74,10 +74,10 @@ class ExchangeManager {
 
     // 2. ترويسة البورصة العامة
     let html = `
-      <div class="analytics-overview-bar" style="margin-bottom: 20px;">
-        <div class="ov-item">العملة العالمية الموحدة: <strong class="text-gold">${globalCurrency.toFixed(3)}</strong></div>
-        <div class="ov-item">إجمالي السلع والخدمات المدرجة: <strong class="text-cyan">${this.COMMODITIES.length} سلعة</strong></div>
-        <div class="ov-item">نظام التسعير: <span style="color:#34d399; font-weight:bold;">تكلفة النقطة (المنشأة ÷ الإنتاج) ÷ المخزون الفائض × العملة</span></div>
+      <div class="analytics-overview-bar" style="margin-bottom: 12px;">
+        <div class="ov-item">🪙 العملة العالمية الموحدة: <strong class="text-gold">${globalCurrency.toFixed(3)}</strong></div>
+        <div class="ov-item">📦 السلع والخدمات المدرجة: <strong class="text-cyan">${this.COMMODITIES.length} سلعة</strong></div>
+        <div class="ov-item">⚖️ معادلة التسعير: <span style="color:#34d399; font-weight:bold;">(تكلفة المنشأة ÷ الإنتاج) ÷ الفائض × العملة</span></div>
       </div>
       <div class="exchange-grid-container">
     `;
@@ -149,14 +149,14 @@ class ExchangeManager {
 
     return `
       <div class="analytics-card">
-        <div class="analytics-card-header" style="display: flex; justify-content: space-between; align-items: center;">
-          <div>
-            <h3 style="margin: 0; font-size: 1.05rem; color: #fbbf24; display: flex; align-items: center; gap: 8px;">
-              <span>${comm.icon}</span> ${comm.name}
+        <div class="analytics-card-header" style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 8px;">
+          <div style="min-width: 140px; flex: 1;">
+            <h3 style="margin: 0; font-size: 1rem; color: #fbbf24; display: flex; align-items: center; gap: 6px;">
+              <span>${comm.icon}</span> <span>${comm.name}</span>
             </h3>
             <span class="analytics-card-sub">${comm.desc}</span>
           </div>
-          <div style="display: flex; gap: 8px;">
+          <div style="display: flex; gap: 6px; flex-wrap: wrap; align-items: center;">
             <span class="badge" style="font-size: 0.76rem;">
               المعروض: ${totalAvailableQty.toLocaleString()}
             </span>
@@ -184,12 +184,12 @@ class ExchangeManager {
           </table>
         </div>
 
-        <div class="analytics-card-footer" style="display: flex; justify-content: space-between; align-items: center;">
-          <span style="color: #94a3b8; font-size: 0.78rem;">
-            * السعر المحلي = (سعر المنشأة ÷ الإنتاج) ÷ الفائض | الدولي = المحلي × العملة النسبية
+        <div class="analytics-card-footer" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 6px;">
+          <span style="color: #94a3b8; font-size: 0.74rem;">
+            * المحلي = تكلفة النقطة ÷ الفائض | الدولي = المحلي × العملة
           </span>
-          <div style="font-size: 0.88rem; color: #e2e8f0;">
-            إجمالي الصادرات: <strong class="text-gold" style="font-size: 1rem;">$${Math.round(totalExpectedRevenue).toLocaleString()}</strong>
+          <div style="font-size: 0.84rem; color: #e2e8f0; margin-right: auto;">
+            إجمالي الصادرات: <strong class="text-gold" style="font-size: 0.95rem;">$${Math.round(totalExpectedRevenue).toLocaleString()}</strong>
           </div>
         </div>
       </div>
