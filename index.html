@@ -19,9 +19,9 @@
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
 
     <!-- محرك الغرف السحابية الموحدة الفوري عبر WebSockets (يعمل على كافة شبكات الجوال 4G/5G/WiFi بدون رفض دخول) -->
-    <script src="https://unpkg.com/mqtt@5.3.4/dist/mqtt.min.js" async></script>
+    <script src="https://unpkg.com/mqtt@5.3.4/dist/mqtt.min.js"></script>
     <!-- مكتبة PeerJS كخط احتياطي إضافي -->
-    <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js" async></script>
+    <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
 
     <link rel="stylesheet" href="style.css" />
 </head>
@@ -39,66 +39,30 @@
 
     <!-- تم دمج شريط الروم والجاهزية في الشريط العلوي الموحد -->
 
-    <!-- 0. شاشة المقدمة السينمائية التفاعلية عند فتح اللعبة (Intro Battlefield View) -->
-    <div id="intro-battle-screen" class="intro-battle-overlay active">
-        <canvas id="intro-battle-canvas"></canvas>
-        <div id="intro-center-title-wrap" class="intro-center-title-wrap">
-            <div class="intro-crown-badge">👑⚔️</div>
-            <h1 class="intro-main-game-title">أرض لمن</h1>
-            <div class="intro-sub-game-title">عصر الهيمنة — صراع الإمبراطوريات والجيوش</div>
-            <div class="intro-loading-bar-wrap">
-                <div id="intro-loading-bar-fill" class="intro-loading-bar-fill"></div>
-            </div>
-        </div>
-        <button type="button" id="btn-skip-intro" class="btn btn-secondary btn-sm intro-skip-btn">⏭️ تخطي المقدمة</button>
-    </div>
-
-    <!-- 1. القائمة الرئيسية (شاشة الترحيب الملكية واختيار طريقة اللعب - مصممة للوضع الأفقي) -->
+    <!-- 1. القائمة الرئيسية (شاشة الترحيب الملكية المبهجة - مصممة للوضع الأفقي) -->
     <div id="main-menu" class="screen active">
         <div class="menu-box menu-box-landscape">
             <div class="menu-hero-side">
                 <div class="menu-crown-emblem">👑</div>
                 <div>
-                    <span class="menu-badge-tactical">✨ 3D CAPITAL & AI STRATEGY ✨</span>
+                    <span class="menu-badge-tactical">✨ 3D CAPITAL STRATEGY v6.0 ✨</span>
                 </div>
-                <h1 class="game-title">أرض لمن — عصر الهيمنة</h1>
+                <h1 class="game-title">عصر الهيمنة</h1>
                 <p class="subtitle">ابنِ عاصمتك ثلاثية الأبعاد، طوّر منشآتك بالرموز التفاعلية، وقُد جيوشك!</p>
 
                 <div class="menu-features-pills">
-                    <span class="menu-feature-pill">🤖 ذكاء اصطناعي (1-10 دول)</span>
                     <span class="menu-feature-pill">🏛️ عاصمة 3D تفاعلية</span>
                     <span class="menu-feature-pill">🏗️ 72 منشأة بالرموز</span>
                     <span class="menu-feature-pill">🔢 روم موحد بالأرقام فقط</span>
+                    <span class="menu-feature-pill">📱 تصميم جوال أفقي</span>
                 </div>
             </div>
 
             <div class="menu-buttons">
-                <div class="ai-solo-setup-box">
-                    <div class="ai-solo-setup-header">
-                        <span>🤖 طور اللعب الفردي مع الذكاء الاصطناعي</span>
-                        <span id="menu-ai-selected-badge" class="badge badge-gold" style="font-size:0.7rem; padding:1px 7px;">4 دول منافسة</span>
-                    </div>
-                    <div class="ai-solo-setup-sub">اختر عدد الدول التي ستلعب معك (من 1 إلى 10 دول):</div>
-                    <div class="ai-count-grid" id="menu-ai-count-grid">
-                        <button type="button" class="ai-count-selector-btn" data-ai-count="1">1</button>
-                        <button type="button" class="ai-count-selector-btn" data-ai-count="2">2</button>
-                        <button type="button" class="ai-count-selector-btn" data-ai-count="3">3</button>
-                        <button type="button" class="ai-count-selector-btn selected" data-ai-count="4">4</button>
-                        <button type="button" class="ai-count-selector-btn" data-ai-count="5">5</button>
-                        <button type="button" class="ai-count-selector-btn" data-ai-count="6">6</button>
-                        <button type="button" class="ai-count-selector-btn" data-ai-count="7">7</button>
-                        <button type="button" class="ai-count-selector-btn" data-ai-count="8">8</button>
-                        <button type="button" class="ai-count-selector-btn" data-ai-count="9">9</button>
-                        <button type="button" class="ai-count-selector-btn" data-ai-count="10">10</button>
-                    </div>
-                    <button id="btn-menu-new" class="btn btn-primary" style="width:100%; margin-top:6px;">🏰 ابدأ اللعب منفرداً (ضد 4 دول ذكاء اصطناعي) ➔</button>
-                </div>
+                <button id="btn-menu-new" class="btn btn-primary">🏰 ابدأ اللعب وأسس دولتك الآن ➔</button>
                 <button id="btn-menu-multiplayer" class="btn btn-accent">🌐 دخول الروم الموحد (أونلاين بالأرقام)</button>
                 <button id="btn-menu-load" class="btn btn-secondary">📂 استرجاع عالم محفوظ (JSON)</button>
-                <div style="display:flex; gap:6px; width:100%;">
-                    <button id="btn-menu-fullscreen" type="button" class="btn btn-secondary btn-sm" style="flex:1;">⛶ ملء الشاشة للجوال</button>
-                    <button id="btn-replay-intro" type="button" class="btn btn-secondary btn-sm" style="flex:1;">🎬 عرض مقدمة المعركة</button>
-                </div>
+                <button id="btn-menu-fullscreen" type="button" class="btn btn-secondary btn-sm">⛶ وضع ملء الشاشة للجوال (إخفاء شريط المتصفح)</button>
                 <input type="file" id="file-input-menu" accept=".json" style="display:none;" />
             </div>
         </div>
@@ -1147,29 +1111,19 @@
                         <label for="country-name-input">اسم الدولة السيادية:</label>
                         <input type="text" id="country-name-input" placeholder="مثال: مملكة الصقور..." autocomplete="off" />
                     </div>
-                    <div id="create-modal-ai-selector" class="ai-solo-setup-box" style="margin:6px 0; padding:8px;">
-                        <div class="ai-solo-setup-header">
-                            <span>🤖 عدد الدول المنافسة بالذكاء الاصطناعي (1 - 10):</span>
-                            <strong id="modal-ai-selected-label" style="color:#fde047; font-size:0.78rem;">4 دول</strong>
-                        </div>
-                        <div class="ai-count-grid" id="modal-ai-count-grid" style="margin-top:4px;">
-                            <button type="button" class="ai-count-selector-btn" data-ai-count="1">1</button>
-                            <button type="button" class="ai-count-selector-btn" data-ai-count="2">2</button>
-                            <button type="button" class="ai-count-selector-btn" data-ai-count="3">3</button>
-                            <button type="button" class="ai-count-selector-btn selected" data-ai-count="4">4</button>
-                            <button type="button" class="ai-count-selector-btn" data-ai-count="5">5</button>
-                            <button type="button" class="ai-count-selector-btn" data-ai-count="6">6</button>
-                            <button type="button" class="ai-count-selector-btn" data-ai-count="7">7</button>
-                            <button type="button" class="ai-count-selector-btn" data-ai-count="8">8</button>
-                            <button type="button" class="ai-count-selector-btn" data-ai-count="9">9</button>
-                            <button type="button" class="ai-count-selector-btn" data-ai-count="10">10</button>
-                        </div>
-                        <small style="display:block; color:#cbd5e1; font-size:0.68rem; margin-top:4px;">يتحكم الذكاء الاصطناعي بالشراء والبناء وتطوير الجيش والقرارات تلقائياً.</small>
-                    </div>
                     <div class="create-starter-perks">
                         <span>💵 سيولة البداية: <strong>$200</strong></span>
                         <span>🏠 السكان: <strong>0</strong> (يخرجون من البيوت ومولدات السكان)</span>
                         <span>⭐ المؤشر العام: <strong>0</strong> (يزيد وينقص حسب حالة الدولة)</span>
+                    </div>
+                    <div class="form-group" style="margin-top:8px; background:rgba(16, 185, 129, 0.14); border:1.5px solid #34d399; border-radius:10px; padding:6px 10px;">
+                        <label for="ai-competitors-count-select" style="color:#6ee7b7; font-size:0.78rem; font-weight:900; display:block; margin-bottom:3px;">🤖 عدد المنافسين بالذكاء الاصطناعي (بعقليات ومستويات متنوعة):</label>
+                        <select id="ai-competitors-count-select" style="width:100%; padding:5px 8px; background:#0f172a; border:1px solid #34d399; color:#fffbeb; border-radius:6px; font-weight:800; font-size:0.8rem;">
+                            <option value="10" selected>🔥 اللعب مع 10 دول متنافسة (9 ذكاء اصطناعي بعقليات مختلفة + دولتك)</option>
+                            <option value="6">⚔️ اللعب مع 6 دول متنافسة (5 ذكاء اصطناعي + دولتك)</option>
+                            <option value="4">🛡️ اللعب مع 4 دول متنافسة (3 ذكاء اصطناعي + دولتك)</option>
+                            <option value="1">🏰 بدون منافسين حالياً (تأسيس دولتي فقط)</option>
+                        </select>
                     </div>
                 </div>
 
@@ -1233,21 +1187,6 @@
         </div>
     </div>
 
-    <!-- عناصر توافقية مخفية للربط البرمجي -->
-    <div style="display:none;" aria-hidden="true">
-        <div id="multiplayer-status-bar"></div>
-        <button type="button" id="btn-forge-zoom-in" onclick="window.GameSFX && window.GameSFX.playClick()">+</button>
-        <button type="button" id="btn-open-capital" onclick="window.GameSFX && window.GameSFX.playClick()">🏛️</button>
-        <button type="button" id="btn-open-military-hq" onclick="window.GameSFX && window.GameSFX.playClick()">🎖️</button>
-        <button type="button" id="btn-cap-go-worldbank" onclick="window.GameSFX && window.GameSFX.playClick()">🏦</button>
-        <button type="button" id="btn-cap-go-trade" onclick="window.GameSFX && window.GameSFX.playClick()">🚢</button>
-        <button type="button" id="btn-cap-go-exchange" onclick="window.GameSFX && window.GameSFX.playClick()">💎</button>
-        <button type="button" id="bat-speed-btn" onclick="window.GameSFX && window.GameSFX.playClick()">1x</button>
-        <button type="button" id="btn-mp-ready-year" onclick="window.GameSFX && window.GameSFX.playClick()">🌟</button>
-        <button type="button" id="btn-mp-ready-war" onclick="window.GameSFX && window.GameSFX.playClick()">⚔️</button>
-        <button type="button" id="btn-mp-open-lobby" onclick="window.GameSFX && window.GameSFX.playClick()">🌐</button>
-    </div>
-
     <!-- الملفات البرمجية المعتمدة -->
     <script src="cleanEnergy.js"></script>
     <script src="flagEditor.js"></script>
@@ -1259,6 +1198,7 @@
     <script src="country.js"></script>
     <script src="economy.js"></script>
     <script src="indicators.js"></script>
+    <script src="aiEngine.js"></script>
     <script src="world.js"></script>
     <script src="network.js"></script>
     <script src="weaponForge.js"></script>

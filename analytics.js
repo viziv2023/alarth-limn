@@ -40,11 +40,10 @@ class AnalyticsManager {
       return `<span style="display:inline-block; width:${pixelW * 4}px; height:${pixelH * 3}px; background:#334155; border-radius:2px; border:1px solid #475569; vertical-align:middle; flex-shrink:0;"></span>`;
     }
 
-    const flat = Array.isArray(flagMatrix[0]) ? flagMatrix.flat() : flagMatrix;
     let pixels = "";
     for (let r = 0; r < 3; r++) {
       for (let c = 0; c < 4; c++) {
-        const color = flat[r * 4 + c] || "#ffffff";
+        const color = (flagMatrix[r] && flagMatrix[r][c]) ? flagMatrix[r][c] : "#ffffff";
         pixels += `<span style="background-color:${color}; display:block; width:${pixelW}px; height:${pixelH}px;"></span>`;
       }
     }

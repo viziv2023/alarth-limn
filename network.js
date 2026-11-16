@@ -1190,16 +1190,17 @@ window.NetworkEngine = (function() {
         if (!countryId) return { isMine: false, isClaimed: false, ownerId: null, ownerName: null };
 
         if (window.currentWorld && Array.isArray(window.currentWorld.countries)) {
-            const cCheck = window.currentWorld.countries.find(function(item) {
+            const targetC = window.currentWorld.countries.find(function(item) {
                 return String(item.id) === String(countryId);
             });
-            if (cCheck && cCheck.isAI) {
+            if (targetC && window.AIEngine && window.AIEngine.isAICountry(targetC)) {
+                const persona = window.AIEngine.getPersonaForCountry(targetC);
                 return {
                     isMine: false,
                     isClaimed: true,
                     isAI: true,
-                    ownerId: cCheck.ownerPlayerId || ("ai_" + cCheck.id),
-                    ownerName: cCheck.ownerPlayerName || "🤖 الذكاء الاصطناعي"
+                    ownerId: targetC.ownerPlayerId || ("ai_" + targetC.id),
+                    ownerName: targetC.ownerPlayerName || (persona.leaderName + " - " + persona.title)
                 };
             }
         }
@@ -1378,7 +1379,7 @@ window.NetworkEngine = (function() {
     function canControlCountry(targetCountryId) {
         if (!targetCountryId) return false;
         const info = getCountryOwnerInfo(targetCountryId);
-        if (info.isAI) return false;
+        if (info && info.isAI) return false;
         if (!roomId) return true;
         if (info.isMine) return true;
         if (!info.isClaimed && !myCountryId) return true;
@@ -1386,11 +1387,9 @@ window.NetworkEngine = (function() {
     }
 
     function isMyCountry(targetCountryId) {
-        if (!targetCountryId) return false;
-        const info = getCountryOwnerInfo(targetCountryId);
-        if (info.isAI) return false;
         if (!roomId) return true;
-        return info.isMine;
+        if (!targetCountryId) return false;
+        return getCountryOwnerInfo(targetCountryId).isMine;
     }
 
     function syncCountryChanges(country) {

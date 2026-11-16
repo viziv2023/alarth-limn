@@ -43,7 +43,7 @@ class StorageManager {
       // حفظ نسخة تلقائية إضافية
       this.autoSave(world);
     } catch (err) {
-      alert("حدث خطأ أثناء تصدير الملف!");
+      if (window.showGameToast) window.showGameToast("حدث خطأ أثناء تصدير الملف!", "🔔");
     }
   }
 

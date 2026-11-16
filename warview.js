@@ -59,7 +59,7 @@ class WarView {
     if (typeof window.showGameToast === "function") {
       window.showGameToast(msg, icon || "⚔️");
     } else {
-      alert(msg);
+      if (window.showGameToast) window.showGameToast(msg, "⚠️");
     }
   }
 
@@ -180,18 +180,11 @@ class WarView {
 
         this.render(world);
 
-        if (atkCountry.isAI && window.AIEngine && typeof window.AIEngine.executeAIAttackerTurn === "function") {
-          setTimeout(() => {
-            window.AIEngine.executeAIAttackerTurn(atkCountry, world);
-          }, 450);
-          return;
-        }
-
         // إذا كان هذا اللاعب هو من طلب القتال (أو في اللعب الفردي)، افتح له نافذة اختيار الدولة والجنود تلقائياً
         const isMp = !!(window.NetworkEngine && window.NetworkEngine.getRoomId());
         const myPid = window.NetworkEngine ? window.NetworkEngine.getLocalPlayerId() : null;
         const myCid = window.NetworkEngine ? window.NetworkEngine.getMyCountryId() : null;
-        const isMyAttackTurn = (!isMp && !atkCountry.isAI) ||
+        const isMyAttackTurn = !isMp ||
           (myPid && String(this.activeWarState.attackerPlayerId) === String(myPid)) ||
           (myCid && String(atkCountry.id) === String(myCid)) ||
           (window.NetworkEngine && window.NetworkEngine.canControlCountry(atkCountry.id));
@@ -264,6 +257,16 @@ class WarView {
   static spawnArmedRivalNation(world) {
     world = world || window.currentWorld;
     if (!world) return null;
+    if (window.AIEngine && typeof window.AIEngine.spawnSingleAINation === "function") {
+      const rival = window.AIEngine.spawnSingleAINation(world);
+      if (rival) {
+        const persona = window.AIEngine.getPersonaForCountry(rival);
+        if (typeof window.renderNationsTable === "function") window.renderNationsTable();
+        this.notify(`تم تأسيس وتسليح [${rival.name}] بقيادة (${persona.leaderName} - ${persona.title})!`, "🤖");
+        this.render(world);
+        return rival;
+      }
+    }
 
     const rivalNames = [
       "إمبراطورية الشمال", "تحالف الصقور", "جمهورية الحديد",
@@ -421,7 +424,7 @@ class WarView {
 
     if (state.phase === "SELECTING_ATTACK" && state.attackerCountryId) {
       const atkC = countries.find(c => String(c.id) === String(state.attackerCountryId));
-      const isMeAttacker = (!isMp && !(atkC && atkC.isAI)) ||
+      const isMeAttacker = !isMp ||
         (myPid && String(state.attackerPlayerId) === String(myPid)) ||
         (myCid && String(state.attackerCountryId) === String(myCid)) ||
         (atkC && window.NetworkEngine && window.NetworkEngine.canControlCountry(atkC.id));
@@ -458,7 +461,7 @@ class WarView {
     } else if (state.phase === "WAITING_DEFENDER" && state.attackerCountryId && state.defenderCountryId) {
       const atkC = countries.find(c => String(c.id) === String(state.attackerCountryId));
       const defC = countries.find(c => String(c.id) === String(state.defenderCountryId));
-      const isMeDefender = (!isMp && !(defC && defC.isAI)) ||
+      const isMeDefender = !isMp ||
         (myPid && String(state.defenderPlayerId) === String(myPid)) ||
         (myCid && String(state.defenderCountryId) === String(myCid)) ||
         (defC && window.NetworkEngine && window.NetworkEngine.canControlCountry(defC.id));
@@ -498,7 +501,8 @@ class WarView {
           </div>
         </div>
         <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
-          <button type="button" id="btn-war-header-spawn-rival" class="btn btn-secondary btn-sm" title="إضافة دولة منافسة مسلحة">🤖 + دولة خصم مسلحة</button>
+          <button type="button" id="btn-war-header-fill-10-ai" class="btn btn-accent btn-sm" title="إكمال العالم إلى 10 دول منافسة بعقليات ومستويات ذكاء متنوعة">🤖 إكمال 10 منافسين بالذكاء الاصطناعي</button>
+          <button type="button" id="btn-war-header-spawn-rival" class="btn btn-secondary btn-sm" title="إضافة دولة منافسة مسلحة">🤖 + منافس واحد</button>
           ${this.pendingNewYearAfterWar ? `
             <button type="button" id="btn-war-header-finish-phase" class="btn btn-primary btn-sm">🌟 إنهاء الحرب والانتقال للسنة الجديدة ➔</button>
           ` : ''}
@@ -522,7 +526,7 @@ class WarView {
       const airCount = this.countBranchUnits(c, "air");
       const defenseCount = this.countBranchUnits(c, "defense");
 
-      const canControlThis = (!isMp && !c.isAI) || (window.NetworkEngine && window.NetworkEngine.canControlCountry(c.id));
+      const canControlThis = !isMp || (window.NetworkEngine && window.NetworkEngine.canControlCountry(c.id));
       const isHighlightedAttacker = state.phase === "SELECTING_ATTACK" && String(state.attackerCountryId) === String(c.id);
 
       const ownedUnitsSummary = this.getOwnedUnitsSummaryList(c);
@@ -599,6 +603,31 @@ class WarView {
             </div>
           </div>
 
+          ${window.AIEngine && window.AIEngine.isAICountry(c) ? (() => {
+            const p = window.AIEngine.getPersonaForCountry(c);
+            const playerC = window.AIEngine.getPlayerCountry(world);
+            const isAllied = playerC && window.AIEngine.areAllied(world, playerC.id, c.id);
+            const alliesList = window.AIEngine.getAlliesOf(world, c.id).map(a => a.name);
+            return `
+              <div style="background:rgba(15,23,42,0.75); border:1px solid #334155; border-radius:8px; padding:5px 8px; margin-bottom:8px; font-size:0.72rem; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:4px;">
+                <span>🧠 <strong>العقلية:</strong> <span style="color:#fde047;">${p.title}</span> (${p.skillLevel})</span>
+                <span>🤝 <strong>الحلفاء:</strong> <span style="color:#34d399;">${alliesList.length > 0 ? alliesList.join("، ") : "لا يوجد"}</span></span>
+              </div>
+              <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                ${playerC && String(playerC.id) !== String(c.id) ? `
+                  <button type="button" class="btn btn-danger btn-attack-this-ai" data-target-id="${c.id}" style="flex:1.5; padding:7px 8px; font-size:0.8rem;">
+                    ⚔️ شن هجوم عليها
+                  </button>
+                  <button type="button" class="btn ${isAllied ? "btn-primary" : "btn-accent"} btn-toggle-ai-alliance" data-target-id="${c.id}" style="flex:1.2; padding:7px 8px; font-size:0.78rem;">
+                    ${isAllied ? "🛡️ حليفك (إلغاء)" : "🤝 عقد تحالف"}
+                  </button>
+                ` : ""}
+                <button type="button" class="btn btn-secondary btn-open-nation-mil" data-id="${c.id}" style="padding:7px 8px; font-size:0.75rem;" title="فحص ترسانة الدولة">
+                  👁️ الجيش
+                </button>
+              </div>
+            `;
+          })() : `
           <div style="display:flex; gap:6px;">
             ${canControlThis ? `
               <button type="button" class="btn btn-danger btn-select-attacker" data-id="${c.id}" style="flex:2; padding:7px 10px; font-size:0.82rem;">
@@ -607,17 +636,13 @@ class WarView {
               <button type="button" class="btn btn-secondary btn-open-nation-mil" data-id="${c.id}" style="flex:1; padding:7px 8px; font-size:0.78rem;" title="تجنيد وشراء أسلحة لهذه الدولة">
                 🎖️ تسليح
               </button>
-            ` : (c.isAI ? `
-              <button type="button" class="btn btn-danger btn-attack-this-ai" data-id="${c.id}" style="flex:2; padding:7px 10px; font-size:0.8rem;">
-                ⚔️ غزو [${c.name}] ➔
-              </button>
-              <span class="badge badge-purple" style="display:inline-flex; align-items:center; justify-content:center; padding:4px 8px; font-size:0.7rem;">${c.aiTitle || '🤖 ذكاء اصطناعي'}</span>
             ` : `
               <button type="button" class="btn btn-secondary" disabled style="width:100%; padding:7px 10px; font-size:0.78rem;">
-                👤 بقيادة: ${c.ownerPlayerName || 'قائد آخر'}
+                👤 بقيادة: ${c.ownerPlayerName || "قائد آخر"}
               </button>
-            `)}
+            `}
           </div>
+          `}
         </div>
       `;
     });
@@ -625,10 +650,53 @@ class WarView {
     html += `</div>`;
     container.innerHTML = html;
 
+    const btnHeaderFill10 = document.getElementById("btn-war-header-fill-10-ai");
+    if (btnHeaderFill10) {
+      btnHeaderFill10.onclick = () => {
+        if (window.AIEngine && typeof window.AIEngine.populateWorldWithAICompetitors === "function") {
+          const added = window.AIEngine.populateWorldWithAICompetitors(world, 10);
+          this.notify(added.length > 0 ? `🤖 تم إضافة (${added.length}) دول ذكاء اصطناعي بعقليات ومستويات متنوعة!` : "العالم يضم بالفعل 10 دول متنافسة!", "🌍");
+          this.render(world);
+        }
+      };
+    }
+
     const btnHeaderSpawn = document.getElementById("btn-war-header-spawn-rival");
     if (btnHeaderSpawn) {
       btnHeaderSpawn.onclick = () => this.spawnArmedRivalNation(world);
     }
+
+    container.querySelectorAll(".btn-attack-this-ai").forEach(btn => {
+      btn.onclick = () => {
+        const targetId = btn.getAttribute("data-target-id");
+        const playerC = (window.AIEngine && window.AIEngine.getPlayerCountry(world)) || countries[0];
+        if (!playerC) return;
+        this.openMobilizationModal(playerC, world);
+        const sel = document.getElementById("war-target-defender-select");
+        if (sel && targetId) {
+          sel.value = targetId;
+          if (typeof sel.onchange === "function") sel.onchange();
+        }
+      };
+    });
+
+    container.querySelectorAll(".btn-toggle-ai-alliance").forEach(btn => {
+      btn.onclick = () => {
+        const targetId = btn.getAttribute("data-target-id");
+        const targetC = countries.find(c => String(c.id) === String(targetId));
+        const playerC = (window.AIEngine && window.AIEngine.getPlayerCountry(world)) || countries[0];
+        if (!playerC || !targetC || !window.AIEngine) return;
+        if (window.AIEngine.areAllied(world, playerC.id, targetC.id)) {
+          window.AIEngine.breakAlliance(world, playerC.id, targetC.id);
+          this.notify(`⚠️ تم فك التحالف مع دولة [${targetC.name}].`, "🛡️");
+        } else {
+          const res = window.AIEngine.createAlliance(world, playerC, targetC, 5);
+          this.notify(res.msg, "🤝");
+        }
+        if (typeof window.renderNationsTable === "function") window.renderNationsTable();
+        this.render(world);
+      };
+    });
 
     const btnHeaderFinish = document.getElementById("btn-war-header-finish-phase");
     if (btnHeaderFinish) {
@@ -694,21 +762,6 @@ class WarView {
         const attacker = countries.find(c => String(c.id) === String(cId));
         if (attacker) {
           this.openMobilizationModal(attacker, world);
-        }
-      };
-    });
-
-    container.querySelectorAll(".btn-attack-this-ai").forEach(btn => {
-      btn.onclick = () => {
-        const targetId = btn.getAttribute("data-id");
-        const myCid = window.NetworkEngine ? window.NetworkEngine.getMyCountryId() : null;
-        const myCountry = (myCid && countries.find(c => String(c.id) === String(myCid))) ||
-          countries.find(c => !c.isAI) ||
-          countries[0];
-        if (myCountry) {
-          this.openMobilizationModal(myCountry, world);
-          const sel = document.getElementById("war-target-defender-select");
-          if (sel && targetId) sel.value = String(targetId);
         }
       };
     });
@@ -840,10 +893,11 @@ class WarView {
       } else {
         armedAllies.forEach(c => {
           const standing = window.WarEngine ? window.WarEngine.getStandingArmyCount(c) : 0;
+          const isMyAlly = window.AIEngine && window.AIEngine.areAllied(world, attacker.id, c.id);
           alliesHtml += `
-            <label style="background:#1e293b; padding:2px 8px; border-radius:6px; font-size:0.74rem; cursor:pointer; display:flex; align-items:center; gap:4px; border:1px solid #334155; margin:0;">
-              <input type="checkbox" class="chk-attacker-ally" value="${c.id}" />
-              <span>${c.name} (${standing} قطعة)</span>
+            <label style="background:${isMyAlly ? "#064e3b" : "#1e293b"}; padding:2px 8px; border-radius:6px; font-size:0.74rem; cursor:pointer; display:flex; align-items:center; gap:4px; border:1px solid ${isMyAlly ? "#34d399" : "#334155"}; margin:0;">
+              <input type="checkbox" class="chk-attacker-ally" value="${c.id}" ${isMyAlly ? "checked" : ""} />
+              <span>${isMyAlly ? "🤝 " : ""}${c.name} (${standing} قطعة)</span>
             </label>
           `;
         });
@@ -1153,12 +1207,51 @@ class WarView {
       }
     }
 
-    if (primaryDef.isAI && window.AIEngine && typeof window.AIEngine.handleAIDefenderUltimatum === "function") {
-      this.notify(`🤖 جيش [${primaryAtk.name}] يزحف نحو [${primaryDef.name}]! القيادة العسكرية للذكاء الاصطناعي تتخذ قرار الرد...`, "⚔️");
+    const isDefenderAI = window.AIEngine && window.AIEngine.isAICountry(primaryDef);
+    if (isDefenderAI && shouldOpenDefenderModalHere) {
+      const persona = window.AIEngine.getPersonaForCountry(primaryDef);
+      const aiResponse = window.AIEngine.decideAIDefenderResponse(primaryAtk, primaryDef, atkCoalition, world);
+      this.notify(`🤖 القائد [${persona.leaderName}] (${primaryDef.name}) يدرس إنذار الغزو ويتخذ قراره السيادي...`, "⚡");
+
       setTimeout(() => {
-        window.AIEngine.handleAIDefenderUltimatum(primaryAtk, primaryDef, atkCoalition, world);
+        if (aiResponse.decision === "SURRENDER") {
+          this.notify(`🏳️ قررت قيادة [${primaryDef.name}] الاستسلام التكتيكي لحفظ جيشها!`, "🏳️");
+          this.handleDefenderChoiceSurrender();
+        } else if (aiResponse.decision === "PAY_TRIBUTE") {
+          this.notify(`💰 قررت قيادة [${primaryDef.name}] دفع الجزية وتجنب المعركة!`, "💰");
+          this.handleDefenderChoicePayTribute();
+        } else {
+          this.defenderCoalition = aiResponse.defCoalition;
+          let totalDefOwned = 0, totalDefMob = 0;
+          this.defenderCoalition.forEach(m => {
+            totalDefOwned += window.WarEngine.getStandingArmyCount(m.country);
+            Object.values(m.forces || {}).forEach(v => totalDefMob += Number(v || 0));
+          });
+          this.defenderMobStatus = (totalDefMob >= totalDefOwned && totalDefOwned > 0) ? "FULL" : "PARTIAL";
+          const alliesMsg = (aiResponse.alliesJoined && aiResponse.alliesJoined.length > 0)
+            ? ` مع إسناد حلفائها (${aiResponse.alliesJoined.join("، ")})`
+            : "";
+          this.notify(`⚔️ رفضت [${primaryDef.name}] الاستسلام وحشدت جيوشها${alliesMsg} لخوض المعركة الميدانية!`, "🔥");
+
+          const sharedSeed = Math.floor(100000 + Math.random() * 900000000);
+          const battleStartPayload = {
+            atkCoalitionData: this.serializeCoalition(this.attackerCoalition),
+            defCoalitionData: this.serializeCoalition(this.defenderCoalition),
+            attackerMobStatus: this.attackerMobStatus,
+            defenderMobStatus: this.defenderMobStatus,
+            battleSeed: sharedSeed
+          };
+          if (window.NetworkEngine && window.NetworkEngine.getRoomId()) {
+            window.NetworkEngine.broadcastBattleStart(battleStartPayload);
+          } else {
+            this.onNetworkBattleStart(battleStartPayload);
+          }
+        }
       }, 900);
-    } else if (shouldOpenDefenderModalHere) {
+      return;
+    }
+
+    if (shouldOpenDefenderModalHere) {
       this.openGrandWarBriefingModal(primaryAtk, primaryDef, atkCoalition, world);
     } else {
       this.notify(`🚨 جيش [${primaryAtk.name}] يزحف نحو [${primaryDef.name}]! بانتظار رد المدافع...`, "⚔️");
@@ -1267,10 +1360,11 @@ class WarView {
         <div id="war-defender-allies-list" style="display:flex; flex-wrap:wrap; gap:4px; max-height:40px; overflow-y:auto;">
           ${armedDefAllies.map(c => {
             const standing = window.WarEngine ? window.WarEngine.getStandingArmyCount(c) : 0;
+            const isMyAlly = window.AIEngine && window.AIEngine.areAllied(world, primaryDef.id, c.id);
             return `
-              <label style="background:#1e293b; padding:2px 8px; border-radius:6px; font-size:0.72rem; cursor:pointer; display:flex; align-items:center; gap:4px; border:1px solid #334155; margin:0;">
-                <input type="checkbox" class="chk-defender-ally" value="${c.id}" />
-                <span>${c.name} (${standing})</span>
+              <label style="background:${isMyAlly ? "#064e3b" : "#1e293b"}; padding:2px 8px; border-radius:6px; font-size:0.72rem; cursor:pointer; display:flex; align-items:center; gap:4px; border:1px solid ${isMyAlly ? "#34d399" : "#334155"}; margin:0;">
+                <input type="checkbox" class="chk-defender-ally" value="${c.id}" ${isMyAlly ? "checked" : ""} />
+                <span>${isMyAlly ? "🤝 " : ""}${c.name} (${standing})</span>
               </label>
             `;
           }).join("")}

@@ -110,6 +110,10 @@ class ChronicleManager {
       window.NetworkEngine.sendChatMessage(msgPayload);
     }
 
+    if (window.AIEngine && typeof window.AIEngine.handlePlayerChatMessage === "function") {
+      window.AIEngine.handlePlayerChatMessage(text, world);
+    }
+
     this.render(world, true);
   }
 

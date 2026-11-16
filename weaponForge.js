@@ -732,7 +732,7 @@ class WeaponForgeEngine {
 
   static duplicateSelectedPart() {
     if (this.selectedPartIndex < 0 || this.selectedPartIndex >= this.components.length) {
-      alert("يرجى تحديد قطعة أولاً لنسخها!");
+      if (window.showGameToast) window.showGameToast("يرجى تحديد قطعة أولاً لنسخها!", "🔔");
       return;
     }
     this.pushUndo();
@@ -746,7 +746,7 @@ class WeaponForgeEngine {
 
   static mirrorSelectedPart() {
     if (this.selectedPartIndex < 0 || this.selectedPartIndex >= this.components.length) {
-      alert("يرجى تحديد قطعة أولاً لعكس تناظرها!");
+      if (window.showGameToast) window.showGameToast("يرجى تحديد قطعة أولاً لعكس تناظرها!", "🔔");
       return;
     }
     this.pushUndo();
@@ -1326,8 +1326,8 @@ class WeaponForgeEngine {
     if (!country) return;
 
     const name = (document.getElementById("asm-unit-name")?.value || "").trim();
-    if (!name) { alert("يرجى إدخال اسم الطراز المبتكر!"); return; }
-    if (this.components.length === 0) { alert("لا يمكن حفظ سلاح بدون مكونات! أضف قطعاً للسلاح أولاً."); return; }
+    if (!name) { if (window.showGameToast) window.showGameToast("يرجى إدخال اسم الطراز المبتكر!", "🔔"); return; }
+    if (this.components.length === 0) { if (window.showGameToast) window.showGameToast("لا يمكن حفظ سلاح بدون مكونات! أضف قطعاً للسلاح أولاً.", "🔔"); return; }
 
     const gv = (id, d) => document.getElementById(id)?.value ?? d;
     const branch = gv("asm-unit-branch", "ground");
@@ -1365,7 +1365,7 @@ class WeaponForgeEngine {
     if (!country.military.inventory) country.military.inventory = {};
     country.military.inventory[newUnitId] = 0;
 
-    alert(`🎉 تم بنجاح اعتماد وتثبيت براءة اختراع السلاح [${name}] بسعر $${price.toLocaleString()} ودخوله الترسانة الرسمية لدولة [${country.name}]!`);
+    if (window.showGameToast) window.showGameToast(`🎉 تم بنجاح اعتماد وتثبيت براءة اختراع السلاح [${name}] بسعر $${price.toLocaleString()} ودخوله الترسانة الرسمية لدولة [${country.name}]!`, "🔔");
     this.renderCatalog();
     this.renderExportMarket();
     this.switchTab("export");
@@ -1430,7 +1430,7 @@ class WeaponForgeEngine {
     const unitId = unitSelect.value;
     const buyerId = buyerSelect.value;
     const count = parseInt(countInput.value, 10);
-    if (!unitId || !buyerId || isNaN(count) || count <= 0) { alert("يرجى إكمال تفاصيل الصفقة والكمية بدقة!"); return; }
+    if (!unitId || !buyerId || isNaN(count) || count <= 0) { if (window.showGameToast) window.showGameToast("يرجى إكمال تفاصيل الصفقة والكمية بدقة!", "🔔"); return; }
 
     const buyer = window.currentWorld?.countries?.find(c => c.id === buyerId);
     const unit = (window.MilitaryData && typeof window.MilitaryData.getUnitById === "function")
@@ -1440,13 +1440,13 @@ class WeaponForgeEngine {
 
     const ownedCount = Number(seller.military?.inventory?.[unitId] || 0);
     if (ownedCount < count) {
-      alert(`مستودعاتك لا تحتوي على هذه الكمية الجاهزة للتصدير (المتوفر لديك: ${ownedCount})! قم بتصنيعها أولاً في وزارة الدفاع.`);
+      if (window.showGameToast) window.showGameToast(`مستودعاتك لا تحتوي على هذه الكمية الجاهزة للتصدير (المتوفر لديك: ${ownedCount})! قم بتصنيعها أولاً في وزارة الدفاع.`, "🔔");
       return;
     }
 
     const totalDealPrice = unit.price * count;
     if (Number(buyer.disposableRevenue || 0) < totalDealPrice) {
-      alert(`الدولة المشتري لا تملك سيولة كافية (المطلوب: $${totalDealPrice.toLocaleString()})!`);
+      if (window.showGameToast) window.showGameToast(`الدولة المشتري لا تملك سيولة كافية (المطلوب: $${totalDealPrice.toLocaleString()})!`, "🔔");
       return;
     }
 
@@ -1464,7 +1464,7 @@ class WeaponForgeEngine {
         `🤝 صفقة تسليح دولية: اشترت [${buyer.name}] عدد ${count} قطع من السلاح السيادي [${unit.name}] من دولة [${seller.name}] بإجمالي $${totalDealPrice.toLocaleString()}.`);
     }
 
-    alert(`✅ تمت صفقة بيع السلاح بنجاح وتحويل $${totalDealPrice.toLocaleString()} إلى خزينة [${seller.name}]!`);
+    if (window.showGameToast) window.showGameToast(`✅ تمت صفقة بيع السلاح بنجاح وتحويل $${totalDealPrice.toLocaleString()} إلى خزينة [${seller.name}]!`, "🔔");
     this.renderExportMarket();
 
     if (window.MilitaryEngine && typeof window.MilitaryEngine.syncCountryWithMilitary === "function") {

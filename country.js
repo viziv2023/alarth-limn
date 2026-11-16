@@ -49,14 +49,14 @@ class Country {
     this.wbDebtDuration = 0;
     this.wbAnnualInstallment = 0;
 
-    // بيانات ملكية اللاعب واللون العسكري
+    // بيانات ملكية اللاعب واللون العسكري والذكاء الاصطناعي
     this.ownerPlayerId = null;
     this.ownerPlayerName = null;
     this.militaryColor = null;
     this.isAI = false;
-    this.aiPersonality = null;
-    this.aiTitle = null;
-    this.aiDesc = null;
+    this.aiPersonaId = null;
+    this.aiPersona = null;
+    this.aiRelations = {};
   }
 
   toJSON() {
@@ -102,9 +102,9 @@ class Country {
       ownerPlayerName: this.ownerPlayerName || null,
       militaryColor: this.militaryColor || null,
       isAI: !!this.isAI,
-      aiPersonality: this.aiPersonality || null,
-      aiTitle: this.aiTitle || null,
-      aiDesc: this.aiDesc || null
+      aiPersonaId: this.aiPersonaId || null,
+      aiPersona: this.aiPersona || null,
+      aiRelations: this.aiRelations || {}
     };
   }
 
@@ -154,9 +154,9 @@ class Country {
     country.ownerPlayerName = data.ownerPlayerName || null;
     country.militaryColor = data.militaryColor || null;
     country.isAI = !!data.isAI;
-    country.aiPersonality = data.aiPersonality || null;
-    country.aiTitle = data.aiTitle || null;
-    country.aiDesc = data.aiDesc || null;
+    country.aiPersonaId = data.aiPersonaId || null;
+    country.aiPersona = data.aiPersona || null;
+    country.aiRelations = data.aiRelations || {};
 
     // تسجيل أي أسلحة خاصة بهذه الدولة فورياً في قاعدة بيانات الأسلحة
     if (window.WeaponForge && Array.isArray(country.customUnits)) {

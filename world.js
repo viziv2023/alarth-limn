@@ -1,6 +1,6 @@
 /**
  * ============================================================================
- * world.js - محرك العالم الموحد وتدوير السنوات المالية والمحادثات (عصر الهيمنة - v6.6)
+ * world.js - محرك العالم الموحد وتدوير السنوات المالية والمحادثات والذكاء الاصطناعي (عصر الهيمنة - v7.0)
  * ============================================================================
  */
 
@@ -14,6 +14,8 @@ class World {
         this.tradeDeals = [];
         this.tributes = []; // عقود الدية العسكرية الخمسية
         this.sovereignLoans = []; // عقود القروض السيادية المباشرة بين الدول
+        this.alliances = []; // معاهدات التحالف والدفاع المشترك بين الدول
+        this.aiTurnLogs = []; // سجل قرارات وأحداث الذكاء الاصطناعي في السنة الحالية
     }
 
     addCountry(country) {
@@ -31,12 +33,7 @@ class World {
         return this.countries.find(c => String(c.id) === String(id)) || null;
     }
 
-    advanceYear() {
-        // تنفيذ مشتريات وقرارات الذكاء الاصطناعي لما تبقى من سيولة قبل إغلاق السنة المالية
-        if (window.AIEngine && typeof window.AIEngine.runPreYearEndAITurns === "function") {
-            try { window.AIEngine.runPreYearEndAITurns(this); } catch (e) { console.error(e); }
-        }
-
+    advanceYear(options = {}) {
         this.year = (Number(this.year) || 1) + 1;
 
         // تحديث إجماليات الصادرات والواردات قبل تدوير السنة المالية
@@ -97,7 +94,7 @@ class World {
             }
         });
 
-        // 4. تسوية عقود الدية السنوية، والبنك الدولي (استثمار 25% من الاقتطاعات والقروض السيادية)، والتبادل التجاري
+        // 4. تسوية عقود الدية السنوية، والبنك الدولي، والتبادل التجاري
         if (window.WarEngine && typeof window.WarEngine.processAnnualTributes === "function") {
             window.WarEngine.processAnnualTributes(this);
         }
@@ -110,29 +107,59 @@ class World {
             window.TradeManager.processAnnualCycle(this);
         }
 
-        // إعادة تحديث المؤشرات بعد تسويات البنك والتجارة
+        // 5. تنفيذ دور وقرارات المنافسين بالذكاء الاصطناعي (بناء، تسليح، شراء منتجات وتجارة، تحالفات، وهجمات عسكرية)
+        this.lastAIWarAttackers = [];
+        if (window.AIEngine && typeof window.AIEngine.processAllAITurns === "function") {
+            const aiResult = window.AIEngine.processAllAITurns(this, options);
+            if (aiResult && Array.isArray(aiResult.warAttackers)) {
+                this.lastAIWarAttackers = aiResult.warAttackers;
+            }
+        }
+
+        // إعادة تحديث المؤشرات بعد تسويات البنك والتجارة وقرارات الذكاء الاصطناعي
         this.countries.forEach(country => {
             if (window.IndicatorsEngine && typeof window.IndicatorsEngine.refreshCountryIndicators === "function") {
                 window.IndicatorsEngine.refreshCountryIndicators(country);
             }
         });
 
-        // تنفيذ جولة الذكاء الاصطناعي للسنة الجديدة (بناء المنشآت، الترقية، التسليح، التجارة، والبنك الدولي)
-        if (window.AIEngine && typeof window.AIEngine.runPostYearStartAITurns === "function") {
-            try { window.AIEngine.runPostYearStartAITurns(this); } catch (e) { console.error(e); }
-        }
-
-        // 5. حفظ تلقائي فوري لكافة بيانات وإحصائيات الدول مع نهاية كل سنة مالية
+        // 6. حفظ تلقائي فوري لكافة بيانات وإحصائيات الدول مع نهاية كل سنة مالية
         if (window.StorageManager && typeof window.StorageManager.autoSave === "function") {
             window.StorageManager.autoSave(this);
+        }
+
+        // إذا شن أحد المنافسين بالذكاء الاصطناعي هجوماً على دولة اللاعب، نطلق إنذار الحرب بعد لحظات
+        if (this.lastAIWarAttackers && this.lastAIWarAttackers.length > 0 && window.WarView) {
+            const attackEvent = this.lastAIWarAttackers[0];
+            setTimeout(() => {
+                if (window.WarView && typeof window.WarView.onNetworkUltimatumReceived === "function") {
+                    window.WarView.onNetworkUltimatumReceived({
+                        attackerCountryId: attackEvent.attacker.id,
+                        attackerPlayerId: attackEvent.attacker.ownerPlayerId || "ai_attacker",
+                        defenderCountryId: attackEvent.defender.id,
+                        defenderPlayerId: attackEvent.defender.ownerPlayerId || "local_player",
+                        atkCoalitionData: window.WarView.serializeCoalition(attackEvent.atkCoalition),
+                        attackerMobStatus: "FULL"
+                    });
+                }
+            }, 450);
         }
 
         return this.year;
     }
 
-    // تم الإبقاء على الدالة فارغة للتوافق البرمجي دون كتابة سجلات تاريخية
     addHistoryEvent(category, text, year, key = null) {
-        return;
+        if (!text) return;
+        if (!Array.isArray(this.history)) this.history = [];
+        this.history.unshift({
+            category: category || "general",
+            text: text,
+            year: year || this.year || 1,
+            ts: Date.now()
+        });
+        if (this.history.length > 80) {
+            this.history = this.history.slice(0, 80);
+        }
     }
 
     addChatMessage(msgObj) {
@@ -163,13 +190,15 @@ class World {
 
     toJSON() {
         return {
-            version: "1.4",
+            version: "1.5",
             savedAt: new Date().toISOString(),
             year: this.year,
             worldBankTreasury: this.worldBankTreasury,
             tradeDeals: this.tradeDeals || [],
             tributes: this.tributes || [],
             sovereignLoans: this.sovereignLoans || [],
+            alliances: this.alliances || [],
+            aiTurnLogs: this.aiTurnLogs || [],
             chatMessages: this.chatMessages || [],
             countries: this.countries.map(c => {
                 if (c && typeof c.toJSON === "function") {
@@ -177,7 +206,7 @@ class World {
                 }
                 return c;
             }),
-            history: []
+            history: this.history || []
         };
     }
 
@@ -188,7 +217,10 @@ class World {
         world.tradeDeals = (data && Array.isArray(data.tradeDeals)) ? data.tradeDeals : [];
         world.tributes = (data && Array.isArray(data.tributes)) ? data.tributes : [];
         world.sovereignLoans = (data && Array.isArray(data.sovereignLoans)) ? data.sovereignLoans : [];
+        world.alliances = (data && Array.isArray(data.alliances)) ? data.alliances : [];
+        world.aiTurnLogs = (data && Array.isArray(data.aiTurnLogs)) ? data.aiTurnLogs : [];
         world.chatMessages = (data && Array.isArray(data.chatMessages)) ? data.chatMessages : [];
+        world.history = (data && Array.isArray(data.history)) ? data.history : [];
 
         if (data && Array.isArray(data.countries)) {
             world.countries = data.countries.map(cData => {

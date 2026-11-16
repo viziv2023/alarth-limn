@@ -27,7 +27,7 @@ class MilitaryView {
     if (typeof window.showGameToast === "function") {
       window.showGameToast(msg, icon);
     } else {
-      alert(msg);
+      if (window.showGameToast) window.showGameToast(msg, "⚠️");
     }
   }
 
